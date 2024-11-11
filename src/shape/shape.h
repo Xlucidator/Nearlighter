@@ -1,0 +1,27 @@
+#ifndef SHAPE_H
+#define SHAPE_H
+
+#include "ray.h"
+
+struct HitRecord {
+    Point3f point;
+    Vec3f normal;
+    float t;
+    bool front_face;
+
+    // We decide, that normal should always point against the ray
+    // Assume: outward_normal is unit vector
+    void set_face_normal(const Ray& r, const Vec3f& outward_normal) {
+        front_face = dot(r.direction(), outward_normal) < 0; // true : if normal's direction point against the ray
+        // front_face: means face to face
+        normal = front_face ? outward_normal : -outward_normal;
+    }
+};
+
+class Shape {
+public:
+    virtual ~Shape() = default;
+    virtual bool hit(const Ray& r, HitRecord& hit_record) const = 0;
+};
+
+#endif

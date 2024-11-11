@@ -1,0 +1,3 @@
+pixel可以用数组组织：组织为Framebuffer类
+
+包装为Camera类
