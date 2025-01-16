@@ -74,7 +74,7 @@ void Camera::render(const Shape& world) {
             pixel_color *= pixel_samples_scale;
 
             /* Draw */
-            write_color(std::cout, pixel_color);
+            writeColor(std::cout, pixel_color);
         }
     }
     std::clog << "\rDone.                 \n";

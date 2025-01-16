@@ -5,9 +5,10 @@
 #include "shape/shape.h"
 #include "shape/sphere.h"
 
-#include <iostream>
-
 int main() {
+    /* Configure */
+    initGammaLUT(2.2f);
+
     /* World */
     ShapeList world;
     world.add(make_shared<Sphere>(Point3f(0.0f, 0.0f, -1.0f), 0.5f));
