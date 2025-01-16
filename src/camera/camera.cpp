@@ -41,11 +41,12 @@ Vec3f Camera::genSampleSquare() const {
     return Vec3f(random_float() - 0.5f, random_float() - 0.5f, 0);
 }
 
-Color Camera::getRayColor(const Ray& r, const Shape& world) const {
+Color Camera::getRayColor(const Ray& r, int depth, const Shape& world) const {
     /* Objects */
     HitRecord record;
-    if (world.hit(r, Interval(0.0f, infinity), record)) {
-        return 0.5f * (record.normal + Color(1.0f, 1.0f, 1.0f));
+    if (world.hit(r, Interval(0.001f, infinity), record)) {
+        Vec3f direction = record.normal + Vec3f::random_unit_vector(); // Diffuse Reflection: Lambertian distribution
+        return 0.5f * getRayColor(Ray(record.point, direction), depth-1, world);
     }
 
     /* Background */
@@ -68,7 +69,7 @@ void Camera::render(const Shape& world) {
             /* Generate Rays and Get Color */
             Color pixel_color(0.0f, 0.0f, 0.0f);
             for (int sample = 0; sample < samples_per_pixel; sample++) {
-                pixel_color += getRayColor(getRay(i, j), world);
+                pixel_color += getRayColor(getRay(i, j), max_depth, world);
             }
             pixel_color *= pixel_samples_scale;
 

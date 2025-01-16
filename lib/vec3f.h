@@ -3,6 +3,9 @@
 
 #include <cmath>
 #include <iostream>
+#include <random>
+
+#include "utils.h"
 
 class Vec3f {
 public:
@@ -43,6 +46,20 @@ public:
 
     float length_squared() const {
         return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
+    }
+
+    static Vec3f random() {
+        return Vec3f(random_float(), random_float(), random_float());
+    }
+
+    static Vec3f random(float min, float max) {
+        return Vec3f(random_float(min,max), random_float(min,max), random_float(min,max));
+    }
+
+    static Vec3f random_unit_vector() {
+        static std::normal_distribution<float> dis(0.0f, 1.0f);
+        Vec3f v(dis(gen), dis(gen), dis(gen));
+        return v /= v.length();
     }
 };
 
@@ -92,6 +109,11 @@ inline Vec3f cross(const Vec3f& u, const Vec3f& v) {
 
 inline Vec3f unit_vector(const Vec3f& v) {
     return v / v.length();
+}
+
+inline Vec3f random_unit_on_hemisphere(const Vec3f& normal) {
+    Vec3f unit_vec = Vec3f::random_unit_vector();
+    return (dot(unit_vec, normal) > 0.0f) ? unit_vec : -unit_vec;
 }
 
 #endif

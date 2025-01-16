@@ -9,6 +9,7 @@ public:
     float	aspect_ratio = 1.0f;// Ratio of image width over height
     int 	image_width = 100;	// Rendered image width
     int     samples_per_pixel = 10; // Render samples for each pixel
+    int     max_depth = 10;     // Max bounce times for a ray
 
     void render(const Shape& world);
 
@@ -25,7 +26,7 @@ private:
     Ray getRay(int pixel_x, int pixel_y) const;
     Vec3f genSampleSquare() const;
 
-    Color getRayColor(const Ray& r, const Shape& world) const;
+    Color getRayColor(const Ray& r, int depth, const Shape& world) const;
 };
 
 #endif
