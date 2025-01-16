@@ -2,6 +2,7 @@
 #define COLOR_H
 
 #include "vec3f.h"
+#include "interval.h"
 
 typedef Vec3f Color;
 

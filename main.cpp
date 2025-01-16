@@ -1,8 +1,6 @@
-#include "vec3f.h"
-#include "color.h"
-#include "ray.h"
+#include "common.h"
 
-#include "camera.h"
+#include "camera/camera.h"
 #include "shape/shapelist.h"
 #include "shape/shape.h"
 #include "shape/sphere.h"
@@ -12,13 +10,14 @@
 int main() {
     /* World */
     ShapeList world;
-    world.add(make_shared<Sphere>(Point3f(0, 0, -1), 0.5));
-    world.add(make_shared<Sphere>(Point3f(0, -100.5, -1), 100));
+    world.add(make_shared<Sphere>(Point3f(0.0f, 0.0f, -1.0f), 0.5f));
+    world.add(make_shared<Sphere>(Point3f(0.0f, -100.5f, -1.0f), 100.0f));
 
     /* Camera */
     Camera camera;
-    camera.aspect_ratio = 16.0 / 9.0;
-    camera.image_width  = 1280;
+    camera.aspect_ratio = 16.0f / 9.0f;
+    camera.image_width  = 400;
+    camera.samples_per_pixel = 20;
 
     /* Render */
     camera.render(world);

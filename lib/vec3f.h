@@ -8,7 +8,7 @@ class Vec3f {
 public:
     float e[3];
 
-    Vec3f() : e{0,0,0} {}
+    Vec3f() : e{0.0f, 0.0f, 0.0f} {}
     Vec3f(float e0, float e1, float e2) : e{e0, e1, e2} {}
 
     float x() const { return e[0]; }

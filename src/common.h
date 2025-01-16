@@ -3,10 +3,11 @@
 
 // Self Headers
 #include "vec3f.h"
-#include "utils.h"
 #include "color.h"
 #include "ray.h"
 #include "interval.h"
+
+#include "utils.h"
 
 // C++ headers
 #include <iostream>
