@@ -1,19 +1,26 @@
 
-cmake_minimum_required(VERSION 3.0)
-set(CMAKE_CXX_STANDARD 11)
+cmake_minimum_required(VERSION 3.12)
+set(CMAKE_CXX_STANDARD 17)
 
 project(MyPathTracer)
 
-include_directories(lib)
-include_directories(src)
-include_directories(src/shape)
+# Pre-define
+add_definitions(-DDEBUG)
 
-set( SRC 
-    main.cpp
-    src/color.cpp
-    src/camera.cpp
-    src/shape/sphere.cpp
+# Include & Link Directory
+include_directories(
+    ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/src
 )
-# file(GLOB SRC_FILES "src/*.cpp")
 
-add_executable(main ${SRC})
+# Execute File
+file(GLOB_RECURSE SRC_INNER ${CMAKE_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE LIB_SRC ${CMAKE_SOURCE_DIR}/lib/*.cpp)
+message(STATUS "Source files: ${SRC_INNER}")
+message(STATUS "Lib Source files: ${LIB_SRC}")
+
+add_executable(MyPathTracer
+    main.cpp
+    ${SRC_INNER}
+    ${LIB_SRC}
+)

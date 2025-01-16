@@ -3,7 +3,9 @@
 
 #include <cmath>
 
-#define PI  (3.1415926535897932385)
+// Constant
+extern const float infinity;
+extern const float pi;
 
 /* Solving a x^2 + b x + c = 0
  *   x = (-b +- \sqrt{b^2 - 4ac}) / 2a
@@ -28,7 +30,7 @@ inline bool solveQuadratic(const float& a, const float& b, const float& c,
 }
 
 inline float degrees_to_radians(float degrees) {
-    return degrees * PI / 180.0;
+    return degrees * pi / 180.0;
 }
 
 #endif

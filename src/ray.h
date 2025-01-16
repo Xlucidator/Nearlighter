@@ -3,7 +3,7 @@
 
 #include "vec3f.h"
 #include "color.h"
-#include "common.h"
+#include "utils.h"
 
 class Ray {
 private:

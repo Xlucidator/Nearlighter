@@ -1,6 +1,4 @@
 #include "sphere.h"
-#include "vec3f.h"
-#include "utils.h"
 
 #include <iostream>
 
@@ -11,7 +9,7 @@
  *  => Solving the Quadratic equation: a = \vec{d}^2, b = 2\vec{d}(o-c), c = (o-c)^2-r^2
  *  => Solution t should in the ray bound
  */
-bool Sphere::hit(const Ray& r, HitRecord& hit_record) const {
+bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
     Vec3f co = r.origin() - center;
     
     float a = dot(r.direction(), r.direction());
@@ -20,8 +18,8 @@ bool Sphere::hit(const Ray& r, HitRecord& hit_record) const {
     float t0, t1;
 
     if (!solveQuadratic(a, b, c, t0, t1)) return false;
-    if (!r.in_inclusive_bound(t0)) t0 = t1;
-    if (!r.in_inclusive_bound(t0)) return false;
+    if (!ray_t.surrounds(t0)) t0 = t1; // if (!r.in_inclusive_bound(t0))
+    if (!ray_t.surrounds(t0)) return false;
     
     // than it really hits
     hit_record.t = t0;

@@ -2,10 +2,10 @@
 #include "color.h"
 #include "ray.h"
 
-#include "camera.cpp"
-#include "shape.h"
-#include "shapelist.h"
-#include "sphere.h"
+#include "camera.h"
+#include "shape/shapelist.h"
+#include "shape/shape.h"
+#include "shape/sphere.h"
 
 #include <iostream>
 

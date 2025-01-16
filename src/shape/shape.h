@@ -1,7 +1,7 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
-#include "ray.h"
+#include "common.h"
 
 struct HitRecord {
     Point3f point;
@@ -21,7 +21,7 @@ struct HitRecord {
 class Shape {
 public:
     virtual ~Shape() = default;
-    virtual bool hit(const Ray& r, HitRecord& hit_record) const = 0;
+    virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const = 0;
 };
 
 #endif

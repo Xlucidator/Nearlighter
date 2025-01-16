@@ -28,7 +28,7 @@ void Camera::initialize() {
 Color Camera::ray_color(const Ray& r, const Shape& world) const {
     /* Objects */
     HitRecord record;
-    if (world.hit(r, record)) {
+    if (world.hit(r, Interval(0.0, infinity), record)) {
         return 0.5 * (record.normal + Color(1, 1, 1));
     }
 

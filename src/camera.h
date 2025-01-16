@@ -1,9 +1,8 @@
 #ifndef CAMERA_H
 #define CAMERA_H
 
-#include "ray.h"
-#include "color.h"
-#include "shape.h"
+#include "common.h"
+#include "shape/shape.h"
 
 class Camera {
 public:

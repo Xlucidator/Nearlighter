@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "color.h"
 #include "ray.h"
+#include "interval.h"
 
 // C++ headers
 #include <iostream>
@@ -16,9 +17,6 @@
 // C++ Usings
 using std::make_shared;
 using std::shared_ptr;
-
-// Constant
-const float infinity = std::numeric_limits<double>::infinity();
 
 
 #endif
