@@ -48,6 +48,11 @@ public:
         return e[0]*e[0] + e[1]*e[1] + e[2]*e[2];
     }
 
+    bool near_zero() const {
+        static float small = 1e-8;
+        return (std::fabs(e[0]) < small) && (std::fabs(e[1]) < small) && (std::fabs(e[2]) < small);
+    }
+
     static Vec3f random() {
         return Vec3f(random_float(), random_float(), random_float());
     }
@@ -114,6 +119,10 @@ inline Vec3f unit_vector(const Vec3f& v) {
 inline Vec3f random_unit_on_hemisphere(const Vec3f& normal) {
     Vec3f unit_vec = Vec3f::random_unit_vector();
     return (dot(unit_vec, normal) > 0.0f) ? unit_vec : -unit_vec;
+}
+
+inline Vec3f reflect(const Vec3f& vin, const Vec3f& normal) {
+    return vin - 2 * dot(vin, normal) * normal;
 }
 
 #endif

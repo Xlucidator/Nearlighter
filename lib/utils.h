@@ -22,7 +22,6 @@ inline bool solveQuadratic(const float& a, const float& b, const float& c,
     if (discr_new < 0) return false;
     else if (discr_new == 0) x0 = x1 = h / a;
     else {
-        float sqrt_discr_new = std::sqrt(discr_new);
         float q = h - std::sqrt(discr_new);
         x0 = q / a;
         x1 = c / q;

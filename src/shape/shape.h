@@ -3,9 +3,12 @@
 
 #include "common.h"
 
+class Material;
+
 struct HitRecord {
     Point3f point;
     Vec3f normal;
+    shared_ptr<Material> material;
     float t;
     bool front_face;
 
@@ -23,5 +26,7 @@ public:
     virtual ~Shape() = default;
     virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const = 0;
 };
+
+#include "sphere.h"
 
 #endif

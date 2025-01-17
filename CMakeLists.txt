@@ -7,11 +7,17 @@ project(MyPathTracer)
 # Pre-define
 add_definitions(-DDEBUG)
 
+
 # Include & Link Directory
 include_directories(
     ${CMAKE_SOURCE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/src
 )
+
+
+# Debug
+set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g")
+
 
 # Execute File
 file(GLOB_RECURSE SRC_INNER ${CMAKE_SOURCE_DIR}/src/*.cpp)
