@@ -11,8 +11,9 @@ int main() {
     /* Material */
     auto mat_ground = make_shared<Lambertian>(Color(0.8f, 0.8f, 0.0f));
     auto mat_center = make_shared<Lambertian>(Color(0.1f, 0.2f, 0.5f));
-    auto mat_left   = make_shared<Metal>(Color(0.8f, 0.8f, 0.8f));
-    auto mat_right  = make_shared<Metal>(Color(0.8f, 0.6f, 0.2f));
+    // auto mat_left   = make_shared<Metal>(Color(0.8f, 0.8f, 0.8f), 0.1f);
+    auto mat_left   = make_shared<Dielectric>(1.50);
+    auto mat_right  = make_shared<Metal>(Color(0.8f, 0.6f, 0.2f), 0.8f);
 
     /* World */
     ShapeList world;
@@ -26,7 +27,7 @@ int main() {
     camera.aspect_ratio = 16.0f / 9.0f;
     camera.image_width  = 400;
     camera.samples_per_pixel = 20;
-    camera.max_depth = 20;
+    camera.max_depth = 25;
 
     /* Render */
     camera.render(world);

@@ -15,5 +15,6 @@ public:
 /* Derived Material Implement */
 #include "lambertian.h"
 #include "metal.h"
+#include "dielectric.h"
 
 #endif // MATERIAL_H

@@ -125,4 +125,11 @@ inline Vec3f reflect(const Vec3f& vin, const Vec3f& normal) {
     return vin - 2 * dot(vin, normal) * normal;
 }
 
+inline Vec3f refract(const Vec3f& vin, const Vec3f& normal, float etai_over_etao) {
+    float cos_theta = std::fmin(dot(vin, -normal), 1.0);
+    Vec3f vout_perp = etai_over_etao * (vin + cos_theta * normal);  // component that perpendicular to normal
+    Vec3f vout_para = -std::sqrt(std::fabs(1.0 - vout_perp.length_squared())) * normal; // component that parallel to normal
+    return vout_perp + vout_para;
+}
+
 #endif
