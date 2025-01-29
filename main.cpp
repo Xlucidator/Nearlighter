@@ -21,7 +21,7 @@ int main() {
     ShapeList world;
     world.add(make_shared<Sphere>(Point3f( 0.0f, -100.5f, -1.0f), 100.0f, mat_ground));
     world.add(make_shared<Sphere>(Point3f( 0.0f,    0.0f, -1.2f),   0.5f, mat_center));
-    world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left)); // hollow glass outer
+    world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left));   // hollow glass outer
     world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
     world.add(make_shared<Sphere>(Point3f( 1.0f,    0.0f, -1.0f),   0.5f, mat_right));
 
@@ -32,8 +32,13 @@ int main() {
     camera.samples_per_pixel = 30;
     camera.max_depth = 25;
 
+    camera.fov_vertical = 20.0f;
+    camera.position = Point3f(-2.0f, 2.0f, 1.0f);
+    camera.look_at  = Point3f(0.0f, 0.0f, -1.0f);
+    camera.world_up = Vec3f(0.0f, 1.0f, 0.0f);
+
     /* Render */
-    std::ofstream ouput_file("out.ppm");  // 打开文件
+    std::ofstream ouput_file("out.ppm");
     if (!ouput_file) {
         std::cerr << "Failed to Open out.ppm\n";
         return 1;

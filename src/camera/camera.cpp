@@ -12,17 +12,29 @@ void Camera::initialize() {
     pixel_samples_scale = 1.0f / samples_per_pixel;
 
     /* Viewport */
-    center = Point3f(0.0f, 0.0f, 0.0f);
-    float viewport_height = 2.0f;
+    //         ·
+    //    y   /|
+    //    ^  / | h = tan(fov_angle/2)
+    //    | /  | 
+    //    0----1-----·-> -z
+    //          focal_length 
+    center = position;
+    float focal_length = (position - look_at).length();
+    float h = std::tan(degrees_to_radians(fov_vertical) / 2);
+    float viewport_height = 2 * h * focal_length;
     float viewport_width = viewport_height * (float(image_width) / image_height);
-    float focal_length = 1.0f;
+
+    // Calculate Camera Pose : avoid illegal case
+    front = unit_vector(look_at - position);
+    right = unit_vector(cross(front, world_up));
+    up = cross(right, front);
     
-    Vec3f viewport_u = Vec3f(viewport_width, 0.0f, 0.0f);     // vector for u-axis: point rightward
-    Vec3f viewport_v = Vec3f(0.0f, -viewport_height, 0.0f);   // vector for v-axis: point downward
+    Vec3f viewport_u = viewport_width * right;  // vector for u-axis: point rightward
+    Vec3f viewport_v = viewport_height * -up ;  // vector for v-axis: point downward
     pixel_interval_u = viewport_u / image_width;   // vector indicates pixel interval of u direction
     pixel_interval_v = viewport_v / image_height;  // vector indicates pixel interval of v direction
 
-    Point3f viewport_upper_left = center - Vec3f(0.0f, 0.0f, focal_length)
+    Point3f viewport_upper_left = center + focal_length * front
                                 - viewport_u / 2 - viewport_v / 2;  // notice that v has reversed
     pixel_start = viewport_upper_left + 0.5f * (pixel_interval_u + pixel_interval_v); // pixels should locate in the grid center 
 }
