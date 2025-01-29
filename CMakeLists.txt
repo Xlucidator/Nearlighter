@@ -1,23 +1,28 @@
 
 cmake_minimum_required(VERSION 3.12)
-set(CMAKE_CXX_STANDARD 17)
 
 project(MyPathTracer)
 
-# Pre-define
-add_definitions(-DDEBUG)
+# C++ Standard
+set(CMAKE_CXX_STANDARD 17)
 
+# Build Mode Select
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build." FORCE)
+endif()
+
+# Pre-define
+add_compile_definitions("$<$<CONFIG:Debug>:DEBUG>")
+
+# Compile Options
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 # Include & Link Directory
 include_directories(
     ${CMAKE_SOURCE_DIR}/lib
     ${CMAKE_SOURCE_DIR}/src
 )
-
-
-# Debug
-set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g")
-
 
 # Execute File
 file(GLOB_RECURSE SRC_INNER ${CMAKE_SOURCE_DIR}/src/*.cpp)

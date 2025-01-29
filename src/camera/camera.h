@@ -12,7 +12,7 @@ public:
     int     samples_per_pixel = 10; // Render samples for each pixel
     int     max_depth = 10;     // Max bounce times for a ray
 
-    void render(const Shape& world);
+    void render(const Shape& world, std::ostream& out = std::cout);
 
 private:
     int     image_height;		// Rendered image height

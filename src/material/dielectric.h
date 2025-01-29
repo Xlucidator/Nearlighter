@@ -55,7 +55,7 @@ private:
     static float reflectance(float cos_theta_i, float eta_1, float eta_2) {
         float r0 = (eta_1 - eta_2) / (eta_1 + eta_2);
         r0 *= r0;
-        return r0 + (1 - r0) * std::pow((1 - cos_theta_i), 5);
+        return r0 + (1 - r0) * std::pow((1 - cos_theta_i), 5); // interpolate (r0, 1-r0)
     }
 };
 

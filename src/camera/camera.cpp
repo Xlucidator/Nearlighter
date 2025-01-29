@@ -42,6 +42,8 @@ Vec3f Camera::genSampleSquare() const {
 }
 
 Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world) const {
+    if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
+
     /* Objects */
     HitRecord record;
     if (world.hit(ray, Interval(0.001f, infinity), record)) {
@@ -61,10 +63,10 @@ Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world) const {
 
 /////// Public Method
 
-void Camera::render(const Shape& world) {
+void Camera::render(const Shape& world, std::ostream& out) {
     initialize();
 
-    std::cout << "P3\n" << image_width << ' ' << image_height << "\n255\n";
+    out << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
     for (int j = 0; j < image_height; j++) {
         std::clog << "\rScanling remaining: " << (image_height - j) << ' ' << std::flush;
@@ -77,7 +79,7 @@ void Camera::render(const Shape& world) {
             pixel_color *= pixel_samples_scale;
 
             /* Draw */
-            writeColor(std::cout, pixel_color);
+            writeColor(out, pixel_color);
         }
     }
     std::clog << "\rDone.                 \n";

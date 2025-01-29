@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <random>
+#include <assert.h>
 
 #include "utils.h"
 
@@ -89,7 +90,14 @@ inline Vec3f operator*(const Vec3f& u, const Vec3f& v) {
 }
 
 inline Vec3f operator*(float t, const Vec3f& v) {
-    return Vec3f(t*v.e[0], t*v.e[1], t*v.e[2]);
+    // std::cout << v.e[0] << " " << v.e[1] << " " << v.e[2] << std::endl;
+    float e0 = t * v.e[0];
+    float e1 = t * v.e[1];
+    float e2 = t * v.e[2];
+    Vec3f(1, 1, e2);
+    // assert(&v != nullptr);
+    return Vec3f(e0, e1, e2);
+    // return Vec3f(t * v.e[0], t * v.e[1], t * v.e[2]);
 }
 
 inline Vec3f operator*(const Vec3f& v, float t) {
