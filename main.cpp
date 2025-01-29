@@ -12,7 +12,7 @@ int main() {
     auto mat_ground = make_shared<Lambertian>(Color(0.8f, 0.8f, 0.0f));
     auto mat_center = make_shared<Lambertian>(Color(0.1f, 0.2f, 0.5f));
     // auto mat_left   = make_shared<Metal>(Color(0.8f, 0.8f, 0.8f), 0.1f);
-    auto mat_left   = make_shared<Dielectric>(1.50);
+    auto mat_left   = make_shared<Dielectric>(1.0f / 1.50f);
     auto mat_right  = make_shared<Metal>(Color(0.8f, 0.6f, 0.2f), 0.8f);
 
     /* World */
