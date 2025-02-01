@@ -10,32 +10,71 @@ int main() {
     /* Configure */
     initGammaLUT(2.2f);
 
-    /* Material */
-    auto mat_ground = make_shared<Lambertian>(Color(0.8f, 0.8f, 0.0f));
-    auto mat_center = make_shared<Lambertian>(Color(0.1f, 0.2f, 0.5f));
-    auto mat_left   = make_shared<Dielectric>(1.5f);
-    auto mat_bubble = make_shared<Dielectric>(1.0f / 1.5f);
-    auto mat_right  = make_shared<Metal>(Color(0.8f, 0.6f, 0.2f), 0.8f);
-
     /* World */
     ShapeList world;
-    world.add(make_shared<Sphere>(Point3f( 0.0f, -100.5f, -1.0f), 100.0f, mat_ground));
-    world.add(make_shared<Sphere>(Point3f( 0.0f,    0.0f, -1.2f),   0.5f, mat_center));
-    world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left));   // hollow glass outer
-    world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
-    world.add(make_shared<Sphere>(Point3f( 1.0f,    0.0f, -1.0f),   0.5f, mat_right));
+
+    // Gound
+    auto mat_ground = make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
+    world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, mat_ground));
+
+    // Random Small Balls
+    int grid_size = 11;
+    float radius = 0.2, interval = 0.9;
+    for (int i = -grid_size; i < grid_size; ++i) {
+        for (int j = -grid_size; j < grid_size; ++j) {
+            float choise = random_float();
+            Point3f ball_center = Point3f(i + interval * random_float(), radius, j + interval * random_float());
+
+            if ((ball_center - Point3f(4, radius, 0)).length() > interval) {
+                shared_ptr<Material> ball_material;
+
+                if (choise < 0.8) { // Diffuse Material
+                    auto albedo = Color::random() * Color::random();
+                    ball_material = make_shared<Lambertian>(albedo);
+                } else if (choise < 0.95) { // Metal Material
+                    auto albedo = Color::random(0.5, 1);
+                    auto fuzz = random_float(0, 0.5);
+                    ball_material = make_shared<Metal>(albedo, fuzz);
+                } else { // Dielectric Material: Glass
+                    ball_material = make_shared<Dielectric>(1.5);
+                }
+
+                world.add(make_shared<Sphere>(ball_center, radius, ball_material));
+            }
+        }
+    }
+
+    // Main Balls
+    auto mat_middle = make_shared<Dielectric>(1.5);
+    world.add(make_shared<Sphere>(Point3f(0, 1, 0), 1.0, mat_middle));
+
+    auto mat_back = make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
+    world.add(make_shared<Sphere>(Point3f(-4, 1, 0), 1.0, mat_back));
+
+    auto mat_front = make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
+    world.add(make_shared<Sphere>(Point3f(4, 1, 0), 1.0, mat_front));
+
+    // Hollow Glass
+    // auto mat_left   = make_shared<Dielectric>(1.5f);
+    // auto mat_bubble = make_shared<Dielectric>(1.0f / 1.5f);
+    // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left));   // hollow glass outer
+    // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
+
 
     /* Camera */
     Camera camera;
     camera.aspect_ratio = 16.0f / 9.0f;
-    camera.image_width  = 400;
-    camera.samples_per_pixel = 30;
-    camera.max_depth = 25;
+    camera.image_width  = 400;     // 400
+    camera.samples_per_pixel = 100; // 30
+    camera.max_depth = 30;          // 25
 
     camera.fov_vertical = 20.0f;
-    camera.position = Point3f(-2.0f, 2.0f, 1.0f);
-    camera.look_at  = Point3f(0.0f, 0.0f, -1.0f);
-    camera.world_up = Vec3f(0.0f, 1.0f, 0.0f);
+    camera.position = Point3f(13, 2, 3);    // Point3f(-2, 2,  1);
+    camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
+    camera.world_up = Vec3f(0, 1, 0);
+
+    camera.defocus_angle = 0.6;
+    camera.focus_distance = 10.0;
 
     /* Render */
     std::ofstream ouput_file("out.ppm");

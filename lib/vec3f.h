@@ -122,6 +122,13 @@ inline Vec3f random_unit_on_hemisphere(const Vec3f& normal) {
     return (dot(unit_vec, normal) > 0.0f) ? unit_vec : -unit_vec;
 }
 
+inline Vec3f random_unit_in_disk() {
+    while (true) {
+        Vec3f p(random_float(-1.0f, 1.0f), random_float(-1.0f, 1.0f), 0.0f);
+        if (p.length_squared() < 1) return p;
+    }
+}
+
 inline Vec3f reflect(const Vec3f& vin, const Vec3f& normal) {
     return vin - 2 * dot(vin, normal) * normal;
 }
