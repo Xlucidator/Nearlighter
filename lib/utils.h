@@ -2,7 +2,6 @@
 #define UTILS_H
 
 #include <cmath>
-#include <random>
 
 // Constant
 extern const float infinity;
@@ -15,16 +14,15 @@ extern const float pi;
  *   x = (2h +- \sqrt{4h^2 - 4ac}) / 2a
  *     = (h +- \sqrt{h^2 - ac}) / a
  */
-inline bool solveQuadratic(const float& a, const float& b, const float& c,
+inline bool solveQuadratic(const float& a, const float& h, const float& c,
                            float& x0, float& x1) {
-    float h = -0.5f * b;
     float discr_new = h * h - a * c;
     if (discr_new < 0) return false;
     else if (discr_new == 0) x0 = x1 = h / a;
     else {
-        float q = h - std::sqrt(discr_new);
-        x0 = q / a;
-        x1 = c / q;
+        float sqrt_d = std::sqrt(discr_new);
+        x0 = (h - sqrt_d) / a;
+        x1 = (h + sqrt_d) / a;
     }
     if (x0 > x1) std::swap(x0, x1);
     return true;
@@ -36,6 +34,11 @@ inline float degrees_to_radians(float degrees) {
 
 
 // Random Generation
+#define RANDOM_NEW
+
+#ifdef RANDOM_NEW
+
+#include <random>
 extern std::mt19937 gen; // Share the generator: unfit for multi thread now
 
 inline float random_float() {
@@ -48,5 +51,20 @@ inline float random_float(float min, float max) {
     dis.param(std::uniform_real_distribution<float>::param_type(min, max));
     return dis(gen);
 } // TODO: thread local
+
+#else
+
+#include <cstdlib>
+
+inline float random_float() {
+    return std::rand() / (RAND_MAX + 1.0);
+}
+
+inline float random_float(float min, float max) {
+    return min + (max - min) * random_float();
+}
+
+#endif
+
 
 #endif

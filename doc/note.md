@@ -8,7 +8,7 @@
 
 入射光线单位向量$\vec{R}$ ， 入射折射率$\eta$ ，法线$\vec{n}$ ，出射折射率 $\eta '$ ：求出射光线单位向量$\vec{R'}$
 
-<img src="./refract_vector.jpg" alt="refract_vector" style="zoom:50%;" />
+<img src="./figs/refract_vector.jpg" alt="refract_vector" style="zoom:50%;" />
 
 ### Schlick's Approximation
 
@@ -38,8 +38,11 @@ Brewster's angle 布儒斯特角：起偏振角，反射光与折射光分为互
 
 ### Hollow Glass Sphere的渲染
 
-似乎和书上不一样,难道是全反射的问题,还是之前哪里自由发挥的锅? (递归深度50, 采样500, 破电脑渲染了好久,差不多一行像素好几秒)
+似乎和书上不一样,难道是全反射的问题,还是之前哪里自由发挥的锅? (递归深度50, 采样500, 小电脑渲染了好久,差不多一行像素好几秒)
 
-<img src="./hollow_glass_diff.png" alt="refract_vector" style="zoom:100%;" />
+<img src="./figs/hollow_glass_diff.png" alt="refract_vector" style="zoom:100%;" />
 
 深度和采样小的话,玻璃上会有很多黑点(这也是之前深度递归基忘写后测出depth爆栈的原因)
+
+破案了：球体和光线的二元一次方程解的有问题，我说怎么之前渲染图就有些许的不同；倒退到单个玻璃球去比对然后一个一个怀疑的点注释修改查出来的
+- 显然不是原则性问题，都是自以为是的优化，结果没考虑到极端浮点数运算带来的误差；具体见[hit-calculation](./hit-calculation.md)的开头

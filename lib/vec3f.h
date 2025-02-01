@@ -90,14 +90,7 @@ inline Vec3f operator*(const Vec3f& u, const Vec3f& v) {
 }
 
 inline Vec3f operator*(float t, const Vec3f& v) {
-    // std::cout << v.e[0] << " " << v.e[1] << " " << v.e[2] << std::endl;
-    float e0 = t * v.e[0];
-    float e1 = t * v.e[1];
-    float e2 = t * v.e[2];
-    Vec3f(1, 1, e2);
-    // assert(&v != nullptr);
-    return Vec3f(e0, e1, e2);
-    // return Vec3f(t * v.e[0], t * v.e[1], t * v.e[2]);
+    return Vec3f(t * v.e[0], t * v.e[1], t * v.e[2]);
 }
 
 inline Vec3f operator*(const Vec3f& v, float t) {
@@ -133,10 +126,10 @@ inline Vec3f reflect(const Vec3f& vin, const Vec3f& normal) {
     return vin - 2 * dot(vin, normal) * normal;
 }
 
-inline Vec3f refract(const Vec3f& vin, const Vec3f& normal, float etai_over_etao) {
-    float cos_theta = std::fmin(dot(vin, -normal), 1.0);
-    Vec3f vout_perp = etai_over_etao * (vin + cos_theta * normal);  // component that perpendicular to normal
-    Vec3f vout_para = -std::sqrt(std::fabs(1.0 - vout_perp.length_squared())) * normal; // component that parallel to normal
+inline Vec3f refract(const Vec3f& vin, const Vec3f& normal, float etai_over_etat) {
+    float cos_theta = std::fmin(dot(vin, -normal), 1.0f);
+    Vec3f vout_perp = etai_over_etat * (vin + cos_theta * normal);  // component that perpendicular to normal
+    Vec3f vout_para = -std::sqrt(std::fabs(1.0f - vout_perp.length_squared())) * normal; // component that parallel to normal
     return vout_perp + vout_para;
 }
 

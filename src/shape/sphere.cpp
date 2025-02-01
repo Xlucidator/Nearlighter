@@ -10,14 +10,14 @@
  *  => Solution t should in the ray bound
  */
 bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
-    Vec3f co = r.origin() - center;
+    Vec3f oc = center - r.origin();
     
     float a = dot(r.direction(), r.direction());
-    float b = 2 * dot(r.direction(), co);
-    float c = dot(co, co) - radius * radius;
+    float h = dot(r.direction(), oc);  // h = - b / 2
+    float c = dot(oc, oc) - radius * radius;
     float t0, t1;
 
-    if (!solveQuadratic(a, b, c, t0, t1)) return false;
+    if (!solveQuadratic(a, h, c, t0, t1)) return false;
     if (!ray_t.surrounds(t0)) t0 = t1; // if (!r.in_inclusive_bound(t0))
     if (!ray_t.surrounds(t0)) return false;
     
