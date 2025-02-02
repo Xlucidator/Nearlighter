@@ -14,7 +14,7 @@ public:
         if (scatter_direction.near_zero())
             scatter_direction = record.normal;
 
-        scattered = Ray(record.point, scatter_direction);
+        scattered = Ray(record.point, scatter_direction, ray_in.time());
         attenuation = albedo;
         return true;
     }

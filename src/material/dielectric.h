@@ -29,7 +29,7 @@ public:
             direction = refract(unit_ray_in, record.normal, etai_over_etat);
         }
 
-        scattered = Ray(record.point, direction);
+        scattered = Ray(record.point, direction, ray_in.time());
         attenuation = Color(1.0f, 1.0f, 1.0f);
         return true;
     }

@@ -31,6 +31,9 @@ int main() {
                 if (choise < 0.8) { // Diffuse Material
                     auto albedo = Color::random() * Color::random();
                     ball_material = make_shared<Lambertian>(albedo);
+                    auto move_center_end = ball_center + Vec3f(0, random_float(0, 0.5), 0);
+                    world.add(make_shared<Sphere>(ball_center, move_center_end, radius, ball_material));
+                    continue;
                 } else if (choise < 0.95) { // Metal Material
                     auto albedo = Color::random(0.5, 1);
                     auto fuzz = random_float(0, 0.5);
@@ -65,7 +68,7 @@ int main() {
     Camera camera;
     camera.aspect_ratio = 16.0f / 9.0f;
     camera.image_width  = 400;     // 400
-    camera.samples_per_pixel = 100; // 30
+    camera.samples_per_pixel = 60; // 30
     camera.max_depth = 30;          // 25
 
     camera.fov_vertical = 20.0f;

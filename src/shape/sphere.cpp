@@ -10,7 +10,8 @@
  *  => Solution t should in the ray bound
  */
 bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
-    Vec3f oc = center - r.origin();
+    Point3f current_center = moving_center.at(r.time());
+    Vec3f oc = current_center - r.origin();
     
     float a = dot(r.direction(), r.direction());
     float h = dot(r.direction(), oc);  // h = - b / 2
@@ -24,7 +25,7 @@ bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
     // than it really hits
     hit_record.t = t0;
     hit_record.point = r.at(t0);
-    Vec3f outward_normal = (hit_record.point - center) / radius;
+    Vec3f outward_normal = (hit_record.point - current_center) / radius;
     hit_record.set_face_normal(r, outward_normal);
     hit_record.material = material;
 
