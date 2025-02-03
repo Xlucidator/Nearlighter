@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "shape.h"
+#include "bvh/aabb.h"
 
 #include <vector>
 
@@ -28,9 +29,18 @@ public:
 
         return hit_anything;
     }
+    AABB getBoundingBox() const override { return bbox; }
 
     void clear() { objects.clear(); }
-    void add(shared_ptr<Shape> object) { objects.push_back(object); }
+    void add(shared_ptr<Shape> object) { 
+        objects.push_back(object);
+        bbox.uunion(object->getBoundingBox());
+    }
+    size_t size() const { return objects.size(); }
+    bool emplty() const { return objects.empty(); }
+
+private:
+    AABB bbox;
 };
 
 #endif

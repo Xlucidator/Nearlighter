@@ -1,7 +1,5 @@
 #include "sphere.h"
 
-#include <iostream>
-
 /* Ray: o + t \vec{d}, Sphere: (p - c)^2 = r^2
  * Hit:
  *  => (o + t \vec{d} - c)^2 = r^2
@@ -30,4 +28,9 @@ bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
     hit_record.material = material;
 
     return true;
+}
+
+AABB Sphere::calculateAABB(const Point3f& center, const float& radius) {
+    Vec3f radius_vec(radius, radius, radius);
+    return AABB(center - radius_vec, center + radius_vec);
 }

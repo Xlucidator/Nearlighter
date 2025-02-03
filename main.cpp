@@ -3,6 +3,7 @@
 #include "camera/camera.h"
 #include "shape/shapelist.h"
 #include "material/material.h"
+#include "bvh/bvhnode.h"
 
 #include <fstream>
 
@@ -50,10 +51,8 @@ int main() {
     // Main Balls
     auto mat_middle = make_shared<Dielectric>(1.5);
     world.add(make_shared<Sphere>(Point3f(0, 1, 0), 1.0, mat_middle));
-
     auto mat_back = make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
     world.add(make_shared<Sphere>(Point3f(-4, 1, 0), 1.0, mat_back));
-
     auto mat_front = make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
     world.add(make_shared<Sphere>(Point3f(4, 1, 0), 1.0, mat_front));
 
@@ -63,6 +62,8 @@ int main() {
     // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left));   // hollow glass outer
     // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
 
+    /* Acceleration */
+    BVHNode bvh_root = BVHNode(world);
 
     /* Camera */
     Camera camera;
@@ -85,7 +86,7 @@ int main() {
         std::cerr << "Failed to Open out.ppm\n";
         return 1;
     }
-    camera.render(world, ouput_file);
+    camera.render(bvh_root, ouput_file);
     ouput_file.close();
 
     return 0;

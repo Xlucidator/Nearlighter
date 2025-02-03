@@ -2,6 +2,7 @@
 #define SHAPE_H
 
 #include "common.h"
+#include "bvh/aabb.h"
 
 class Material;
 
@@ -25,6 +26,7 @@ class Shape {
 public:
     virtual ~Shape() = default;
     virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const = 0;
+    virtual AABB getBoundingBox() const = 0;
 };
 
 #include "sphere.h"
