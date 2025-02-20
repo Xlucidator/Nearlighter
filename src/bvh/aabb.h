@@ -24,6 +24,11 @@ public:
     /* Function */
     bool hit(const Ray& ray, Interval ray_t) const;
 
+    /* Debug */
+    friend std::ostream& operator<<(std::ostream& os, const AABB& a) {
+        return os << "(" << a.x << "-" << a.y << "-" << a.z << ")";
+    }
+
 private:
 
 };

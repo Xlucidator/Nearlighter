@@ -64,6 +64,7 @@ int main() {
 
     /* Acceleration */
     BVHNode bvh_root = BVHNode(world);
+    bvh_root.printNode(0);
 
     /* Camera */
     Camera camera;

@@ -47,3 +47,17 @@ bool BVHNode::bbox_cmp(const shared_ptr<Shape>& a, const shared_ptr<Shape>& b) {
     const Interval& b_axis_interval = b->getBoundingBox().getAxisInterval(div_axis);
     return a_axis_interval.min < b_axis_interval.min; // TODO: use centroid, compare effects
 }
+
+void BVHNode::printNode(int level) const {
+    for (int i = 0; i < level; ++i) printf("\t");
+    std::cout << bbox << ", divided by axis" << div_axis;
+    if (isLeaf()) {
+        // std::cout << " | shapes size = " << shapes->size() << " [LEAF]" << std::endl;
+        std::cout << std::endl;
+        return;
+    }
+    std::cout << std::endl;
+
+    lchild->printNode(level+1);
+    rchild->printNode(level+1); 
+}
