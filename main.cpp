@@ -7,10 +7,20 @@
 
 #include <fstream>
 
+void scenery_boucingSphere(bool is_random);
+
 int main() {
     /* Configure */
     initGammaLUT(2.2f);
 
+    /* Scenery Select */
+    scenery_boucingSphere(false);
+
+    return 0;
+}
+
+
+void scenery_boucingSphere(bool is_random) {
     /* World */
     ShapeList world;
 
@@ -23,8 +33,8 @@ int main() {
     float radius = 0.2, interval = 0.9;
     for (int i = -grid_size; i < grid_size; ++i) {
         for (int j = -grid_size; j < grid_size; ++j) {
-            float choise = random_float();
-            Point3f ball_center = Point3f(i + interval * random_float(), radius, j + interval * random_float());
+            float choise = is_random ? random_float() : (static_cast<float>(i + grid_size) / (grid_size * 2));
+            Point3f ball_center = is_random ? Point3f(i + interval * random_float(), radius, j + interval * random_float()) : Point3f(i, radius, j);
 
             if ((ball_center - Point3f(4, radius, 0)).length() > interval) {
                 shared_ptr<Material> ball_material;
@@ -32,7 +42,7 @@ int main() {
                 if (choise < 0.8) { // Diffuse Material
                     auto albedo = Color::random() * Color::random();
                     ball_material = make_shared<Lambertian>(albedo);
-                    auto move_center_end = ball_center + Vec3f(0, random_float(0, 0.5), 0);
+                    auto move_center_end = ball_center + Vec3f(0, is_random ? random_float(0, 0.5) : 0.25, 0);
                     world.add(make_shared<Sphere>(ball_center, move_center_end, radius, ball_material));
                     continue;
                 } else if (choise < 0.95) { // Metal Material
@@ -63,6 +73,7 @@ int main() {
     // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
 
     /* Acceleration */
+    std::cout << "Total Object Size: " << world.size() << std::endl;  // should be: 1 + (22 * 22 - 1) + 3 = 487
     BVHNode bvh_root = BVHNode(world);
     bvh_root.printNode(0);
 
@@ -85,10 +96,8 @@ int main() {
     std::ofstream ouput_file("out.ppm");
     if (!ouput_file) {
         std::cerr << "Failed to Open out.ppm\n";
-        return 1;
+        return;
     }
     camera.render(bvh_root, ouput_file);
     ouput_file.close();
-
-    return 0;
 }

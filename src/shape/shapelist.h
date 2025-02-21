@@ -29,7 +29,7 @@ public:
 
         return hit_anything;
     }
-    AABB getBoundingBox() const override { return bbox; }
+    const AABB& getBoundingBox() const override { return bbox; }
 
     void clear() { objects.clear(); }
     void add(shared_ptr<Shape> object) { 

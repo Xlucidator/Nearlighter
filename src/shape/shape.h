@@ -26,7 +26,10 @@ class Shape {
 public:
     virtual ~Shape() = default;
     virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const = 0;
-    virtual AABB getBoundingBox() const = 0;
+    virtual const AABB& getBoundingBox() const = 0;
+
+    /* Debug */
+    virtual void printNode(int level) const {}
 };
 
 #include "sphere.h"

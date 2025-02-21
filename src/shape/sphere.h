@@ -23,7 +23,7 @@ public:
     }
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const override;
-    AABB getBoundingBox() const override { return bounding_box; }
+    const AABB& getBoundingBox() const override { return bounding_box; }
 
 private:
     Point3f center;
