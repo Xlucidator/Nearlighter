@@ -13,6 +13,13 @@ int main() {
     /* Configure */
     initGammaLUT(2.2f);
 
+    /* Debug */
+    std::cout << "infinity = " << infinity << std::endl
+              << "empty interval: " << Interval::empty << std::endl
+              << "universe interval: " << Interval::universe << std::endl;
+    std::cout << "empty aabb: " << AABB::empty() << std::endl
+              << "universe aabb: " << AABB::universe() << std::endl;
+
     /* Scenery Select */
     scenery_boucingSphere(false);
 

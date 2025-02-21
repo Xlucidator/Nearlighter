@@ -54,3 +54,18 @@ Brewster's angle 布儒斯特角：起偏振角，反射光与折射光分为互
 通过将`getBoundingBox`的返回值改为`const AABB&`来保证引用对象存在，同时也减少拷贝次数（倒是不知道编译器会不会优化）
 
 #### bug 2: 计算Node中AABB合并时莫名出现的某轴边界归零
+
+问题出在`AABB::empty`和`AABB::universe`的初始化上；由于写成了多文件应用，所以在给AABB这两个静态变量赋值时，可能Interval的静态变量尚未初始化（两个.o呢），所以就被初始化为零了。
+
+如果全部为头文件的话到还可以，多文件这种有依赖的静态变量，还是写成静态成员函数，等待函数别调用时，依赖项必然已经完成初始化
+
+```cpp
+const AABB& AABB::empty() {
+    static AABB instance(Interval::empty, Interval::empty, Interval::empty);
+    return instance;
+}
+const AABB& AABB::universe() {
+    static AABB instance(Interval::universe, Interval::universe, Interval::universe);
+    return instance;
+}
+```

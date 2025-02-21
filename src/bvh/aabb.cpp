@@ -1,7 +1,16 @@
 #include "aabb.h"
 
-const AABB AABB::empty = AABB(Interval::empty, Interval::empty, Interval::empty);
-const AABB AABB::universe = AABB(Interval::universe, Interval::universe, Interval::universe);
+// const AABB AABB::empty = AABB(Interval::empty, Interval::empty, Interval::empty);
+// const AABB AABB::universe = AABB(Interval::universe, Interval::universe, Interval::universe);
+const AABB& AABB::empty() {
+    static AABB instance(Interval::empty, Interval::empty, Interval::empty);
+    return instance;
+}
+const AABB& AABB::universe() {
+    static AABB instance(Interval::universe, Interval::universe, Interval::universe);
+    return instance;
+}
+
 
 AABB::AABB(const Point3f& p0, const Point3f& p1) {
     x = (p0.x() <= p1.x()) ? Interval(p0.x(), p1.x()) : Interval(p1.x(), p0.x());

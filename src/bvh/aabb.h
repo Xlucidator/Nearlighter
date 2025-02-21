@@ -6,12 +6,16 @@
 class AABB {
 public:
     Interval x, y, z;
-    static const AABB empty, universe;
+    // static const AABB empty, universe;
 
-    AABB() = default;
+    AABB() = default; // Default AABB use default Interval
     AABB(const Interval& x, const Interval& y, const Interval& z):x(x), y(y), z(z) {}
-    AABB(const Point3f& p0, const Point3f& p1); // Do not assum p0 < p1, but they are both extreme points
+    AABB(const Point3f& p0, const Point3f& p1); // Do not assume p0 < p1, but they are both extreme points
     AABB(const AABB& aabb0, const AABB& aabb1);
+
+    /* Extreme */
+    static const AABB& empty();
+    static const AABB& universe();
 
     /* Get Attribute */
     const Interval& getAxisInterval(int n) const { return n == 1 ? y : n == 2 ? z : x; } // x=0, y=1, z=2
