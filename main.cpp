@@ -4,6 +4,7 @@
 #include "shape/shapelist.h"
 #include "material/material.h"
 #include "bvh/bvhnode.h"
+#include "texture/texture.h"
 #include "utils/timer.h"
 
 #include <fstream>
@@ -17,23 +18,29 @@ void validate() {
               << "universe aabb: " << AABB::universe() << std::endl;
 }
 
-void set_scenery_boucingSphere(ShapeList& world, Camera& camera, bool is_random);
+void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random);
+void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
 
 int main() {
     /* Configure */
     initGammaLUT(2.2f);
-
-    /* Debug */
     // validate();
 
     /* Scenery */
     ShapeList world;
     Camera camera;
-    set_scenery_boucingSphere(world, camera, false);
+    // set_scenery_boucingSpheres(world, camera, false);
+    set_scenery_checkerSpheres(world, camera);
 
     /* Acceleration */
     BVHNode bvh_root = BVHNode(world);
     bvh_root.printNode(0);
+
+    /* Output */
+    camera.aspect_ratio = 16.0f / 9.0f;
+    camera.image_width  = 400;     // 400
+    camera.samples_per_pixel = 30; // 30
+    camera.max_depth = 25;         // 25
 
     /* Render */
     std::ofstream ouput_file("out.ppm");
@@ -50,13 +57,14 @@ int main() {
 }
 
 
-void set_scenery_boucingSphere(ShapeList& world, Camera& camera, bool is_random) {
+void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random) {
     /* Objects Display */
     // Gound
-    auto mat_ground = make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
+    auto checker = make_shared<CheckerTexture>(0.32, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    auto mat_ground = make_shared<Lambertian>(checker);
     world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, mat_ground));
     // (Random) Balls Grid
-    int grid_size = 11;
+    int grid_size = 8;
     float radius = 0.2, interval = 0.9;
     for (int i = -grid_size; i < grid_size; ++i) {
         for (int j = -grid_size; j < grid_size; ++j) {
@@ -98,17 +106,28 @@ void set_scenery_boucingSphere(ShapeList& world, Camera& camera, bool is_random)
     // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
 
     /* Camera Parameters */
-    // Render
-    camera.aspect_ratio = 16.0f / 9.0f;
-    camera.image_width  = 400;     // 400
-    camera.samples_per_pixel = 60; // 30
-    camera.max_depth = 30;          // 25
     // Extrinsic
-    camera.fov_vertical = 20.0f;
+    camera.fov_vertical = 20.0;
     camera.position = Point3f(13, 2, 3);    // Point3f(-2, 2,  1);
     camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
     camera.world_up = Vec3f(0, 1, 0);
     // Intrinsic
     camera.defocus_angle = 0.6;
     camera.focus_distance = 10.0;
+}
+
+void set_scenery_checkerSpheres(ShapeList& world, Camera& camera) {
+    /* Objects Display */
+    auto checker = make_shared<CheckerTexture>(0.32, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    world.add(make_shared<Sphere>(Point3f(0,-10, 0), 10, make_shared<Lambertian>(checker)));
+    world.add(make_shared<Sphere>(Point3f(0, 10, 0), 10, make_shared<Lambertian>(checker)));
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(13, 2, 3);    // Point3f(-2, 2,  1);
+    camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
+    camera.world_up = Vec3f(0, 1, 0);
+    // Intrinsic
+    camera.defocus_angle = 0.0;
 }

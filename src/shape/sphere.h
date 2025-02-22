@@ -33,6 +33,7 @@ private:
 
     AABB    bounding_box;
     static AABB calculateAABB(const Point3f& center, const float& radius);
+    static void calculateUV(const Point3f& point, float& u, float& v);
 };
 
 #endif

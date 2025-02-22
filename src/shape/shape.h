@@ -11,6 +11,7 @@ struct HitRecord {
     Vec3f normal;
     shared_ptr<Material> material;
     float t;
+    float u, v;
     bool front_face;
 
     // We decide, that normal should always point against the ray

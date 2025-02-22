@@ -1,4 +1,5 @@
 #include "sphere.h"
+#include "utils/math.h"
 
 /* Ray: o + t \vec{d}, Sphere: (p - c)^2 = r^2
  * Hit:
@@ -25,6 +26,7 @@ bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
     hit_record.point = r.at(t0);
     Vec3f outward_normal = (hit_record.point - current_center) / radius;
     hit_record.set_face_normal(r, outward_normal);
+    calculateUV(outward_normal, hit_record.u, hit_record.v);
     hit_record.material = material;
 
     return true;
@@ -33,4 +35,22 @@ bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
 AABB Sphere::calculateAABB(const Point3f& center, const float& radius) {
     Vec3f radius_vec(radius, radius, radius);
     return AABB(center - radius_vec, center + radius_vec);
+}
+
+/* point: point on the unit sphere (radius = 1, center = (0, 0, 0))
+ *  point = (x, y, z)
+ * u, v: texture coordinates [0, 1]
+ * Calculation:
+ *     { y = -cos(theta)             { theta = arccos(-y)
+ *   - { x = -sin(theta)cos(phi)  => { phi'  = atan2(z,-x) 
+ *     { z =  sin(theta)sin(phi)             = phi - pi 
+ * 
+ *   - { u = phi / 2pi      unification
+ *     { v = theta / pi
+ */
+void Sphere::calculateUV(const Point3f& point, float& u, float& v) {
+    float theta = std::acos(-point.y());
+    float phi   = std::atan2(-point.z(), point.x()) + pi;
+    u = phi / (2 * pi);
+    v = theta / pi;
 }

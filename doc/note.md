@@ -69,3 +69,39 @@ const AABB& AABB::universe() {
     return instance;
 }
 ```
+
+### 纹理映射
+
+#### Sphere纹理坐标
+对单位球面上的点$(x, y, z)$进行映射，最终得到$(u,v) \in [0, 1]$。
+
+即用球坐标表示，正好两个参数$(\theta, \phi)$，然后再将参数归一化得到纹理坐标；此处球坐标稍微与标准球坐标系有所不同，$\phi$ 为与-x轴的夹角，使得值均大于0，详见下图
+
+<img src="./figs/sphere-uvmap.png" alt="sphere_coordinate" style="zoom:80%;" />
+
+$$
+(x, y, z) \xrightarrow{(1)} (\theta, \phi) \xrightarrow{(2)} (u, v) 
+$$
+
+其中有
+$$
+(1) 
+\left\{ \begin{aligned} y &= -\cos(\theta) \\ x &= -\sin(\theta)\cos(\phi) \\ z& = \sin(\theta)\sin(\phi) \end{aligned} \right.
+    \implies
+\left\{ \begin{aligned} \theta &= \arccos(-y) \\ \phi &= \arctan(-\frac{z}{x}) + \pi \end{aligned} \right.
+
+\ \ \ 
+
+(2)
+\left\{
+\begin{aligned}
+u &= \frac{\phi}{2\pi} \\
+v &= \frac{\theta}{\pi}
+\end{aligned}
+\right.
+$$
+
+关于第一个变换中的$\phi$，原本应该是$\phi = \arctan(-\frac{z}{x})$，不过对应函数`atan2(z,-x)`的取值范围是$0 \to \pi, -\pi \to 0$，即$[-\pi, \pi]$，并不是我们想要的$[0, 2\pi]$ ... 
+
+啧，那其实还不如最原始的球坐标，然后得到这个$\phi' \in [-\pi, \pi]$，然后再做个偏移后归一化呢。反正相当于 $\phi = \phi' + \pi$，而$\phi' = \arctan(-\frac{z}{x})$，则$\phi = \arctan(-\frac{z}{x}) + \pi$
+
