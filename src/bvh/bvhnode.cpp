@@ -13,9 +13,9 @@ void printBboxSequence(std::vector<shared_ptr<Shape>>::iterator start, std::vect
 
 // Official
 BVHNode::BVHNode(std::vector<shared_ptr<Shape>>& objects, size_t start, size_t end) {
-    
     // Build the bounding box of the span of source objects.
-    bbox = AABB::empty(); std::cout << "[BVHNode] initial box: " << bbox << std::endl;
+    bbox = AABB::empty(); 
+    std::cout << "[BVHNode] initial box: " << bbox << std::endl;
     for (size_t object_index = start; object_index < end; object_index++) {
         const AABB& object_box = objects[object_index]->getBoundingBox();
         std::cout << "\tObject " << object_index << " box: " << object_box << std::endl;
@@ -75,7 +75,7 @@ BVHNode::BVHNode(std::vector<shared_ptr<Shape>>::iterator start, std::vector<sha
     auto mid = start + (size >> 1);
     // std::nth_element(start, mid, end, [this](auto& a, auto& b){ return bbox_cmp(a, b); });
     std::sort(start, end, [this](auto& a, auto& b){ return bbox_cmp(a, b); });
-    printBboxSequence(start, end, div_axis);
+    // printBboxSequence(start, end, div_axis);
     lchild = make_shared<BVHNode>(start, mid);
     rchild = make_shared<BVHNode>( mid , end);
 }

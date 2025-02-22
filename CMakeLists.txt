@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.12)
 
-project(MyPathTracer)
+project(Nearlighter)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -18,20 +18,20 @@ add_compile_definitions("$<$<CONFIG:Debug>:DEBUG>")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
-# Include & Link Directory
-include_directories(
-    ${CMAKE_SOURCE_DIR}/lib
-    ${CMAKE_SOURCE_DIR}/src
-)
-
 # Execute File
 file(GLOB_RECURSE SRC_INNER ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB_RECURSE LIB_SRC ${CMAKE_SOURCE_DIR}/lib/*.cpp)
 message(STATUS "Source files: ${SRC_INNER}")
 message(STATUS "Lib Source files: ${LIB_SRC}")
 
-add_executable(MyPathTracer
+add_executable(Nearlighter
     main.cpp
     ${SRC_INNER}
     ${LIB_SRC}
+)
+
+# Include & Link Directory
+target_include_directories(Nearlighter PRIVATE
+    ${CMAKE_SOURCE_DIR}/lib
+    ${CMAKE_SOURCE_DIR}/src
 )

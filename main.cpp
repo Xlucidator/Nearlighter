@@ -4,38 +4,58 @@
 #include "shape/shapelist.h"
 #include "material/material.h"
 #include "bvh/bvhnode.h"
+#include "utils/timer.h"
 
 #include <fstream>
+#include <chrono>
 
-void scenery_boucingSphere(bool is_random);
+void validate() {
+    std::cout << "infinity = " << infinity << std::endl
+              << "empty interval: " << Interval::empty << std::endl
+              << "universe interval: " << Interval::universe << std::endl;
+    std::cout << "empty aabb: " << AABB::empty() << std::endl
+              << "universe aabb: " << AABB::universe() << std::endl;
+}
+
+void set_scenery_boucingSphere(ShapeList& world, Camera& camera, bool is_random);
 
 int main() {
     /* Configure */
     initGammaLUT(2.2f);
 
     /* Debug */
-    std::cout << "infinity = " << infinity << std::endl
-              << "empty interval: " << Interval::empty << std::endl
-              << "universe interval: " << Interval::universe << std::endl;
-    std::cout << "empty aabb: " << AABB::empty() << std::endl
-              << "universe aabb: " << AABB::universe() << std::endl;
+    // validate();
 
-    /* Scenery Select */
-    scenery_boucingSphere(false);
+    /* Scenery */
+    ShapeList world;
+    Camera camera;
+    set_scenery_boucingSphere(world, camera, false);
+
+    /* Acceleration */
+    BVHNode bvh_root = BVHNode(world);
+    bvh_root.printNode(0);
+
+    /* Render */
+    std::ofstream ouput_file("out.ppm");
+    if (!ouput_file) {
+        std::cerr << "Failed to Open out.ppm\n";
+        return -1;
+    }
+    Timer timer("Render");
+    camera.render(bvh_root, ouput_file);
+    timer.reply();
+    ouput_file.close();
 
     return 0;
 }
 
 
-void scenery_boucingSphere(bool is_random) {
-    /* World */
-    ShapeList world;
-
+void set_scenery_boucingSphere(ShapeList& world, Camera& camera, bool is_random) {
+    /* Objects Display */
     // Gound
     auto mat_ground = make_shared<Lambertian>(Color(0.5, 0.5, 0.5));
     world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, mat_ground));
-
-    // Random Small Balls
+    // (Random) Balls Grid
     int grid_size = 11;
     float radius = 0.2, interval = 0.9;
     for (int i = -grid_size; i < grid_size; ++i) {
@@ -64,7 +84,6 @@ void scenery_boucingSphere(bool is_random) {
             }
         }
     }
-
     // Main Balls
     auto mat_middle = make_shared<Dielectric>(1.5);
     world.add(make_shared<Sphere>(Point3f(0, 1, 0), 1.0, mat_middle));
@@ -72,39 +91,24 @@ void scenery_boucingSphere(bool is_random) {
     world.add(make_shared<Sphere>(Point3f(-4, 1, 0), 1.0, mat_back));
     auto mat_front = make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
     world.add(make_shared<Sphere>(Point3f(4, 1, 0), 1.0, mat_front));
-
     // Hollow Glass
     // auto mat_left   = make_shared<Dielectric>(1.5f);
     // auto mat_bubble = make_shared<Dielectric>(1.0f / 1.5f);
     // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left));   // hollow glass outer
     // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
 
-    /* Acceleration */
-    std::cout << "Total Object Size: " << world.size() << std::endl;  // should be: 1 + (22 * 22 - 1) + 3 = 487
-    BVHNode bvh_root = BVHNode(world);
-    bvh_root.printNode(0);
-
-    /* Camera */
-    Camera camera;
+    /* Camera Parameters */
+    // Render
     camera.aspect_ratio = 16.0f / 9.0f;
     camera.image_width  = 400;     // 400
     camera.samples_per_pixel = 60; // 30
     camera.max_depth = 30;          // 25
-
+    // Extrinsic
     camera.fov_vertical = 20.0f;
     camera.position = Point3f(13, 2, 3);    // Point3f(-2, 2,  1);
     camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
     camera.world_up = Vec3f(0, 1, 0);
-
+    // Intrinsic
     camera.defocus_angle = 0.6;
     camera.focus_distance = 10.0;
-
-    /* Render */
-    std::ofstream ouput_file("out.ppm");
-    if (!ouput_file) {
-        std::cerr << "Failed to Open out.ppm\n";
-        return;
-    }
-    camera.render(bvh_root, ouput_file);
-    ouput_file.close();
 }
