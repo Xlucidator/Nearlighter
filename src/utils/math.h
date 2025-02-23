@@ -30,12 +30,22 @@ inline bool solveQuadratic(const float& a, const float& h, const float& c,
     return true;
 }
 
-// Template
+/* Clamp x to the range [min, max]
+ *  - clamp_num(x, min, max) : fit for number, range [min, max]
+ *  - clamp_idx(x, low, high): fit for index of array, range [low, high)
+ */
 template<typename T>
-inline T clamp(T x, T min, T max) {
+inline T clamp_num(T x, T min, T max) {
     if (x < min) return min;
     if (x > max) return max;
     return x;
+}
+
+template<typename T>
+inline T clamp_idx(T i, T low, T high) {
+    if (i < low) return low;
+    if (i < high) return i;
+    return high - 1;
 }
 
 #endif // MATH_H

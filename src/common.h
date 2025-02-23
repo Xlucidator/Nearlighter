@@ -7,8 +7,6 @@
 #include "ray.h"
 #include "interval.h"
 
-#include "utils.h"
-
 // C++ headers
 #include <iostream>
 #include <cmath>

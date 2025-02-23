@@ -6,7 +6,7 @@
 #include <random>
 #include <assert.h>
 
-#include "utils.h"
+#include "utils/random.h"
 
 class Vec3f {
 public:
@@ -63,6 +63,7 @@ public:
     }
 
     static Vec3f random_unit_vector() {
+        static std::mt19937 gen(std::random_device{}());
         static std::normal_distribution<float> dis(0.0f, 1.0f);
         Vec3f v(dis(gen), dis(gen), dis(gen));
         return v /= v.length();

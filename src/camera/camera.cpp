@@ -1,4 +1,5 @@
 #include "camera.h"
+#include "material/material.h"
 
 /////// Public Method
 

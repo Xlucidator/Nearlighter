@@ -1,7 +1,7 @@
 #ifndef INTERVAL_H
 #define INTERVAL_H
 
-#include "utils.h"
+#include "utils/constant.h"
 
 #include <iostream>
 

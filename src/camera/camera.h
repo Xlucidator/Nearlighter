@@ -3,7 +3,6 @@
 
 #include "common.h"
 #include "shape/shape.h"
-#include "material/material.h"
 
 class Camera {
 public:

@@ -18,34 +18,40 @@ void validate() {
               << "universe aabb: " << AABB::universe() << std::endl;
 }
 
-void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random);
+void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random = true);
 void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
+void set_scenery_earth(ShapeList& world, Camera& camera);
 
-int main() {
+int main(int argc, char* argv[]) {
     /* Configure */
     initGammaLUT(2.2f);
-    // validate();
+    if constexpr (false) validate();
 
     /* Scenery */
     ShapeList world;
     Camera camera;
-    // set_scenery_boucingSpheres(world, camera, false);
-    set_scenery_checkerSpheres(world, camera);
+    // Output Viewport settings
+    camera.aspect_ratio = 16.0f / 9.0f;
+    camera.image_width  = 400;     // 400
+    camera.samples_per_pixel = 30; // 30
+    camera.max_depth = 25;         // 25
+    // Scenery Display settings
+    int select = argc > 2 ? std::stoi(argv[2]) : 0; // temporary '-s | --scene <number>'
+    switch (select) {
+        case 0: set_scenery_boucingSpheres(world, camera); break;
+        case 1: set_scenery_checkerSpheres(world, camera); break;
+        case 2: set_scenery_earth(world, camera); break;
+        default: break;
+    }
 
     /* Acceleration */
     BVHNode bvh_root = BVHNode(world);
     bvh_root.printNode(0);
 
-    /* Output */
-    camera.aspect_ratio = 16.0f / 9.0f;
-    camera.image_width  = 400;     // 400
-    camera.samples_per_pixel = 30; // 30
-    camera.max_depth = 25;         // 25
-
     /* Render */
     std::ofstream ouput_file("out.ppm");
     if (!ouput_file) {
-        std::cerr << "Failed to Open out.ppm\n";
+        std::cerr << "ERROR: Failed to Open out.ppm\n";
         return -1;
     }
     Timer timer("Render");
@@ -125,9 +131,24 @@ void set_scenery_checkerSpheres(ShapeList& world, Camera& camera) {
     /* Camera Parameters */
     // Extrinsic
     camera.fov_vertical = 20.0;
-    camera.position = Point3f(13, 2, 3);    // Point3f(-2, 2,  1);
+    camera.position = Point3f(13, 2, 3);
     camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
     camera.world_up = Vec3f(0, 1, 0);
     // Intrinsic
-    camera.defocus_angle = 0.0;
+}
+
+void set_scenery_earth(ShapeList& world, Camera& camera) {
+    initGammaLUT(1.0);  // for i use stb_load, which return color in sRGB that has been gamma corrected
+    // TODO: use stbi_loadf + convertion, which return color in linear space
+
+    auto earth_texture = make_shared<ImageTexture>("earthmap.png");
+    auto earth_material = make_shared<Lambertian>(earth_texture);
+    world.add(make_shared<Sphere>(Point3f(0, 0, 0), 2, earth_material));
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(0, 0, 12);
+    camera.look_at  = Point3f(0, 0, 0); 
+    // Intrinsic
 }

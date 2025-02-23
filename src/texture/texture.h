@@ -22,5 +22,6 @@ public:
 };
 
 #include "checker.h"
+#include "image.h"
 
 #endif // TEXTURE_H
