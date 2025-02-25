@@ -1,5 +1,7 @@
 #include "perlin.h"
 
+#include "utils/math.h"
+
 PerlinGenerator::PerlinGenerator() {
     for (int i = 0; i < point_cnt; i++) randfloat[i] = random_float();
     generate_permutations(perm_x);
@@ -15,9 +17,9 @@ float PerlinGenerator::noise(const Point3f& p) const {
     int k = static_cast<int>(std::floor(p.z()));
 
     // offset to the unit cube
-    float u = p.x() - static_cast<float>(i);
-    float v = p.y() - static_cast<float>(j);
-    float w = p.z() - static_cast<float>(k);
+    float u = smoothstep(p.x() - i);
+    float v = smoothstep(p.y() - j);
+    float w = smoothstep(p.z() - k);
 
     // get the random values of a 2x2x2 cube
     float c[2][2][2];

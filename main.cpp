@@ -48,7 +48,7 @@ int main(int argc, char* argv[]) {
 
     /* Acceleration */
     BVHNode bvh_root = BVHNode(world);
-    bvh_root.printNode(0);
+    //bvh_root.printNode(0);
 
     /* Render */
     std::ofstream ouput_file("out.ppm");
@@ -156,7 +156,7 @@ void set_scenery_earth(ShapeList& world, Camera& camera) {
 }
 
 void set_scenery_perlinSphere(ShapeList& world, Camera& camera) {
-    auto perlin_texture = make_shared<NoiseTexture>();
+    auto perlin_texture = make_shared<NoiseTexture>(4);
     world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, make_shared<Lambertian>(perlin_texture)));
     world.add(make_shared<Sphere>(Point3f(0, 2, 0), 2, make_shared<Lambertian>(perlin_texture)));
 

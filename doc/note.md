@@ -105,8 +105,44 @@ $$
 
 啧，那其实还不如最原始的球坐标，然后得到这个$\phi' \in [-\pi, \pi]$，然后再做个偏移后归一化呢。反正相当于 $\phi = \phi' + \pi$，而$\phi' = \arctan(-\frac{z}{x})$，则$\phi = \arctan(-\frac{z}{x}) + \pi$
 
+### 插值
 
-### 三线性插值
+插值函数：多项式插值，分段插值，三角插值；证明n+1个节点确定n阶多项式插值函数：即x_i构成范德蒙德矩阵。
+- 拉格朗日插值，牛顿插值。不过全面反映被插值函数的性态，存在龙格现象(两端震荡)
+- 分段二次插值
+
+Hermite插值：节点的函数值和n阶导数值都需要相同。直接Hermite插值得到的多项式次数高，也存在龙格现象。实际运用中常用分段三次Hermite插值多项式PCHIP
+
+#### 三线性插值
 就是两层双线性插值再插个值
 
 ![bilinear-interpolation](./figs/bilinear_interp.png)
+
+#### Hermitian平滑
+
+只用三线性插值的话，结果还是有明显的网格特征，且存在Mach Bands马赫带。因而对u, v, w进行一个三次Hermite插值，似乎就是GLSL中smoothstep的插值。smoothstep可以用来生成0到1的平滑过渡值，称为平滑梯度函数，由分段三次Hermite插值公式推导而来
+
+$$
+\textrm{smoothstep}(t) = t^2\cdot(3-2t) = -2t^3 + 3t^2
+$$ 
+
+本质是针对$P_0$和$P_1$点进行三次Hermite插值： $P(t) = (2t^3 - 3t^2 + 1)P_0 + (t^3 - 2t^2 + t)M_0 + (t^3 - t^2)M_1 + (-2t^3 + 3t^2)P_1$。
+其中$M_0$和$M_1$是两点处的方向，也即导数，应该均为0。
+这里我们已经将u,v,w控制在了$[0，1]$之间，所以只需在0~1之间做平滑，即这里设置$P_0 = (0, 0), P_1 = (1, 1)$，而方向$\vec{M_0}$和$\vec{M_1}$则都为$(0,1)$横向，即两侧区间外绝对平滑。“平滑梯度”的名称很形象
+
+![smoothstep](./figs/smoothstep.png)
+
+再细点，其实上述公式是个x,y关于t的参数方程
+$$
+\newcommand{\matrix}[1]{\left[ \begin{matrix} #1 \end{matrix} \right]}
+
+\matrix{x\\y} = (2t^3 - 3t^2 + 1) \matrix{x_0\\y_0} + (t^3 - 2t^2 + t) \matrix{a_0\\b_0} + (t^3 - t^2) \matrix{a_1\\b_1} + (-2t^3 + 3t^2) \matrix{x_1\\y_1}  \\
+= (2t^3 - 3t^2 + 1) \matrix{0\\0} + (t^3 - 2t^2 + t) \matrix{1\\0} + (t^3 - t^2) \matrix{1\\0} + (-2t^3 + 3t^2) \matrix{1\\1} \\
+= \matrix{t \\ -2t^3 + 3t^2}
+$$
+
+所以有 $y = -2t^3 + 3t^2 = -2x^3 + 3x^2$ 这一简化的公式
+
+
+http://www.cnitblog.com/luckydmz/archive/2014/06/23/89615.html \
+https://zhuanlan.zhihu.com/p/157758600

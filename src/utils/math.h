@@ -48,4 +48,21 @@ inline T clamp_idx(T i, T low, T high) {
     return high - 1;
 }
 
+
+
+/*=== Interpolation ===*/
+
+/* t in [t0, t1]
+ */
+inline float smoothstep(float t0, float t1, float t) {
+    t = clamp_num((t - t0) / (t1 - t0), 0.0f, 1.0f);
+    return t * t * (3 - 2 * t);
+}
+/* x in [0, 1] 
+ */
+inline float smoothstep(float x) {
+    return x * x * (3 - 2 * x);
+}
+
+
 #endif // MATH_H
