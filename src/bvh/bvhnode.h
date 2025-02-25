@@ -6,6 +6,7 @@
 #include "shape/shapelist.h"
 
 #define OFFICIAL
+// #define DEBUG_BVH
 
 class BVHNode : public Shape {
 public:

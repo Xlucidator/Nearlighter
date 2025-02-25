@@ -3,6 +3,7 @@
 #include <algorithm>
 
 // Debug
+#ifdef DEBUG_BVH
 void printBboxSequence(std::vector<shared_ptr<Shape>>::iterator start, std::vector<shared_ptr<Shape>>::iterator end, int axis) {
     std::cout << "[Check bbox sequence] axis = " << axis << std::endl;
     std::for_each(start, end, [axis](auto& s) {
@@ -10,11 +11,13 @@ void printBboxSequence(std::vector<shared_ptr<Shape>>::iterator start, std::vect
     });
     std::cout << std::endl;
 }
+#endif
 
 // Official
 BVHNode::BVHNode(std::vector<shared_ptr<Shape>>& objects, size_t start, size_t end) {
     // Build the bounding box of the span of source objects.
     bbox = AABB::empty(); 
+#ifdef DEBUG_BVH
     std::cout << "[BVHNode] initial box: " << bbox << std::endl;
     for (size_t object_index = start; object_index < end; object_index++) {
         const AABB& object_box = objects[object_index]->getBoundingBox();
@@ -22,30 +25,33 @@ BVHNode::BVHNode(std::vector<shared_ptr<Shape>>& objects, size_t start, size_t e
         bbox = AABB(bbox, object_box);
         std::cout << "\tAfter merge: " << bbox << std::endl;
     }
+#else
+    for (size_t object_index = start; object_index < end; object_index++)
+        bbox.uunion(objects[object_index]->getBoundingBox());
+#endif
 
-    int axis = bbox.longestAxis();
-    
-    std::cout << "Choosing axis " << axis << " for bbox: " << bbox << std::endl;
+    div_axis = bbox.longestAxis();
+    shape_size = end - start;
+#ifdef DEBUG_BVH
+    std::cout << "Choosing axis " << div_axis << " for bbox: " << bbox << std::endl;
     std::cout << "Axis lengths: " 
               << bbox.x.size() << ", "
               << bbox.y.size() << ", "
               << bbox.z.size() << std::endl;
-    div_axis = axis;
+    std::cout << "object size = " << shape_size << std::endl;
+#endif
 
-    size_t object_span = end - start;
-    shape_size = object_span;
-    std::cout << "object size = " << object_span << std::endl;
-
-    if (object_span == 1) {
+    if (shape_size == 1) {
         left = right = objects[start];
-    } else if (object_span == 2) {
+    } else if (shape_size == 2) {
         left = objects[start];
         right = objects[start+1];
     } else {
-        auto mid = start + object_span/2;
+        auto mid = start + shape_size/2;
         std::sort(std::begin(objects) + start, std::begin(objects) + end, [this](auto& a, auto& b){ return bbox_cmp(a, b); });
-        
+#ifdef DEBUG_BVH
         printBboxSequence(std::begin(objects) + start, std::begin(objects) + end, div_axis);
+#endif
         left = make_shared<BVHNode>(objects, start, mid);
         right = make_shared<BVHNode>(objects, mid, end);
     }
