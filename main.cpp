@@ -21,6 +21,7 @@ void validate() {
 void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random = true);
 void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
 void set_scenery_earth(ShapeList& world, Camera& camera);
+void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
 
 int main(int argc, char* argv[]) {
     /* Configure */
@@ -41,6 +42,7 @@ int main(int argc, char* argv[]) {
         case 0: set_scenery_boucingSpheres(world, camera); break;
         case 1: set_scenery_checkerSpheres(world, camera); break;
         case 2: set_scenery_earth(world, camera); break;
+        case 3: set_scenery_perlinSphere(world, camera); break;
         default: break;
     }
 
@@ -150,5 +152,18 @@ void set_scenery_earth(ShapeList& world, Camera& camera) {
     camera.fov_vertical = 20.0;
     camera.position = Point3f(0, 0, 12);
     camera.look_at  = Point3f(0, 0, 0); 
+    // Intrinsic
+}
+
+void set_scenery_perlinSphere(ShapeList& world, Camera& camera) {
+    auto perlin_texture = make_shared<NoiseTexture>();
+    world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, make_shared<Lambertian>(perlin_texture)));
+    world.add(make_shared<Sphere>(Point3f(0, 2, 0), 2, make_shared<Lambertian>(perlin_texture)));
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(13, 2, 3);
+    camera.look_at  = Point3f(0, 0, 0);
     // Intrinsic
 }

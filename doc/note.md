@@ -105,3 +105,8 @@ $$
 
 啧，那其实还不如最原始的球坐标，然后得到这个$\phi' \in [-\pi, \pi]$，然后再做个偏移后归一化呢。反正相当于 $\phi = \phi' + \pi$，而$\phi' = \arctan(-\frac{z}{x})$，则$\phi = \arctan(-\frac{z}{x}) + \pi$
 
+
+### 三线性插值
+就是两层双线性插值再插个值
+
+![bilinear-interpolation](./figs/bilinear_interp.png)

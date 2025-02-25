@@ -23,5 +23,6 @@ public:
 
 #include "checker.h"
 #include "image.h"
+#include "noise.h"
 
 #endif // TEXTURE_H
