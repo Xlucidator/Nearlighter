@@ -38,7 +38,14 @@ float PerlinGenerator::noise(const Point3f& p) const {
 }
 
 float PerlinGenerator::turbulence(const Point3f& p, int depth) const {
-    return 0.0;
+    float res = 0.0f;
+
+    Vec3f point = p; float weight = 1.0f;
+    for (int i = 0; i < depth; ++i) {
+        res += weight * noise(point);
+        weight *= 0.5f; point *= 2;
+    }
+    return std::fabs(res);
 }
 
 
