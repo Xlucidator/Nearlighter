@@ -65,4 +65,34 @@ inline float smoothstep(float x) {
 }
 
 
+/* Trilinear Interpolation
+ *  simply extend from bilinear interpolation : bilinear interpolation is one layer of trilinear interpolation
+ *  => x axis:
+ *      linear_interpolate[0][0] = u * c[0][0][0] + (1 - u) * c[0][0][1]
+ *      linear_interpolate[0][1] = u * c[0][1][0] + (1 - u) * c[0][1][1]
+ *      ---
+ *      linear_interpolate[1][0] = u * c[1][0][0] + (1 - u) * c[1][0][1]
+ *      linear_interpolate[1][1] = u * c[1][1][0] + (1 - u) * c[1][1][1]
+ *  => y axis:
+ *      bilinear_interpolate[0] = v * linear_interpolate[0][0] + (1 - v) * linear_interpolate[0][1]
+ *                              = c[0][0][0] * u * v + c[0][0][1] * u * (1 - v) + c[0][1][0] * (1 - u) * v + c[0][1][1] * (1 - u) * (1 - v)
+ *      bilinear_interpolate[1] = v * linear_interpolate[1][0] + (1 - v) * linear_interpolate[1][1]
+ *                              = c[1][0][0] * u * v + c[1][0][1] * u * (1 - v) + c[1][1][0] * (1 - u) * v + c[1][1][1] * (1 - u) * (1 - v)
+ *  => z axis:
+ *      trilinear_interpolate = w * bilinear_interpolate[0] + (1 - w) * bilinear_interpolate[1]
+ *                              = c[0][0][0] * u * v * w + c[0][0][1] * u * v * (1 - w) + c[0][1][0] * u * (1 - v) * w + c[0][1][1] * u * (1 - v) * (1 - w)
+ *                              + c[1][0][0] * (1 - u) * v * w + c[1][0][1] * (1 - u) * v * (1 - w) + c[1][1][0] * (1 - u) * (1 - v) * w + c[1][1][1] * (1 - u) * (1 - v) * (1 - w)
+ */
+inline float trilinear_interpolate(const float c[2][2][2], float u, float v, float w) {
+    float res = 0.0f;
+    for (int i = 0; i < 2; ++i) 
+        for (int j = 0; j < 2; ++j)
+            for (int k = 0; k < 2; ++k)
+                res += (i * u + (1 - i) * (1 - u)) *
+                       (j * v + (1 - j) * (1 - v)) *
+                       (k * w + (1 - k) * (1 - w)) * c[i][j][k];
+    return res;
+}
+
+
 #endif // MATH_H

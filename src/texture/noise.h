@@ -10,7 +10,7 @@ public:
     NoiseTexture(float scale) : scale(scale) {}
 
     Color value(float u, float v, const Point3f& p) const override {
-        return Color(1, 1, 1) * perlin.noise(scale * p);
+        return 0.5f * (1.0f + perlin.noise(scale * p)) * Color(1, 1, 1);
     }
 
 private:

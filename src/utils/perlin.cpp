@@ -3,12 +3,18 @@
 #include "utils/math.h"
 
 PerlinGenerator::PerlinGenerator() {
-    for (int i = 0; i < point_cnt; i++) randfloat[i] = random_float();
+    for (int i = 0; i < point_cnt; i++) 
+        randvec[i] = Vec3f::random_unit_vector();  // unit_vector(Vec3f::random(-1, 1))
+
     generate_permutations(perm_x);
     generate_permutations(perm_y);
     generate_permutations(perm_z);
 }
 
+/* Perlin Noise
+ *  p: point in space
+ *  => return value in [-1, 1]
+ */
 float PerlinGenerator::noise(const Point3f& p) const {
     // need to add std::floor(), or there will be a explicit line crossing the axis
     //      for static_cast in c++ was 'truncate': int(1.5) = 1 and int(-1.5) = -1
@@ -22,13 +28,13 @@ float PerlinGenerator::noise(const Point3f& p) const {
     float w = smoothstep(p.z() - k);
 
     // get the random values of a 2x2x2 cube
-    float c[2][2][2];
+    Vec3f c[2][2][2];
     for (int di = 0; di < 2; di++)
         for (int dj = 0; dj < 2; dj++)
             for (int dk = 0; dk < 2; dk++)
-                c[di][dj][dk] = randfloat[perm_x[(i + di) & 255] ^ perm_y[(j + dj) & 255] ^ perm_z[(k + dk) & 255]];
+                c[di][dj][dk] = randvec[perm_x[(i + di) & 255] ^ perm_y[(j + dj) & 255] ^ perm_z[(k + dk) & 255]];
 
-    return trilinear_interpolate(c, u, v, w);
+    return perlin_interpolate(c, u, v, w);
 }
 
 float PerlinGenerator::turbulence(const Point3f& p, int depth) const {
@@ -52,31 +58,23 @@ void PerlinGenerator::permute(int* p, int n) {
     }
 }
 
-/* Trilinear Interpolation
- *  simply extend from bilinear interpolation : bilinear interpolation is one layer of trilinear interpolation
- *  => x axis:
- *      linear_interpolate[0][0] = u * c[0][0][0] + (1 - u) * c[0][0][1]
- *      linear_interpolate[0][1] = u * c[0][1][0] + (1 - u) * c[0][1][1]
- *      ---
- *      linear_interpolate[1][0] = u * c[1][0][0] + (1 - u) * c[1][0][1]
- *      linear_interpolate[1][1] = u * c[1][1][0] + (1 - u) * c[1][1][1]
- *  => y axis:
- *      bilinear_interpolate[0] = v * linear_interpolate[0][0] + (1 - v) * linear_interpolate[0][1]
- *                              = c[0][0][0] * u * v + c[0][0][1] * u * (1 - v) + c[0][1][0] * (1 - u) * v + c[0][1][1] * (1 - u) * (1 - v)
- *      bilinear_interpolate[1] = v * linear_interpolate[1][0] + (1 - v) * linear_interpolate[1][1]
- *                              = c[1][0][0] * u * v + c[1][0][1] * u * (1 - v) + c[1][1][0] * (1 - u) * v + c[1][1][1] * (1 - u) * (1 - v)
- *  => z axis:
- *      trilinear_interpolate = w * bilinear_interpolate[0] + (1 - w) * bilinear_interpolate[1]
- *                              = c[0][0][0] * u * v * w + c[0][0][1] * u * v * (1 - w) + c[0][1][0] * u * (1 - v) * w + c[0][1][1] * u * (1 - v) * (1 - w)
- *                              + c[1][0][0] * (1 - u) * v * w + c[1][0][1] * (1 - u) * v * (1 - w) + c[1][1][0] * (1 - u) * (1 - v) * w + c[1][1][1] * (1 - u) * (1 - v) * (1 - w)
+/* Perlin Interpolation
+ *  grid value: float c[i]j][k] -> dot(Vec3f c[i][j][k], direction from (i, j, k) to (u, v, w))
+ *  => direction = Vec3f(u, v, w) - Vec3f(i, j, k)
  */
-float PerlinGenerator::trilinear_interpolate(const float c[2][2][2], float u, float v, float w) {
+float PerlinGenerator::perlin_interpolate(const Vec3f c[2][2][2], float u, float v, float w) {
     float res = 0.0f;
+
+    float smooth_u = smoothstep(u);
+    float smooth_v = smoothstep(v);
+    float smooth_w = smoothstep(w);
+
     for (int i = 0; i < 2; ++i) 
         for (int j = 0; j < 2; ++j)
             for (int k = 0; k < 2; ++k)
-                res += (i * u + (1 - i) * (1 - u)) *
-                       (j * v + (1 - j) * (1 - v)) *
-                       (k * w + (1 - k) * (1 - w)) * c[i][j][k];
+                res += (i * smooth_u + (1 - i) * (1 - smooth_u)) *
+                       (j * smooth_v + (1 - j) * (1 - smooth_v)) *
+                       (k * smooth_w + (1 - k) * (1 - smooth_w)) * 
+                       dot(c[i][j][k], Vec3f(u-i, v-j, w-k));
     return res;
 }

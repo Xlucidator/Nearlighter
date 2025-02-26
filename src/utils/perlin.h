@@ -13,14 +13,14 @@ public:
 
 private:
     static const int point_cnt = 256;
-    float randfloat[point_cnt];
+    Vec3f randvec[point_cnt];  // float randfloat[point_cnt];
     int perm_x[point_cnt];
     int perm_y[point_cnt];
     int perm_z[point_cnt]; // TODO: whether need another Vec3i
 
     static void generate_permutations(int* p);
     static void permute(int* p, int n);
-    static float trilinear_interpolate(const float c[2][2][2], float u, float v, float w);
+    static float perlin_interpolate(const Vec3f c[2][2][2], float u, float v, float w);
 };
 
 
