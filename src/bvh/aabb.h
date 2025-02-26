@@ -9,7 +9,7 @@ public:
     // static const AABB empty, universe;
 
     AABB() = default; // Default AABB use default Interval
-    AABB(const Interval& x, const Interval& y, const Interval& z):x(x), y(y), z(z) {}
+    AABB(const Interval& x, const Interval& y, const Interval& z):x(x), y(y), z(z) { padding(); }
     AABB(const Point3f& p0, const Point3f& p1); // Do not assume p0 < p1, but they are both extreme points
     AABB(const AABB& aabb0, const AABB& aabb1);
 
@@ -34,7 +34,7 @@ public:
     }
 
 private:
-
+    void padding();
 };
 
 inline AABB uunion(const AABB& aabb0, const AABB& aabb1) {

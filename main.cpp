@@ -22,6 +22,7 @@ void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random
 void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
 void set_scenery_earth(ShapeList& world, Camera& camera);
 void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
+void set_scenery_quads(ShapeList& world, Camera& camera);
 
 int main(int argc, char* argv[]) {
     /* Configure */
@@ -43,12 +44,14 @@ int main(int argc, char* argv[]) {
         case 1: set_scenery_checkerSpheres(world, camera); break;
         case 2: set_scenery_earth(world, camera); break;
         case 3: set_scenery_perlinSphere(world, camera); break;
+        case 4: set_scenery_quads(world, camera); break;
         default: break;
     }
 
     /* Acceleration */
     BVHNode bvh_root = BVHNode(world);
-    //bvh_root.printNode(0);
+    // std::cout << "object size = " << world.size() << std::endl;
+    // bvh_root.printNode(0);
 
     /* Render */
     std::ofstream ouput_file("out.ppm");
@@ -143,6 +146,7 @@ void set_scenery_earth(ShapeList& world, Camera& camera) {
     initGammaLUT(1.0);  // for i use stb_load, which return color in sRGB that has been gamma corrected
     // TODO: use stbi_loadf + convertion, which return color in linear space
 
+    /* Objects Display */
     auto earth_texture = make_shared<ImageTexture>("earthmap.png");
     auto earth_material = make_shared<Lambertian>(earth_texture);
     world.add(make_shared<Sphere>(Point3f(0, 0, 0), 2, earth_material));
@@ -164,6 +168,29 @@ void set_scenery_perlinSphere(ShapeList& world, Camera& camera) {
     // Extrinsic
     camera.fov_vertical = 20.0;
     camera.position = Point3f(13, 2, 3);
+    camera.look_at  = Point3f(0, 0, 0);
+    // Intrinsic
+}
+
+void set_scenery_quads(ShapeList& world, Camera& camera) {
+    /* Objects Display */
+    auto left_red     = make_shared<Lambertian>(Color(1.0, 0.2, 0.2));
+    auto back_green   = make_shared<Lambertian>(Color(0.2, 1.0, 0.2));
+    auto right_blue   = make_shared<Lambertian>(Color(0.2, 0.2, 1.0));
+    auto upper_orange = make_shared<Lambertian>(Color(1.0, 0.5, 0.0));
+    auto lower_teal   = make_shared<Lambertian>(Color(0.2, 0.8, 0.8));
+
+    world.add(make_shared<Quad>(Point3f(-3,-2, 5), Vec3f(0, 0,-4), Vec3f(0, 4, 0), left_red));
+    world.add(make_shared<Quad>(Point3f(-2,-2, 0), Vec3f(4, 0, 0), Vec3f(0, 4, 0), back_green));
+    world.add(make_shared<Quad>(Point3f( 3,-2, 1), Vec3f(0, 0, 4), Vec3f(0, 4, 0), right_blue));
+    world.add(make_shared<Quad>(Point3f(-2, 3, 1), Vec3f(4, 0, 0), Vec3f(0, 0, 4), upper_orange));
+    world.add(make_shared<Quad>(Point3f(-2,-3, 5), Vec3f(4, 0, 0), Vec3f(0, 0,-4), lower_teal));
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    // Extrinsic
+    camera.fov_vertical = 80;
+    camera.position = Point3f(0, 0, 9);
     camera.look_at  = Point3f(0, 0, 0);
     // Intrinsic
 }

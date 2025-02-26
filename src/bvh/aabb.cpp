@@ -16,8 +16,11 @@ AABB::AABB(const Point3f& p0, const Point3f& p1) {
     x = (p0.x() <= p1.x()) ? Interval(p0.x(), p1.x()) : Interval(p1.x(), p0.x());
     y = (p0.y() <= p1.y()) ? Interval(p0.y(), p1.y()) : Interval(p1.y(), p0.y());
     z = (p0.z() <= p1.z()) ? Interval(p0.z(), p1.z()) : Interval(p1.z(), p0.z());
+    padding();
 }
 
+/* Generator version of uunion calculation
+ */
 AABB::AABB(const AABB& aabb0, const AABB& aabb1) {
     x = Interval(aabb0.x, aabb1.x);
     y = Interval(aabb0.y, aabb1.y);
@@ -53,4 +56,17 @@ bool AABB::hit(const Ray& ray, Interval ray_t) const {
         if (ray_t.is_null()) return false;
     }
     return true;
+}
+
+
+/* Private */
+
+/* Make sure that no side of the AABB would be narrower than delta, padding if necessary
+ *  This is to avoid the case where AABB is degenerated
+ */
+void AABB::padding() {
+    constexpr float delta = 0.0001f, padding = delta * 0.5f;
+    if (x.size() < delta) x.pad(padding);
+    if (y.size() < delta) y.pad(padding);
+    if (z.size() < delta) z.pad(padding);
 }

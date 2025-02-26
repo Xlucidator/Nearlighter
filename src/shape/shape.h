@@ -34,5 +34,6 @@ public:
 };
 
 #include "sphere.h"
+#include "quad.h"
 
 #endif

@@ -8,7 +8,7 @@
 class Interval {
 public:
     float min, max;
-    static const Interval empty, universe;
+    static const Interval empty, universe, unit;
 
     Interval() : min(+infinity), max(-infinity) {} // Default interval is empty
     Interval(float min, float max) : min(min), max(max) {}
@@ -16,6 +16,7 @@ public:
 
     /* Modifiable Calculation */
     void uunion(const Interval& other) { min = std::min(min, other.min), max = std::max(max, other.max); }
+    void pad(float padding) { min -= padding, max += padding; }  // similar to expand, but modifiable function
 
     /* Property Checking */
     // Self
