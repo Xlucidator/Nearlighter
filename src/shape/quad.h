@@ -33,4 +33,9 @@ private:
     AABB    bounding_box;
     static AABB calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v);
 };
+
+/* Create Box */
+shared_ptr<Shape> box(const Point3f& a, const Point3f& b, shared_ptr<Material> material);
+
+
 #endif // QUAD_H

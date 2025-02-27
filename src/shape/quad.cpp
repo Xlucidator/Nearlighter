@@ -1,6 +1,7 @@
 #include "quad.h"
 
 #include "utils/constant.h"
+#include "shapelist.h"
 
 /* Ray: o + t \vec{d}
  * Quad: Plane Ax + By + Cz = D
@@ -59,12 +60,37 @@ bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
 /* Private */
 
 /* Calculate AABB of the quad: union of two diagonal lines
- *         p0+v__________p0+u+v
+ *         p0+v_________p0+u+v
  *          /\         /
  *        v   \      /
  *       /     \   /
- *   p0/___ u __\/p0+u
+ *     /___ u __\/
+ *   p0         p0+u
  */
 AABB Quad::calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v) {
     return AABB(AABB(p0, p0 + u + v), AABB(p0 + u, p0 + v));
+}
+
+/* Common Method */
+
+/* Create Box Object with Quad Primitive
+ *  a, b is two opposite vertices of the box
+ */
+shared_ptr<Shape> box(const Point3f& a, const Point3f& b, shared_ptr<Material> material) {
+    auto box_sides = make_shared<ShapeList>();
+    
+    Point3f p_min = Point3f(std::fmin(a.x(), b.x()), std::fmin(a.y(), b.y()), std::fmin(a.z(), b.z()));
+    Point3f p_max = Point3f(std::fmax(a.x(), b.x()), std::fmax(a.y(), b.y()), std::fmax(a.z(), b.z()));
+    Vec3f vec_x = Vec3f(p_max.x() - p_min.x(), 0, 0);
+    Vec3f vec_y = Vec3f(0, p_max.y() - p_min.y(), 0);
+    Vec3f vec_z = Vec3f(0, 0, p_max.z() - p_min.z());
+
+    box_sides->add(make_shared<Quad>(p_max, -vec_x, -vec_y, material)); // front
+    box_sides->add(make_shared<Quad>(p_min,  vec_y,  vec_x, material)); // back
+    box_sides->add(make_shared<Quad>(p_max, -vec_y, -vec_z, material)); // right
+    box_sides->add(make_shared<Quad>(p_min,  vec_z,  vec_y, material)); // left
+    box_sides->add(make_shared<Quad>(p_max, -vec_z, -vec_x, material)); // top
+    box_sides->add(make_shared<Quad>(p_min,  vec_x,  vec_z, material)); // bottom
+
+    return box_sides;
 }

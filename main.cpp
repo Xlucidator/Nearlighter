@@ -24,6 +24,7 @@ void set_scenery_earth(ShapeList& world, Camera& camera);
 void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
 void set_scenery_quads(ShapeList& world, Camera& camera);
 void set_scenery_simpleLight(ShapeList& world, Camera& camera);
+void set_scenery_CornellBox(ShapeList& world, Camera& camera);
 
 int main(int argc, char* argv[]) {
     /* Configure */
@@ -47,6 +48,7 @@ int main(int argc, char* argv[]) {
         case 3: set_scenery_perlinSphere(world, camera); break;
         case 4: set_scenery_quads(world, camera); break;
         case 5: set_scenery_simpleLight(world, camera); break;
+        case 6: set_scenery_CornellBox(world, camera); break;
         default: break;
     }
 
@@ -213,5 +215,36 @@ void set_scenery_simpleLight(ShapeList& world, Camera& camera) {
     camera.fov_vertical = 20.0;
     camera.position = Point3f(26, 3, 6);
     camera.look_at  = Point3f(0, 2, 0);
+    // Intrinsic
+}
+
+void set_scenery_CornellBox(ShapeList& world, Camera& camera) {
+    /* Objects Display */
+    auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
+    auto white = make_shared<Lambertian>(Color(.73, .73, .73));
+    auto green = make_shared<Lambertian>(Color(.12, .45, .15));
+    auto light = make_shared<DiffuseLight>(Color(15, 15, 15));
+
+    // Environment
+    world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), green));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), red  ));
+    world.add(make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0), Vec3f(0, 0  , -105), light));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 555, 0  , 0), Vec3f(0, 0  ,  555), white));
+    world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0), Vec3f(0, 0  , -555), white));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0), Vec3f(0, 555,  0  ), white));
+    // Boxes
+    world.add(box(Point3f(130, 0, 65 ), Point3f(295, 165, 230), white));
+    world.add(box(Point3f(265, 0, 295), Point3f(430, 330, 460), white));
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    // camera.image_width  = 600;
+    camera.samples_per_pixel = 200;
+    camera.max_depth = 50;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(278, 278, -800);
+    camera.look_at  = Point3f(278, 278, 0);
     // Intrinsic
 }
