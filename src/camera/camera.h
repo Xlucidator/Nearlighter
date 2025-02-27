@@ -10,6 +10,7 @@ public:
     int 	image_width = 100;	// Rendered image width
     int     samples_per_pixel = 10; // Render samples for each pixel
     int     max_depth = 10;     // Max bounce times for a ray
+    Color   background = Color(0.70f, 0.80f, 1.00f);
 
     float   fov_vertical = 90.0f;   // Vertical view angle
     Point3f position = Point3f(0.0f, 0.0f,  0.0f);

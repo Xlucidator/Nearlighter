@@ -95,18 +95,17 @@ Vec3f Camera::genSampleDeforceDisk() const {
 Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world) const {
     if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
 
-    /* Objects */
     HitRecord record;
-    if (world.hit(ray, Interval(0.001f, infinity), record)) {
-        Ray scattered; // Deal with material here
-        Color attenuation;
-        if (record.material->scatter(ray, record, attenuation, scattered))
-            return attenuation * getRayColor(scattered, depth-1, world);
-        return Color(0.0f, 0.0f, 0.0f);
-    }
-
     /* Background */
-    Vec3f unit_direction = unit_vector(ray.direction());
-    auto a = 0.5f * (unit_direction.y() + 1.0f);
-    return (1.0f-a) * Color(1.0f, 1.0f, 1.0f) + a * Color(0.5f, 0.7f, 1.0f);
+    if (!world.hit(ray, Interval(0.001f, infinity), record)) return background;
+
+    /* Objects */
+    Ray scattered;
+    Color attenuation;
+
+    Color color_from_emitted = record.material->emitted(record.u, record.v, record.point);
+    if (!record.material->scatter(ray, record, attenuation, scattered)) return color_from_emitted;
+    Color color_from_scatter = attenuation * getRayColor(scattered, depth-1, world);
+
+    return color_from_emitted + color_from_scatter;
 }

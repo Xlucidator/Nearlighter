@@ -23,6 +23,7 @@ void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
 void set_scenery_earth(ShapeList& world, Camera& camera);
 void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
 void set_scenery_quads(ShapeList& world, Camera& camera);
+void set_scenery_simpleLight(ShapeList& world, Camera& camera);
 
 int main(int argc, char* argv[]) {
     /* Configure */
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
         case 2: set_scenery_earth(world, camera); break;
         case 3: set_scenery_perlinSphere(world, camera); break;
         case 4: set_scenery_quads(world, camera); break;
+        case 5: set_scenery_simpleLight(world, camera); break;
         default: break;
     }
 
@@ -192,5 +194,24 @@ void set_scenery_quads(ShapeList& world, Camera& camera) {
     camera.fov_vertical = 80;
     camera.position = Point3f(0, 0, 9);
     camera.look_at  = Point3f(0, 0, 0);
+    // Intrinsic
+}
+
+void set_scenery_simpleLight(ShapeList& world, Camera& camera) {
+    /* Objects Display */
+    auto perlin_texture = make_shared<NoiseTexture>(4);
+    world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, make_shared<Lambertian>(perlin_texture)));
+    world.add(make_shared<Sphere>(Point3f(0, 2, 0), 2, make_shared<Lambertian>(perlin_texture)));
+
+    auto light = make_shared<DiffuseLight>(Color(0.9, 0.9, 0.4)); // has exceed the meaning of Color, could be over (1, 1, 1)
+    world.add(make_shared<Sphere>(Point3f(0,7,0), 2, light));
+    world.add(make_shared<Quad>(Point3f(3, 1, -2), Vec3f(2, 0, 0), Vec3f(0, 2, 0), light));
+    
+    /* Camera Parameters */
+    camera.background = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(26, 3, 6);
+    camera.look_at  = Point3f(0, 2, 0);
     // Intrinsic
 }
