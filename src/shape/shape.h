@@ -36,4 +36,7 @@ public:
 #include "sphere.h"
 #include "quad.h"
 
+#include "transform/translate.h"
+#include "transform/rotate.h"
+
 #endif

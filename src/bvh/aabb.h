@@ -21,9 +21,11 @@ public:
     const Interval& getAxisInterval(int n) const { return n == 1 ? y : n == 2 ? z : x; } // x=0, y=1, z=2
     int longestAxis() const;
     Point3f centroid() const { return Point3f(x.center(), y.center(), z.center()); }
+    Point3f corner(int i) const; // n = 0 ~ 7
 
     /* Calculation */
     void uunion(const AABB& other);
+    void operator+=(const Vec3f& offset) { x += offset.x(), y += offset.y(), z += offset.z(); }
 
     /* Function */
     bool hit(const Ray& ray, Interval ray_t) const;
@@ -37,8 +39,9 @@ private:
     void padding();
 };
 
-inline AABB uunion(const AABB& aabb0, const AABB& aabb1) {
-    return AABB(aabb0, aabb1);
-}
+inline AABB uunion(const AABB& aabb0, const AABB& aabb1) { return AABB(aabb0, aabb1); }
+
+inline AABB operator+(const AABB& bbox, const Vec3f& offset) { return AABB(bbox.x + offset.x(), bbox.y + offset.y(), bbox.z + offset.z()); }
+inline AABB operator+(const Vec3f& offset, const AABB& bbox) { return bbox + offset; }
 
 #endif // AABB_H

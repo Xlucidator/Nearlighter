@@ -3,7 +3,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 // #define STBI_FAILURE_USERMSG
-#include <stb_image.h>
+#include <stb/stb_image.h>
 
 ImageLoader::ImageLoader(const std::string& file_path) {
     // stbi_ldr_to_hdr_gamma(1.0f);

@@ -233,8 +233,17 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera) {
     world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0), Vec3f(0, 0  , -555), white));
     world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0), Vec3f(0, 555,  0  ), white));
     // Boxes
-    world.add(box(Point3f(130, 0, 65 ), Point3f(295, 165, 230), white));
-    world.add(box(Point3f(265, 0, 295), Point3f(430, 330, 460), white));
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
+    box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
+    box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
+    world.add(box1);
+    // world.add(box(Point3f(265, 0, 295), Point3f(430, 330, 460), white));
+    
+    shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
+    box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
+    box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
+    world.add(box2);
+    // world.add(box(Point3f(130, 0, 65 ), Point3f(295, 165, 230), white));
 
     /* Camera Parameters */
     camera.aspect_ratio = 1.0;

@@ -32,6 +32,22 @@ int AABB::longestAxis() const {
     else return y.size() > z.size() ? 1 : 2;
 }
 
+Point3f AABB::corner(int i) const {
+#ifdef MORE_FLOAT_INSTRUCTIONS
+    return Point3f(
+        x.min + (i & 1) * (x.max - x.min),
+        y.min + (i & 2) * (y.max - y.min),
+        z.min + (i & 4) * (z.max - z.min)
+    );
+#else  // More Jump Instructions
+    return Point3f(
+        (i & 1) ? x.max : x.min,
+        (i & 2) ? y.max : y.min,
+        (i & 4) ? z.max : z.min
+    );
+#endif
+}
+
 void AABB::uunion(const AABB& other) {
     x.uunion(other.x);
     y.uunion(other.y);

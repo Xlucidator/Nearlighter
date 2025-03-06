@@ -17,6 +17,7 @@ public:
     /* Modifiable Calculation */
     void uunion(const Interval& other) { min = std::min(min, other.min), max = std::max(max, other.max); }
     void pad(float padding) { min -= padding, max += padding; }  // similar to expand, but modifiable function
+    void operator+=(float displacement) { min += displacement, max += displacement; }
 
     /* Property Checking */
     // Self
@@ -35,5 +36,8 @@ public:
     }
     std::string toString() const { return "[" + std::to_string(min) + ", " + std::to_string(max) + "]"; }
 };
+
+inline Interval operator+(const Interval& itv, float displacement) { return Interval(itv.min + displacement, itv.max + displacement); }
+inline Interval operator+(float displacement, const Interval& itv) { return itv + displacement; }
 
 #endif

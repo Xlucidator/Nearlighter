@@ -81,14 +81,14 @@ endfunction()
 
 # Execute File
 file(GLOB_RECURSE SRC_INNER ${CMAKE_SOURCE_DIR}/src/*.cpp)
-file(GLOB_RECURSE LIB_SRC ${CMAKE_SOURCE_DIR}/lib/*.cpp)
+# file(GLOB_RECURSE LIB_SRC ${CMAKE_SOURCE_DIR}/lib/*.cpp)
 message(STATUS "Source files: ${SRC_INNER}")
-message(STATUS "Lib Source files: ${LIB_SRC}")
+# message(STATUS "Lib Source files: ${LIB_SRC}")
 
 add_executable(Nearlighter
     main.cpp
     ${SRC_INNER}
-    ${LIB_SRC}
+    # ${LIB_SRC}
 )
 
 
@@ -104,4 +104,3 @@ target_include_directories(Nearlighter PRIVATE
 smart_copy_dir("assets")
 
 
-###
