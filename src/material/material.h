@@ -18,5 +18,6 @@ public:
 #include "metal.h"
 #include "dielectric.h"
 #include "diffuselight.h"
+#include "isotropic.h"
 
 #endif // MATERIAL_H
