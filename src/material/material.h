@@ -2,6 +2,7 @@
 #define MATERIAL_H
 
 #include "shape/shape.h"
+#include "texture/texture.h"
 
 class Material {
 public:

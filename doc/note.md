@@ -149,7 +149,7 @@ $$
 
 所以有 $y = -2t^3 + 3t^2 = -2x^3 + 3x^2$ 这一简化的公式
 
-http://www.cnitblog.com/luckydmz/archive/2014/06/23/89615.html 
+http://www.cnitblog.com/luckydmz/archive/2014/06/23/89615.html
 https://zhuanlan.zhihu.com/p/157758600
 
 ### Perlin噪声改进
@@ -163,6 +163,7 @@ https://zhuanlan.zhihu.com/p/157758600
 
 ### 渲染时间
 
-Cornell Box (SPP = 200, depth = 59, 400px * 400px)
+Cornell Box (SPP = 200, depth = 50, 400px * 400px)
 
 - 带Transform： 632633ms = 632.633s = 10min
+- smoke：840265ms = 840.265s = 14min

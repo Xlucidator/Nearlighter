@@ -75,7 +75,7 @@ typedef Vec3f Point3f;
 
 // Vector Utility Functions
 inline std::ostream& operator<<(std::ostream& out, const Vec3f& v) {
-    return out << v.e[0] << ' ' << v.e[1] << ' ' << v.e[2];
+    return out << "(" << v.e[0] << ", " << v.e[1] << ", " << v.e[2] << ")";
 }
 
 inline Vec3f operator+(const Vec3f& u, const Vec3f& v) {
