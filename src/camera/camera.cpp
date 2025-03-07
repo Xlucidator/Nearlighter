@@ -80,7 +80,7 @@ Ray Camera::getRay(int pixel_x, int pixel_y) const {
     Vec3f ray_origin = (defocus_angle <= 0) ? center : genSampleDeforceDisk();
     float ray_time = random_float();
 
-    return Ray(ray_origin, pixel_sample - ray_origin, ray_time);
+    return Ray(ray_origin, pixel_sample - ray_origin, ray_time); // TODO: is unit_vector(pixel_sample - ray_origin) needed (or better needed) ?
 }
 
 Vec3f Camera::genSampleSquare() const {

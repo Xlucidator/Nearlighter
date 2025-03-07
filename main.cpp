@@ -266,12 +266,12 @@ void set_scenery_CornellSmoke(ShapeList& world, Camera& camera) {
         auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
         auto white = make_shared<Lambertian>(Color(.73, .73, .73));
         auto green = make_shared<Lambertian>(Color(.12, .45, .15));
-        auto light = make_shared<DiffuseLight>(Color(15, 15, 15));
+        auto light = make_shared<DiffuseLight>(Color(7, 7, 7));
     
         // Environment
-        // world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), green));
-        // world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), red  ));
-        world.add(make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0), Vec3f(0, 0  , -105), light));
+        world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), green));
+        world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), red  ));
+        world.add(make_shared<Quad>(Point3f(113, 554, 127), Vec3f( 330, 0  , 0), Vec3f(0, 0 ,  305), light));
         world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 555, 0  , 0), Vec3f(0, 0  ,  555), white));
         world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0), Vec3f(0, 0  , -555), white));
         world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0), Vec3f(0, 555,  0  ), white));
@@ -282,15 +282,15 @@ void set_scenery_CornellSmoke(ShapeList& world, Camera& camera) {
         box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
         world.add(make_shared<ConstantMedium>(box1, 0.01, Color(0, 0, 0)));  // Smoke 1
         
-        // shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
-        // box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
-        // box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
-        // world.add(make_shared<ConstantMedium>(box2, 0.01, Color(1, 1, 1)));  // Smoke 2
+        shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
+        box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
+        box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
+        world.add(make_shared<ConstantMedium>(box2, 0.01, Color(1, 1, 1)));  // Smoke 2
     
         /* Camera Parameters */
         camera.aspect_ratio = 1.0;
         // camera.image_width  = 600;
-        camera.samples_per_pixel = 50;
+        camera.samples_per_pixel = 200;
         camera.max_depth = 50;
         camera.background   = Color(0, 0, 0);
         // Extrinsic

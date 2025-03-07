@@ -2,11 +2,13 @@
 #define CONSTANT_MEDIUM_H
 
 #include "shape/shape.h"
+#include "texture/texture.h"
 
-class Texture;
+// #define MEDIUM_DEBUG
 
 class ConstantMedium : public Shape {
 public:
+    // ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Material> phase_function); // Disable other Material
     ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Texture> tex);
     ConstantMedium(shared_ptr<Shape> boundary, float density, const Color& albedo);
 

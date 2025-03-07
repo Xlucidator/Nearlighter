@@ -1,5 +1,11 @@
 #include "constant_medium.h"
-#include "material/isotropic.h"
+#include "material/material.h"
+
+
+// ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Material> phase_function)
+//     : boundary(boundary), density(density), phase_function(phase_function) {
+//     neg_inv_density = -1 / density;
+// }
 
 ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Texture> tex) 
     : boundary(boundary), density(density) {
@@ -31,16 +37,22 @@ ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, const 
  * 3. Set hit record
  */
 bool ConstantMedium::hit(const Ray& r, Interval ray_t, HitRecord& record) const {
-    std::cout << "[Hit Constant Medium] origin = " << r.origin() << " -> direction = " << r.direction() << "\n";
+    // std::cout << "[Hit Constant Medium] origin = " << r.origin() << " -> direction = " << r.direction() << "\n";
     HitRecord record_enter, record_leave;
 
     /* Check Boundary First: whether in the boundary */
     if (!boundary->hit(r, Interval::universe, record_enter)) return false;  // check whether the ray enter the boundary
-    if (!boundary->hit(r, Interval(record_enter.t + epsilon, infinity), record_leave)) return false;  // check whether the ray leave the boundary
+    // std::cout << "[Hit CM] pass bcheck 1: enter_t = " << record_enter.t << std::endl;
+    if (!boundary->hit(r, Interval(record_enter.t + 0.0001f, infinity), record_leave)) return false;  // check whether the ray leave the boundary
+    // std::cout << "\t pass bcheck 2: leave_t = " << record_leave.t << std::endl;
     if (record_leave.t < 0) return false; // the ray has already leave the boundary
     record_enter.t = std::fmax(record_enter.t, ray_t.min); 
     record_leave.t = std::fmin(record_leave.t, ray_t.max);
     if (record_enter.t >= record_leave.t) return false;
+
+#ifdef MEDIUM_DEBUG
+    // std::cout << "\t pass bcheck: enter_t = " << record_enter.t << " leave_t = " << record_leave.t << std::endl;
+#endif
 
     /* Check Volume Scattered */
     float ray_length = r.direction().length(); //  speed of t: | \vec{d} |
@@ -48,10 +60,15 @@ bool ConstantMedium::hit(const Ray& r, Interval ray_t, HitRecord& record) const 
     float distance_to_travel = (record_leave.t - record_enter.t) * ray_length;  // the distance that ray need to travel inside the boundary
     if (distance_to_scattered > distance_to_travel) return false; // ray will not be scatterd in this travel interval
 
+#ifdef MEDIUM_DEBUG
+    std::cout << "\t pass scheck: enter_t = " << record_enter.t << " leave_t = " << record_leave.t << std::endl;
+    // std::cout << "[Hit Constant Medium] really hit:  distance_to_scattered= " << distance_to_scattered << " distance_to_travel = " << distance_to_travel << "\n";
+#endif
+
     /* Than It Really Hits & Scattered */
-    record.t += distance_to_scattered / ray_length;
+    record.t = record_enter.t + distance_to_scattered / ray_length;  // std::cout << "[Hit CM] " << record.t << std::endl;
     record.point = r.at(record.t);
-    record.normal = Vec3f(1, 0, 0);//Vec3f::random_unit_vector(); // test
+    record.normal = Vec3f::random_unit_vector(); // test
     record.front_face = true;
     record.material = phase_function;
 
