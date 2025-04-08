@@ -13,8 +13,11 @@ void Camera::render(const Shape& world, std::ostream& out) {
         for (int i = 0; i < image_width; i++) {
             /* Generate Rays and Get Color */
             Color pixel_color(0.0f, 0.0f, 0.0f);
-            for (int sample = 0; sample < samples_per_pixel; sample++) {
-                pixel_color += getRayColor(getRay(i, j), max_depth, world);
+            // Stratified Sampling
+            for (int sample_i = 0; sample_i < sqrt_spp; sample_i++) {
+                for (int sample_j = 0; sample_j < sqrt_spp; sample_j++) {
+                    pixel_color += getRayColor(getRay(i, j, sample_i, sample_j), max_depth, world);
+                }
             }
             pixel_color *= pixel_samples_scale;
 
@@ -34,7 +37,9 @@ void Camera::initialize() {
     image_height = (image_height < 1) ? 1 : image_height;
 
     /* Sampling */
-    pixel_samples_scale = 1.0f / samples_per_pixel;
+    sqrt_spp = int(std::sqrt(samples_per_pixel));
+    pixel_samples_scale = 1.0f / (sqrt_spp * sqrt_spp);
+    reverse_sqrt_spp = 1.0 / sqrt_spp;
 
     /* Viewport */
     // Calculate Viewport Size
@@ -70,9 +75,13 @@ void Camera::initialize() {
     defocus_disk_v = defocus_radius * up;
 }
 
-// Get ray for sample pixel around the origin pixel point 
-Ray Camera::getRay(int pixel_x, int pixel_y) const {
-    Vec3f offset = genSampleSquare();
+/* Get ray for sample pixel around the origin pixel point 
+ *  - sample point: located around (pixel_x, pixel_y)
+ *  - straitified sampling: the target pixel was divided into grid of sqrt_spp * sqrt_spp
+ *    => offset in the pixel: (sample_x, sample_y)
+ */
+Ray Camera::getRay(int pixel_x, int pixel_y, int sample_x, int sample_y) const {
+    Vec3f offset = genSampleSquareStratified(sample_x, sample_y); // genSampleSquare();
     Vec3f pixel_sample = pixel_start 
                     + (pixel_x + offset.x()) * pixel_interval_u
                     + (pixel_y + offset.y()) * pixel_interval_v;
@@ -85,6 +94,13 @@ Ray Camera::getRay(int pixel_x, int pixel_y) const {
 
 Vec3f Camera::genSampleSquare() const {
     return Vec3f(random_float() - 0.5f, random_float() - 0.5f, 0);
+}
+
+// Stratified: (sx, sy) in 'sqrt_spp * sqrt_spp' grid of [0, 1]
+Vec3f Camera::genSampleSquareStratified(int sx, int sy) const {
+    float px = (sx + random_float()) * reverse_sqrt_spp;
+    float py = (sy + random_float()) * reverse_sqrt_spp;
+    return Vec3f(px - 0.5f, py - 0.5f, 0);
 }
 
 Vec3f Camera::genSampleDeforceDisk() const {

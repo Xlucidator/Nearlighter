@@ -25,6 +25,8 @@ public:
 private:
     int     image_height;		// Rendered image height
     float   pixel_samples_scale;// Color scale factor
+    int     sqrt_spp;           // Square root of samples_per_pixel
+    float   reverse_sqrt_spp;   // 1 / sqrt(samples_per_pixel)
     Point3f center;				// Camera center location in world coordinate
     Point3f pixel_start;		// Location of pixel[0][0] in world coordinate
     Vec3f   pixel_interval_u;	// Intervals between pixel in u direction in world coordinate
@@ -38,8 +40,9 @@ private:
 
     void initialize();
 
-    Ray getRay(int pixel_x, int pixel_y) const;
+    Ray getRay(int pixel_x, int pixel_y, int sample_x, int sample_y) const;
     Vec3f genSampleSquare() const;
+    Vec3f genSampleSquareStratified(int sx, int sy) const;
     Vec3f genSampleDeforceDisk() const;
 
     Color getRayColor(const Ray& r, int depth, const Shape& world) const;

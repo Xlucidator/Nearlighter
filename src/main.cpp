@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
         case 3: set_scenery_perlinSphere(world, camera); break;
         case 4: set_scenery_quads(world, camera); break;
         case 5: set_scenery_simpleLight(world, camera); break;
-        case 6: set_scenery_CornellBox(world, camera, 400, 32, 25); break;
+        case 6: set_scenery_CornellBox(world, camera, 400, 64, 25); break;
         case 7: set_scenery_CornellSmoke(world, camera); break;
         case 8: set_scenery_finalScene(world, camera, 400, 250, 25); break;
         default: break;

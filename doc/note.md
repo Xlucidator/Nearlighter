@@ -163,7 +163,6 @@ https://zhuanlan.zhihu.com/p/157758600
 
 ### 渲染时间
 
-
 Cornell Box (SPP = 200, depth = 50, 400px * 400px, WSL)
 
 - 带Transform： 632633ms = 632.633s = 10min
@@ -173,3 +172,9 @@ stage2-achievement
 
 - SPP = 100, depth = 25, 400px * 400px, WSL：431556ms = 431.556s = 7min
 - SPP = 250, depth = 25, 400px * 400px, WSL：1053010ms = 1053.010s = 17.5min = 7min * 2.5
+
+### 分层采样
+
+stratified sampling：对于指定的pixel，原采样是随机投射spp次光线；分层采样是再将这个pixel划分为spp个格子，随机投射将均匀分布于每个格子中
+
+渲染时间还稍快。对于spp = 64，depth=50的Cornell Box，原采样用时203188ms，分层采样用时191859ms
