@@ -1,0 +1,51 @@
+# cmake/smart_copy.cmake
+
+# smart copy files from source to binary directory
+function(smart_copy_files file_list flattened)
+    set(copy_src_list "")
+    set(copy_dst_list "")
+    foreach(src_file IN LISTS file_list)
+        if (flattened)
+            get_filename_component(rel_path "${src_file}" NAME)
+        else()
+            file(RELATIVE_PATH rel_path "${CMAKE_SOURCE_DIR}" "${src_file}")
+        endif()
+        set(dst_path "${CMAKE_BINARY_DIR}/${rel_path}")
+        get_filename_component(dst_dir "${dst_path}" DIRECTORY)
+        file(MAKE_DIRECTORY "${dst_dir}")
+
+        set(need_copy FALSE)
+        if(NOT EXISTS "${dst_path}")
+            set(need_copy TRUE)
+        else()
+            file(TIMESTAMP "${src_file}" src_time)
+            file(TIMESTAMP "${dst_path}" dst_time)
+            if(src_time STRGREATER dst_time)
+                set(need_copy TRUE)
+            endif()
+        endif()
+
+        if(need_copy)
+            list(APPEND copy_src_list "${src_file}")
+            list(APPEND copy_dst_list "${dst_dir}")
+        endif()
+    endforeach()
+
+    if(copy_src_list)
+        message(STATUS "[smart_copy] Start to copy ...")
+        foreach(src_file dest_dir IN ZIP_LISTS copy_src_list copy_dst_list)  # CMake 3.17+
+            file(COPY "${src_file}" DESTINATION "${dest_dir}")
+            message(STATUS "    Copy ${src_file} to dir ${dest_dir}/")
+        endforeach()
+        message(STATUS "[smart_copy] Finish copying files (Updated only)")
+    else()
+        message(STATUS "[smart_copy] No updated files to copy")
+    endif()
+endfunction()
+
+# smart copy a whole directory, keeping structure
+function(smart_copy_dir tar_dir)
+    message(STATUS "[smart_copy] copy directory \"${CMAKE_SOURCE_DIR}/${tar_dir}\", keep inner struct.")
+    file(GLOB_RECURSE file_list LIST_DIRECTORIES false "${CMAKE_SOURCE_DIR}/${tar_dir}/*")
+    smart_copy_files("${file_list}" OFF)
+endfunction()

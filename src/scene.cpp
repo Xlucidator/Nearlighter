@@ -1,80 +1,8 @@
-#include "common.h"
+#include "scene.h"
 
-#include "camera/camera.h"
-#include "shape/shapelist.h"
 #include "material/material.h"
 #include "medium/constant_medium.h"
-#include "bvh/bvhnode.h"
 #include "texture/texture.h"
-#include "utils/timer.h"
-
-#include <fstream>
-#include <chrono>
-
-void validate() {
-    std::cout << "infinity = " << infinity << std::endl
-              << "empty interval: " << Interval::empty << std::endl
-              << "universe interval: " << Interval::universe << std::endl;
-    std::cout << "empty aabb: " << AABB::empty() << std::endl
-              << "universe aabb: " << AABB::universe() << std::endl;
-}
-
-void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random = true);
-void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
-void set_scenery_earth(ShapeList& world, Camera& camera);
-void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
-void set_scenery_quads(ShapeList& world, Camera& camera);
-void set_scenery_simpleLight(ShapeList& world, Camera& camera);
-void set_scenery_CornellBox(ShapeList& world, Camera& camera);
-void set_scenery_CornellSmoke(ShapeList& world, Camera& camera);
-
-int main(int argc, char* argv[]) {
-    /* Configure */
-    initGammaLUT(2.2f);
-    if constexpr (false) validate();
-
-    /* Scenery */
-    ShapeList world;
-    Camera camera;
-    // Output Viewport settings
-    camera.aspect_ratio = 16.0f / 9.0f;
-    camera.image_width  = 400;     // 400
-    camera.samples_per_pixel = 30; // 30
-    camera.max_depth = 25;         // 25
-    // Scenery Display settings
-    int select = argc > 2 ? std::stoi(argv[2]) : 0; // temporary '-s | --scene <number>'
-    switch (select) {
-        case 0: set_scenery_boucingSpheres(world, camera); break;
-        case 1: set_scenery_checkerSpheres(world, camera); break;
-        case 2: set_scenery_earth(world, camera); break;
-        case 3: set_scenery_perlinSphere(world, camera); break;
-        case 4: set_scenery_quads(world, camera); break;
-        case 5: set_scenery_simpleLight(world, camera); break;
-        case 6: set_scenery_CornellBox(world, camera); break;
-        case 7: set_scenery_CornellSmoke(world, camera); break;
-        default: break;
-    }
-
-    /* Acceleration */
-    BVHNode bvh_root = BVHNode(world);
-    // std::cout << "object size = " << world.size() << std::endl;
-    // bvh_root.printNode(0);
-
-    /* Render */
-    std::ofstream ouput_file("out.ppm");
-    if (!ouput_file) {
-        std::cerr << "ERROR: Failed to Open out.ppm\n";
-        return -1;
-    }
-    Timer timer("Render");
-    camera.render(bvh_root, ouput_file);
-    timer.reply();
-    ouput_file.close();
-
-    return 0;
-}
-
-
 void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random) {
     /* Objects Display */
     // Gound
@@ -222,6 +150,10 @@ void set_scenery_simpleLight(ShapeList& world, Camera& camera) {
 }
 
 void set_scenery_CornellBox(ShapeList& world, Camera& camera) {
+    set_scenery_CornellBox(world, camera, 400, 200, 50);
+}
+
+void set_scenery_CornellBox(ShapeList& world, Camera& camera, int width, int spp, int max_depth) {
     /* Objects Display */
     auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
     auto white = make_shared<Lambertian>(Color(.73, .73, .73));
@@ -250,6 +182,45 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera) {
 
     /* Camera Parameters */
     camera.aspect_ratio = 1.0;
+    camera.image_width  = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = max_depth;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(278, 278, -800);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
+}
+
+void set_scenery_CornellSmoke(ShapeList& world, Camera& camera) {
+    /* Objects Display */
+    auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
+    auto white = make_shared<Lambertian>(Color(.73, .73, .73));
+    auto green = make_shared<Lambertian>(Color(.12, .45, .15));
+    auto light = make_shared<DiffuseLight>(Color(7, 7, 7));
+
+    // Environment
+    world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), green));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), red  ));
+    world.add(make_shared<Quad>(Point3f(113, 554, 127), Vec3f( 330, 0  , 0), Vec3f(0, 0 ,  305), light));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 555, 0  , 0), Vec3f(0, 0  ,  555), white));
+    world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0), Vec3f(0, 0  , -555), white));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0), Vec3f(0, 555,  0  ), white));
+
+    // Smoke Boxes
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
+    box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
+    box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
+    world.add(make_shared<ConstantMedium>(box1, 0.01, Color(0, 0, 0)));  // Smoke 1
+    
+    shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
+    box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
+    box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
+    world.add(make_shared<ConstantMedium>(box2, 0.01, Color(1, 1, 1)));  // Smoke 2
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
     // camera.image_width  = 600;
     camera.samples_per_pixel = 200;
     camera.max_depth = 50;
@@ -261,41 +232,71 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera) {
     // Intrinsic
 }
 
-void set_scenery_CornellSmoke(ShapeList& world, Camera& camera) {
-        /* Objects Display */
-        auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
-        auto white = make_shared<Lambertian>(Color(.73, .73, .73));
-        auto green = make_shared<Lambertian>(Color(.12, .45, .15));
-        auto light = make_shared<DiffuseLight>(Color(7, 7, 7));
-    
-        // Environment
-        world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), green));
-        world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), red  ));
-        world.add(make_shared<Quad>(Point3f(113, 554, 127), Vec3f( 330, 0  , 0), Vec3f(0, 0 ,  305), light));
-        world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 555, 0  , 0), Vec3f(0, 0  ,  555), white));
-        world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0), Vec3f(0, 0  , -555), white));
-        world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0), Vec3f(0, 555,  0  ), white));
+void set_scenery_finalScene(ShapeList& world, Camera& camera, int width, int spp, int max_depth) {
+    /* Objects Display */
 
-        // Smoke Boxes
-        shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
-        box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
-        box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
-        world.add(make_shared<ConstantMedium>(box1, 0.01, Color(0, 0, 0)));  // Smoke 1
-        
-        shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
-        box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
-        box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
-        world.add(make_shared<ConstantMedium>(box2, 0.01, Color(1, 1, 1)));  // Smoke 2
-    
-        /* Camera Parameters */
-        camera.aspect_ratio = 1.0;
-        // camera.image_width  = 600;
-        camera.samples_per_pixel = 200;
-        camera.max_depth = 50;
-        camera.background   = Color(0, 0, 0);
-        // Extrinsic
-        camera.fov_vertical = 40.0;
-        camera.position = Point3f(278, 278, -800);
-        camera.look_at  = Point3f(278, 278, 0);
-        // Intrinsic
+    // Irregular Ground
+    auto ground_material = make_shared<Lambertian>(Color(0.48, 0.83, 0.53));
+    ShapeList boxes_ground;
+    const int boxes_per_side = 20;
+    for (int i = 0; i < boxes_per_side; ++i) {
+        for (int j = 0; j < boxes_per_side; ++j) {
+            float w = 100.0;
+            float x0 = -1000.0 + i*w, y0 = 0.0, z0 = -1000.0 + j*w;
+            float x1 = x0 + w, y1 = random_float(1, 101), z1= z0 + w;
+            boxes_ground.add(box(Point3f(x0, y0, z0), Point3f(x1, y1, z1), ground_material));
+        }
+    }
+    world.add(make_shared<BVHNode>(boxes_ground));
+
+    // Light
+    auto light = make_shared<DiffuseLight>(Color(7, 7, 7));
+    world.add(make_shared<Quad>(Point3f(123, 554, 147), Vec3f(300, 0, 0), Vec3f(0, 0, 265), light));
+
+    // Spheres
+    auto center_start = Point3f(400, 400, 200);
+    auto center_end   = center_start + Vec3f(30, 0, 0);
+    world.add(make_shared<Sphere>(center_start, center_end, 50, make_shared<Lambertian>(Color(0.7, 0.3, 0.1))));
+    world.add(make_shared<Sphere>(Point3f(260, 150, 45), 50, make_shared<Dielectric>(1.5)));
+    world.add(make_shared<Sphere>(Point3f(0, 150, 145), 50, make_shared<Metal>(Color(0.8, 0.8, 0.9), 1.0)));
+
+    // Medium
+    auto medium_boundary = make_shared<Sphere>(Point3f(360, 160, 45), 70, make_shared<Dielectric>(1.5));
+    world.add(medium_boundary);
+    world.add(make_shared<ConstantMedium>(medium_boundary, 0.2, Color(0.2, 0.4, 0.9)));
+    medium_boundary = make_shared<Sphere>(Point3f(0, 0, 0), 5000, make_shared<Dielectric>(1.5));
+    world.add(make_shared<ConstantMedium>(medium_boundary, 0.0001, Color(1, 1, 1)));
+
+    // Earth Map
+    auto earth_material = make_shared<Lambertian>(make_shared<ImageTexture>("earthmap.jpg"));
+    world.add(make_shared<Sphere>(Point3f(400, 200, 400), 100, earth_material));
+
+    // Perlin Noise
+    auto perlin_material = make_shared<Lambertian>(make_shared<NoiseTexture>(0.2));
+    world.add(make_shared<Sphere>(Point3f(220, 280, 300), 80, perlin_material));
+
+    // Transform Balls
+    ShapeList balls_box;
+    auto white_material = make_shared<Lambertian>(Color(0.73, 0.73, 0.73));
+    int ns = 1000;
+    for (int j = 0; j < ns; ++j) {
+        balls_box.add(make_shared<Sphere>(Vec3f::random(0, 165), 10, white_material));
+    }
+    world.add(make_shared<Translate>(
+        make_shared<Rotate>(make_shared<BVHNode>(balls_box), Vec3f(0, 1, 0), degrees_to_radians(15)),
+        Vec3f(-100, 270, 395)
+    ));
+
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    camera.image_width  = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = max_depth;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(478, 278, -600);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
 }

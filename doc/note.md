@@ -163,7 +163,13 @@ https://zhuanlan.zhihu.com/p/157758600
 
 ### 渲染时间
 
-Cornell Box (SPP = 200, depth = 50, 400px * 400px)
+
+Cornell Box (SPP = 200, depth = 50, 400px * 400px, WSL)
 
 - 带Transform： 632633ms = 632.633s = 10min
 - smoke：840265ms = 840.265s = 14min
+
+stage2-achievement
+
+- SPP = 100, depth = 25, 400px * 400px, WSL：431556ms = 431.556s = 7min
+- SPP = 250, depth = 25, 400px * 400px, WSL：1053010ms = 1053.010s = 17.5min = 7min * 2.5
