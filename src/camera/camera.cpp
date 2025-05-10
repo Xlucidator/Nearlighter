@@ -121,7 +121,9 @@ Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world) const {
 
     Color color_from_emitted = record.material->emitted(record.u, record.v, record.point);
     if (!record.material->scatter(ray, record, attenuation, scattered)) return color_from_emitted;
-    Color color_from_scatter = attenuation * getRayColor(scattered, depth-1, world);
+    float scattering_pdf = record.material->getScatterPDF(ray, record, scattered); // pScatter ?
+    float pdf_value = scattering_pdf;
+    Color color_from_scatter = attenuation * scattering_pdf * getRayColor(scattered, depth-1, world) / pdf_value;
 
     return color_from_emitted + color_from_scatter;
 }

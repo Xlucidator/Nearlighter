@@ -11,6 +11,7 @@ public:
     virtual Color emitted(float u, float v, const Point3f& p) const { return Color(0, 0, 0); }
     virtual bool scatter(const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered) const 
     { return false; }
+    virtual float getScatterPDF(const Ray& ray_in, const HitRecord& record, Ray& ray_scattered) const { return 0; }
 
 };
 

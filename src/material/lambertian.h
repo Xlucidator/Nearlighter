@@ -20,6 +20,13 @@ public:
         return true;
     }
 
+    /* scatterPDF(w_o) = cos(theta_o) / pi
+     */
+    float getScatterPDF(const Ray& ray_in, const HitRecord& record, Ray& ray_scattered) const override {
+        float cos_theta_o = dot(record.normal, unit_vector(ray_scattered.direction()));
+        return cos_theta_o > 0.0f ? cos_theta_o / pi : 0.0f;
+    }
+
 private:
     shared_ptr<Texture> texture;
 };
