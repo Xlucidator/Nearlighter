@@ -39,7 +39,7 @@ make
 
 Cornell Box
 
-- WSL2-Ubuntu22.04平台 SPP = 200, depth = 50, 400x400, Rendering Time: 10min
+- WSL2 - Ubuntu 22.04平台 - 5800X: SPP = 200, depth = 50, 400x400, Rendering Time: 10min
 
 ![Cornell Box](./doc/figs/cornellbox/cornell-box-2-transform.png)
 
