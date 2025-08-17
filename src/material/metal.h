@@ -7,7 +7,10 @@ class Metal : public Material {
 public:
     Metal(const Color& albedo, float fuzz = 0.0f) : albedo(albedo), fuzz(fuzz < 1.0f ? fuzz : 1.0f) {}
 
-    bool scatter(const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered) const override {
+    bool scatter(
+        const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered,
+        float& pdf
+    ) const override {
         Vec3f reflect_direction = reflect(ray_in.direction(), record.normal);
         reflect_direction = unit_vector(reflect_direction) + (fuzz * Vec3f::random_unit_vector());
 

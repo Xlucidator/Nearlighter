@@ -6,6 +6,7 @@
 #include "color.h"
 #include "ray.h"
 #include "interval.h"
+#include "onb.h"
 
 // C++ headers
 #include <iostream>

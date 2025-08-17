@@ -39,8 +39,8 @@ make
 
 Cornell Box
 
-- WSL2 - Ubuntu 22.04平台 - 5800X: SPP = 200, depth = 50, 400x400, Rendering Time: 10min
-
+- WSL2 - Ubuntu 22.04 - 5800X : SPP = 200, depth = 50, 400x400, Rendering Time: 10min
+- WSL2 - Ubuntu 24.04 - 9955HX: 
 ![Cornell Box](./doc/figs/cornellbox/cornell-box-2-transform.png)
 
 MultiBalls

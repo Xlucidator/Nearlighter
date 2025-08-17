@@ -7,7 +7,10 @@ class Dielectric : public Material {
 public:
     Dielectric(float refractive_index) : refractive_index(refractive_index) {}
 
-    bool scatter(const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered) const override {
+    bool scatter(
+        const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered,
+        float& pdf
+    ) const override {
         float etai_over_etat = record.front_face ? (1.0f / refractive_index) : refractive_index;
   
         Vec3f direction;

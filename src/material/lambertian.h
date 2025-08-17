@@ -8,15 +8,16 @@ public:
     Lambertian(const Color& albedo) : texture(make_shared<SolidTexture>(albedo)) {}
     Lambertian(shared_ptr<Texture> tex) : texture(tex) {}
 
-    bool scatter(const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered) const override {
-        Vec3f scatter_direction = record.normal + Vec3f::random_unit_vector();
-
-        // fix degenerate scatter direction
-        if (scatter_direction.near_zero())
-            scatter_direction = record.normal;
+    bool scatter(
+        const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered, 
+        float& pdf
+    ) const override {
+        ONB normal_basis = ONB(record.normal);
+        Vec3f scatter_direction = normal_basis.transform(random_cosine_unit_on_hemisphere());
 
         scattered = Ray(record.point, scatter_direction, ray_in.time());
         attenuation = texture->value(record.u, record.v, record.point);
+        pdf = dot(normal_basis.w(), scattered.direction()) / pi;
         return true;
     }
 

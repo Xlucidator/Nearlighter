@@ -3,3 +3,4 @@ build/
 *.pdf
 
 .vscode/
+.lingma/

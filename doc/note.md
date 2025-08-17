@@ -4,6 +4,8 @@
 
 #### 反射向量计算
 
+略
+
 #### 折射向量计算
 
 入射光线单位向量$\vec{R}$ ， 入射折射率$\eta$ ，法线$\vec{n}$ ，出射折射率 $\eta '$ ：求出射光线单位向量$\vec{R'}$
@@ -185,7 +187,7 @@ stratified sampling：对于指定的pixel，原采样是随机投射spp次光�
 对于 $I = \int_a^b f(x) dx$ 进行Monte Carlo积分
 
 - 采样用的随机变量 $X \sim f_X(x), x \in [a, b]$ ，进行N次独立同分布采样，即得 $X_1, X_2, ..., X_N$ ，样本值为  $x_1, x_2, ..., x_N$ .
-  - $f_X(x)$ 即为随机变量X的概率密度函数pdf，离散后则为 $P\{X = x\}$ ，书中记法是 $p(x)$ 
+  - $f_X(x)$ 即为随机变量X的概率密度函数pdf，离散后则为 $P\{X = x\}$ ，书中记法是 $p(x)$ ，我觉得很难看，还是希望记成 $\mathrm{pdf}(x)$ . 
 - 则积分结果为  $I = \frac{1}{N} \sum\limits_{k=1}^{n} \frac{f(x_k)}{f_X(x_k)}$ 即 $\frac{f(x)}{f_X(x)}$的均值
 
 #### 一些技巧
@@ -281,15 +283,15 @@ e.g. 如果用MC法求 $\iint_{\Omega} \cos^2(\theta) d\vec{r}$ ，这是个曲�
 (2) 散射方向分布 pScatter：定义为散射光线在**立体角**上分布的**概率密度函数** ，书上称为**散射PDF** 
 
 - 这个函数可能与出射方向、入射方向、光的波长(e.g. 彩虹)、散射位置有关，可记为$pScatter(\vec{x}, \omega_i, \omega_o, \lambda)$ .
-  - 书中例子显示，这里入射角度incident angle指的是viewing angle，也就是说是ray tracing方向的入射角度，即光线传播的出射角度(**我感觉写错了**，这似乎是在按光追代码的视角看)
+  - 书中例子显示，这里入射角度incident angle指的是viewing angle，也就是ray tracing方向的入射角度，即真实光线传播的出射角度（代码中主要递归函数 `getRayColor` 中也是这么认为的，`ray_in` 是从视线侧来的，`scatter` 光线是另一侧，希望打到光源），这和后文理论上用蒙特卡洛积分描述又是反的
   - **albedo的因变量也是这些**，可以记为 $A(\vec{x}, \omega_i, \omega_o, \lambda)$ .
 - 对于Lambertian，pScatter仅与出射角$\theta_o$ 有关，$pScatter(\vec{x}, \omega_i, \omega_o, \lambda) = C \cdot \cos(\theta_o)$ .
 
 (3) 最终得到平面上某点的颜色：将该点单位半球面上所有入射方向的值积起来，即沿立体角积分
 
 - 公式为 $Color_o(\vec{x}, \omega_o, \lambda) = \iint_{H^2} A(\vec{x}, \omega_i, \omega_o, \lambda) \cdot pScatter(\vec{x}, \omega_i, \omega_o, \lambda) \cdot Color_i(\vec{x}, \omega_i, \lambda) d\omega_i$ .
-  - 【正常规定】往眼睛那儿是出射，从环境和光源那儿是入射
-  - $d\omega$ 是立体角的微分，有公式定义 $d\omega = \frac{dA}{r^2}$, 其中 $dA$ 是球面上面积微元
+  - 【实际情况】往眼睛那儿是出射，从环境和光源那儿是入射
+  - $d\omega$ 是立体角的微分，有公式定义 $d\omega = \frac{dA}{r^2} = \sin\theta d\theta d\phi$ , 其中 $dA$ 是球面上面积微元
     - 书上似乎默认单位球， **将立体角记作了dA，我觉得很不合适** .
   - 写成蒙特卡洛积分形式： $Color_o(\vec{x},\omega_o,\lambda) = \sum{\frac{A()\cdot pScatter() \cdot Color_i()}{p(\vec{x},\omega_i,\omega_o, \lambda)}}$ .
 - Color即是递归得出的，即类似 `getRayColor()` 函数
@@ -312,6 +314,7 @@ BRDF的定义
 - 双向反射分布函数：描述表面如何反射光线，即**从某方向入射**然后**反射到各个方向**的**能量分布**
   - 定义为**反射辐射率**和**入射幅照度**的比值： $f(\omega_i, \omega_o) = \frac{dL_o(\omega_o)}{dE_i(\omega_i)} = \frac{dL_o(\omega_o)}{L_i(\omega_i)\cos\theta_i d\omega_i}$ .
     -  $\omega_i, \omega_o$ 都是从反射点出发，指向入射方向和出射方向的单位方向向量
+    -  ！对应到 **光追实现中** ：o是从视线侧trace过来的，无法变更；i是scatter出的光线，可调整，越发往有效光源处，渲染收敛速度越快
     -   $d\omega$ 方向向量的微分即立体角微分 $\to$ 似乎很不严谨
   -  <img src="./figs/note/brdf-model.png" alt="brdf-model" style="zoom:70%;" /> 
   - 从不同方向入射的光，都可以反射到指定出射方向，因此出射部分用指定方向的辐射率，入射部分用不指定方向的辐照度
@@ -325,6 +328,7 @@ BRDF的定义
 书中两者关系
 
 - 书中给出 $f(\vec{x}, \omega_i, \omega_o, \lambda) = \frac{A(\vec{x}, \omega_i, \omega_o, \lambda) \cdot pScatter(\vec{x}, \omega_i, \omega_o, \lambda)}{\cos\theta_o}$ ，则有 $pScatter(\vec{x}, \omega_i, \omega_o, \lambda) = \frac{f(\vec{x}, \omega_i, \omega_o, \lambda)\cdot\cos\theta_o}{A(\vec{x}, \omega_i, \omega_o, \lambda)}$ . 【？】
+  - 基本确定了：这里书上的 $\cos\theta_o$ 就是前面描述的 $\cos\theta_i$ ，所以换算应该写为 $pScatter(\vec{x}, \omega_i, \omega_o, \lambda) = \frac{f(\vec{x}, \omega_i, \omega_o, \lambda)\cdot\cos\theta_i}{A(\vec{x}, \omega_i, \omega_o, \lambda)}$
   - pScatter - 散射方向的分布函数(PDF)， 仅包含**方向**
   - BRDF - 散射方向的**能量**分布函数(PDF)，除了方向外还包含能量/颜色
     - 给BRDF增加了一个光波长的因变量，合理
@@ -371,6 +375,78 @@ BRDF的定义
 - 最终级的目标是让pdf和最终正确的颜色 $pScatter() \cdot Color_i()$ 相近
 - 对于漫反射材质，Color比较重要，即有效光线来源比较重要（pLight权重大些？）；对于镜面材质，pScatter比较重要，即要看观察方向o在不在散射对的位置（pSurface权重大些）
 
+### 优化前记录
+
+WSL2 - Ubuntu 24.04 - 9955HX : SPP = 100, max_depth = 25, 600x600, Render Time = 10m13s
+
+WSL2 - Ubuntu 24.04 - 9955HX : SPP = 64, max_depth = 25, 400x400, Render Time = 2m54s
+
+### 13. 随机方向生成
+
+#### Rejection Method
+
+不必提，不可定制采样概率
+
+#### Inversion Method
+
+简化版：将z轴视为表面法线，**生成绕z轴对称的随机方向**。则只与法线的夹角 $\theta$ ，所以有球面分布 $\pdf(\omega) = f(\theta)$ .  $\omega$ 是方向随机变量，在球面坐标系中可表示为 $(\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$ ， $d\omega$ 积一个球值为 $4\pi$ 
+- **需满足** $\iint_{S^2}\pdf(\omega)d\omega = \int_0^{2\pi}\int_{0}^{\pi}f(\theta)\sin\theta d\theta d\phi = 1$ ，即有联合概率密度函数 $f_{\theta, \phi}(\theta, \phi) = f(\theta)\sin\theta$  .
+- 转化到两个参数的一维分布
+  -   $\phi$ ：分布**在绕z轴的方向上均匀分布**。说明 $\phi$ 在 $[0, 2\pi)$ 上有均匀分布，有 $\pdf(\phi) = \frac{1}{2\pi}$ .
+  -   $\theta$ ：分布**与z轴的夹角由函数指定**。从联合pdf求边缘pdf，即可计算得$\pdf(\theta) = \int_0^{2\pi}f_{\theta, \phi}(\theta, \phi) d\phi$ ，可积得值为 $2\pi f(\theta) \sin\theta$ ；或可因为 $\phi, \theta$ 独立，满足 $f_{\theta, \phi}(\theta, \phi) = f_\theta(\theta) \cdot f_{\phi}(\phi)$，已知 $\pdf(\phi)$ ，从而可得 $\pdf(\theta)$ 。
+- 需要分别利用 idf 将均匀分布结果求逆得到满足分布的随机变量值
+  -  $\phi$ ： $\cdf(\phi) = \int_0^{\phi}f_{\phi}(t)dt = \frac{\phi}{2\pi} = r_1$ ，所以从均匀分布的随机数 $r_1$ 逆回去，就能有满足分布的 $\phi = \idf(r_1) = 2\pi r_1$ .
+  -   $\theta$ ： $\cdf(\theta) = \int_0^{\theta}f_{\theta}(t)dt = 2\pi\int_0^{\theta}f(t)\sin\theta dt$  .
+     -  均匀采样整个球面：则有 $\pdf(\omega) = \frac{1}{4\pi}$ ，则有 $\cdf(\theta)=\frac{1-\cos\theta}{2} = r_2$，所以满足分布的 $\cos\theta = 1 - 2r_2$ .
+     -  均匀采样半球面：则有 $\pdf(\omega) = \frac{1}{2\pi}$ ，则有 $\cdf(\theta) = 1-\cos\theta = r_2$，所以满足分布的 $\cos\theta = 1-r_2$ .
+     -  余弦采样半球面：定义 $\pdf(\omega) = \frac{\cos\theta}{\pi}$ ，则有 $\cdf(\theta) = 1-\cos^2\theta = r_2$，所以满足分布的 $\cos\theta = \sqrt{1-r_2}$ .
+  -  以球面上均匀分布为例：将值代回球坐标 $(\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$ 中即为 $(\sqrt{1-(1-2r_2)^2}\cos(2\pi r_1), \sqrt{1-(1-2r_2)^2}\sin(2\pi r_1), 1-2r_2)$ ，化简下即为 $(2\sqrt{r_2(1-r_2)}\cos(2\pi r_1), 2\sqrt{r_2(1-r_2)}\sin(2\pi r_1), 1-2r_2)$ 。这样就可以用两个均匀分布随机数，生成球面上均匀分布(定制分布)的方向样本了
+
+| 采样方式       | $\pdf(\omega)$           | $\cdf(\theta)$           | x                                  | y                   | z              |
+| -------------- | ------------------------ | ------------------------ | ---------------------------------- | ------------------- | -------------- |
+| 均匀采样球面   | $\frac{1}{4\pi}$         | $\frac{1-\cos\theta}{2}$ | $2\sqrt{r_2(1-r_2)}\cos(2\pi r_1)$ | .. $\sin(2\pi r_1)$ | $1-2r_2$       |
+| 均匀采样半球面 | $\frac{1}{2\pi}$         | $1-\cos\theta$           | $\sqrt{r_2(2-r_2)}\cos(2\pi r_1)$  | .. $\sin(2\pi r_1)$ | $1-r_2$        |
+| 余弦采样半球面 | $\frac{\cos\theta}{\pi}$ | $1-\cos^2\theta$         | $\sqrt{r_2}\cos(2\pi r_1)$         | .. $\sin(2\pi r_1)$ | $\sqrt{1-r_2}$ |
+
+完整版：对任意平面的法线生成。其实就是将法线方向当作'z'轴，再作一组标准正交基 Orthonormal Basis 
+
+- 标准正交基的生成：已经有一个 $\vec{n}$ 了，需要再随便找一个与 $\vec{n}$ 不平行的 $\vec{a}$，然后就可用叉乘找了 $\vec{s} = \textrm{normalize}(\vec{n}\times\vec{a})$， $\vec{t} = \vec{n}\times\vec{s}$ . 这里的 $\vec{a}$ 我们就从标准的x,y,z基向量上依次找即可（检查 $\vec{n}$ 的值即可）
+  - 这里视 n, s, t 为 z, y, x，那么t的算法就是左手系而不是右手系了呀，我觉得要反一反
 
 
-### 13. 随机方向生成 - Inversion Method
+
+### 14. 根据光源采样
+
+对P点上散射的光线进行采样
+
+- 指向光源的立体角微分满足 $d\omega = \frac{dA}{r^2} = \frac{dS \cdot \cos\theta}{\Vert PQ \Vert^2}$ ，其中 $S$ 为光源面积， $Q$ 为其上任意一点，面积微分为 $dS$ ， $dS\cdot \cos\theta$ 即为垂直于连线的投影；光源中光线打在 Q 点上的概率为 $\pdf_Q(q) = \frac{1}{S}$ .
+- 从 P 点散射的光线打在 Q 点的情况即满足等式 $\pdf(\omega) d\omega = \pdf_{Q}(q) dS$ ，从而可解得 $\pdf(\omega) = \frac{\Vert PQ \Vert^2}{\cos\theta \cdot S}$ 
+
+直接把不被光源直接照到的地方给pass掉了，就少了间接光照，渲染出图也验证了这一点，无光处全黑
+
+ ![sample_only_to_light](./figs/optim/cb_spp10_md25_400-sample_only_to_light.png) ![sample_only_to_light-2](./figs/optim/cb_spp10_md25_400-sample_only_to_light-correct.png) 
+
+ 
+
+#### 渲染问题
+
+但这张图似乎有个明显问题：绿色墙还算正常，但是红色墙光照呈现明显的分层。这是什么原因，而且和绿色还不一样.
+
+强制改了 `scattering_pdf = 1 / pi` 后见图2，和书中的出图像了些，但似乎光的周围还有一圈泛白，但这个可以解释，设计的发光点是 (xxx, 554, xxx)，比顶部稍矮，所以泛一圈光就是正常，在于 `light_cos` 的筛除控制上，盒子顶部平面采样到光源的 `light_cos` 值量级在 0.002 ~ 0.003 附近，所以我设置了1e-8根本不会筛去任何地方，书上的 1e-6 也一样。
+
+> 总感觉这部书存在错误，质量不如前两部
+
+new：仅仅留下红绿墙，原写法仍然是红色有圈层，绿色墙正常；交换颜色后也一样。这种不对称的情况，似乎是因为色彩导致的，红色的albedo是 (.65, .05, .05) 蓝绿通道很少，反射后基本全灭，但通道现象有限采样数下分层现象更明显。而绿色的albedo是 (.12, .45, .15)，稍微均匀些
+
+但是成圈状就是不太对的样子啊... 暂时搞不懂，开个分支 debug_sample_only_light 记录一下之后再调，也有点怀疑书中的渲染图不匹配...
+
+
+
+
+
+
+$$
+\DeclareMathOperator{\pdf}{pdf}
+\DeclareMathOperator{\cdf}{cdf}
+\DeclareMathOperator{\idf}{idf}
+$$

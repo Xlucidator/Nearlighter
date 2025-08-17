@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include "utils/random.h"
+#include "utils/constant.h"
 
 class Vec3f {
 public:
@@ -128,6 +129,19 @@ inline Vec3f random_unit_in_disk() {
         Vec3f p(random_float(-1.0f, 1.0f), random_float(-1.0f, 1.0f), 0.0f);
         if (p.length_squared() < 1) return p;
     }
+}
+
+inline Vec3f random_cosine_unit_on_hemisphere() {
+    // Inversion method : z axis to be the normal
+    float r1 = random_float(), r2 = random_float();
+    
+    float phi = 2 * pi * r1;
+    float sin_theta = std::sqrt(r2), cos_theta = std::sqrt(1-r2);
+
+    float x = sin_theta * std::cos(phi);
+    float y = sin_theta * std::sin(phi);
+    float z = cos_theta;
+    return Vec3f(x, y, z);
 }
 
 inline Vec3f reflect(const Vec3f& vin, const Vec3f& normal) {
