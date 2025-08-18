@@ -3,7 +3,10 @@
 #include "utils/constant.h"
 #include "shapelist.h"
 
-/* Ray: o + t \vec{d}
+/** 
+ * Hit a Quad Primitive
+ * 
+ * Ray: o + t \vec{d}
  * Quad: Plane Ax + By + Cz = D
  *  - (A, B, C) = \vec{n} = cross(u, v)
  *  - A(x-x0) + B(y-y0) + C(z-z0) = 0 <=> D = Ax0 + By0 + Cz0 = p0 \vec{n}
@@ -56,16 +59,39 @@ bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
     return true;
 }
 
+/**
+ * Get PDF value from Ray(origin, direction) when sampling the quad
+ */
+float Quad::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
+    HitRecord record; 
+    if (!this->hit(Ray(origin, direction), Interval(0.001, infinity), record)) return 0;
+    float distance_squared = record.t * record.t * direction.length_squared();
+    float cosine = dot(direction, record.normal) / direction.length();
+    cosine = std::fabs(cosine); // TODO: dealing with backward faces
+    return distance_squared / (cosine * area);
+} 
 
-/* Private */
+/**
+ * Generate a random direction from origin under the distribution of the quad
+ */
+Vec3f Quad::random(const Point3f& origin) const {
+    Vec3f end = p0 + u * random_float() + v * random_float();
+    return end - origin;
+}
 
-/* Calculate AABB of the quad: union of two diagonal lines
- *         p0+v_________p0+u+v
- *          /\         /
- *        v   \      /
- *       /     \   /
- *     /___ u __\/
- *   p0         p0+u
+
+/* ==================== Private ==================== */
+
+/**
+ * Calculate AABB of the quad
+ * 
+ * union of two diagonal lines
+ *         p0+v_____p0+u+v
+ *         /\      /
+ *        v  \    /
+ *       /    \  /
+ *      /_ u __\/
+ *   p0        p0+u
  */
 AABB Quad::calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v) {
     return AABB(AABB(p0, p0 + u + v), AABB(p0 + u, p0 + v));
@@ -73,7 +99,9 @@ AABB Quad::calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v) {
 
 /* Common Method */
 
-/* Create Box Object with Quad Primitive
+/** 
+ * Create Box Object with Quad Primitive
+ * 
  *  a, b is two opposite vertices of the box
  */
 shared_ptr<Shape> box(const Point3f& a, const Point3f& b, shared_ptr<Material> material) {

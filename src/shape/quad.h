@@ -12,23 +12,28 @@ public:
         normal = unit_vector(n);
         D = dot(normal, p0);
         w = n / dot(n, n);
+        area = n.length();  // u * v * \sin(\theta)
         bounding_box = Quad::calculateAABB(p0, u, v);
     }
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const override;
     const AABB& getBoundingBox() const override { return bounding_box; }
 
+    float getPDFValue(const Point3f& origin, const Vec3f& direction) const override; 
+    Vec3f random(const Point3f& origin) const override;
+
 private:
     // Described in Vector form
     Point3f p0;
     Vec3f   u, v;
-    // Equaation of the quad plane: Ax + By + Cz = D
+    // Equation of the quad plane: Ax + By + Cz = D
     Vec3f normal;   // normal = (A, B, C)
     float D;        // D
     // Cached temporary variable
     Vec3f w;        // w = n / (n n) 
     // Properties
     shared_ptr<Material> material;
+    float area;
 
     AABB    bounding_box;
     static AABB calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v);

@@ -149,11 +149,11 @@ void set_scenery_simpleLight(ShapeList& world, Camera& camera) {
     // Intrinsic
 }
 
-void set_scenery_CornellBox(ShapeList& world, Camera& camera) {
-    set_scenery_CornellBox(world, camera, 400, 200, 50);
+void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights) {
+    set_scenery_CornellBox(world, camera, lights, 400, 200, 50);
 }
 
-void set_scenery_CornellBox(ShapeList& world, Camera& camera, int width, int spp, int max_depth) {
+void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights, int width, int spp, int max_depth) {
     /* Objects Display */
     auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
     auto white = make_shared<Lambertian>(Color(.73, .73, .73));
@@ -163,22 +163,26 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera, int width, int spp
     // Environment
     world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(0  , 555,  0  ), green));
     world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0  ), Vec3f(0  , 0  ,  555), red  ));
-    world.add(make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
     world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(555, 0  ,  0  ), white)); // bottom
     world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0  ), Vec3f(0  , 0  , -555), white)); // top
     world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0  ), Vec3f(0  , 555,  0  ), white)); // back
+
     // Boxes
     shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
     box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
     box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
     world.add(box1);
-    // world.add(box(Point3f(265, 0, 295), Point3f(430, 330, 460), white));
     
     shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
     box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
     box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
     world.add(box2);
-    // world.add(box(Point3f(130, 0, 65 ), Point3f(295, 165, 230), white));
+
+    // Light source
+    // auto empty_material = make_shared<Material>();
+    // auto empty_mate = shared_ptr<Material>();
+    world.add( make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
+    lights.add(make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
 
     /* Camera Parameters */
     camera.aspect_ratio = 1.0;

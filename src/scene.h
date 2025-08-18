@@ -14,8 +14,8 @@ void set_scenery_earth(ShapeList& world, Camera& camera);
 void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
 void set_scenery_quads(ShapeList& world, Camera& camera);
 void set_scenery_simpleLight(ShapeList& world, Camera& camera);
-void set_scenery_CornellBox(ShapeList& world, Camera& camera);
-void set_scenery_CornellBox(ShapeList& world, Camera& camera, int width, int spp, int max_depth);
+void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights);
+void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights, int width, int spp, int max_depth);
 void set_scenery_CornellSmoke(ShapeList& world, Camera& camera);
 void set_scenery_finalScene(ShapeList& world, Camera& camera, int width, int spp, int max_depth);
 

@@ -20,7 +20,7 @@ public:
     float   defocus_angle = 0.0f;   // Variation angle of ray through each pixel
     float   focus_distance = 10.0f; // Camera focus distance: camera position <--> plane of perfect focus
 
-    void render(const Shape& world, std::ostream& out = std::cout);
+    void render(const Shape& world, const Shape& lights, std::ostream& out = std::cout);
 
 private:
     int     image_height;		// Rendered image height
@@ -45,7 +45,7 @@ private:
     Vec3f genSampleSquareStratified(int sx, int sy) const;
     Vec3f genSampleDeforceDisk() const;
 
-    Color getRayColor(const Ray& r, int depth, const Shape& world) const;
+    Color getRayColor(const Ray& r, int depth, const Shape& world, const Shape& lights) const;
 };
 
-#endif
+#endif // CAMERA_H

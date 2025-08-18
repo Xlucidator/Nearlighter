@@ -8,7 +8,8 @@ public:
     DiffuseLight(shared_ptr<Texture> tex) : texture(tex) {}
     DiffuseLight(const Color& emit) : texture(make_shared<SolidTexture>(emit)) {}
 
-    Color emitted(float u, float v, const Point3f& p) const override {
+    Color emitted(const Ray& ray_in, const HitRecord& record, float u, float v, const Point3f& p) const override {
+        if (!record.front_face) return Color(0, 0, 0);
         return texture->value(u, v, p);
     }
 

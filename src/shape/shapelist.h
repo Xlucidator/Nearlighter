@@ -31,6 +31,20 @@ public:
     }
     const AABB& getBoundingBox() const override { return bbox; }
 
+    float getPDFValue(const Point3f& origin, const Vec3f& direction) const override { 
+        for (const auto& object : objects) {
+            return object->getPDFValue(origin, direction);
+        }
+        return 0;
+    }
+
+    Vec3f random(const Point3f& origin) const override { 
+        for (const auto& object : objects) {
+            return object->random(origin);
+        }
+        return Vec3f(1, 0, 0); 
+    }
+
     void clear() { objects.clear(); }
     void add(shared_ptr<Shape> object) { 
         objects.push_back(object);

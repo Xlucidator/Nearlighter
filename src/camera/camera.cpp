@@ -1,9 +1,10 @@
 #include "camera.h"
+#include "utils/pdf.h"
 #include "material/material.h"
 
 /////// Public Method
 
-void Camera::render(const Shape& world, std::ostream& out) {
+void Camera::render(const Shape& world, const Shape& lights, std::ostream& out) {
     initialize();
 
     out << "P3\n" << image_width << ' ' << image_height << "\n255\n";
@@ -16,7 +17,7 @@ void Camera::render(const Shape& world, std::ostream& out) {
             // Stratified Sampling
             for (int sample_i = 0; sample_i < sqrt_spp; sample_i++) {
                 for (int sample_j = 0; sample_j < sqrt_spp; sample_j++) {
-                    pixel_color += getRayColor(getRay(i, j, sample_i, sample_j), max_depth, world);
+                    pixel_color += getRayColor(getRay(i, j, sample_i, sample_j), max_depth, world, lights);
                 }
             }
             pixel_color *= pixel_samples_scale;
@@ -108,7 +109,7 @@ Vec3f Camera::genSampleDeforceDisk() const {
     return center + p.x() * defocus_disk_u + p.y() * defocus_disk_v;
 }
 
-Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world) const {
+Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world, const Shape& lights) const {
     if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
 
     HitRecord record;
@@ -119,35 +120,27 @@ Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world) const {
     Ray scattered;
     Color attenuation;
     float pdf_value;
-
-    // [Part] Emitted color
-    Color color_from_emitted = record.material->emitted(record.u, record.v, record.point);
-    // check and get scattered ray
-    if (!record.material->scatter(ray, record, attenuation, scattered, pdf_value)) return color_from_emitted;
+    Color color_from_emitted = record.material->emitted(ray, record, record.u, record.v, record.point);
     
-    // sample from light
-    Point3f light_point = Point3f(random_float(213, 343), 554, random_float(227, 332));
-    Vec3f to_light = light_point - record.point;
-    float distance_squared_to_light = to_light.length_squared();
-    to_light = unit_vector(to_light);
-    // std::cout << "light_point: " << light_point 
-    //           << "; to_light_vec: " << to_light << std::endl;
+    // check and get scattered ray
+    if (!record.material->scatter(ray, record, attenuation, scattered, pdf_value)) 
+        return color_from_emitted;
+    
+    // sample to light
+    ShapePDF light_pdf(lights, record.point);
+    scattered = Ray(record.point, light_pdf.generate(), ray.time());
+    pdf_value = light_pdf.value(scattered.direction());
 
-    // check whether light is from backward
-    if (dot(to_light, record.normal) < 0) return color_from_emitted;
-    float light_area = (343 - 213) * (332 - 227);
-    float light_cos = std::fabs(to_light.y());
-    // check whether light_cos is too small to be the dividant
-    if (light_cos < epsilon) return color_from_emitted;
-    // std::cout << "\tlight_cos: " << light_cos << std::endl;
+    // // sample to surface
+    // CosineHemispherePDF surface_pdf(record.normal);
+    // scattered = Ray(record.point, surface_pdf.generate(), ray.time());
+    // pdf_value = surface_pdf.value(scattered.direction());
+    
+    // brdf - scatter pdf
+    float scattering_pdf = record.material->getScatterPDF(ray, record, scattered);
 
-    // manipulate scattered ray towards the light
-    scattered = Ray(record.point, to_light, ray.time());
-    pdf_value = distance_squared_to_light / (light_cos * light_area);
-    float scattering_pdf = record.material->getScatterPDF(ray, record, scattered); // TODO: ?
-    // scattering_pdf = 1 / pi; // TODO: correct? but confused at the rendering effect
-    // [Part] Scattered color
-    Color color_from_scatter = attenuation * scattering_pdf * getRayColor(scattered, depth-1, world) / pdf_value;
-
+    Color sample_color = getRayColor(scattered, depth-1, world, lights);
+    Color color_from_scatter = attenuation * scattering_pdf * sample_color / pdf_value;
+    
     return color_from_emitted + color_from_scatter;
 }

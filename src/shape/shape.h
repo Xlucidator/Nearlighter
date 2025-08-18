@@ -29,6 +29,9 @@ public:
     virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const = 0;
     virtual const AABB& getBoundingBox() const = 0;
 
+    virtual float getPDFValue(const Point3f& origin, const Vec3f& direction) const { return 0; }
+    virtual Vec3f random(const Point3f& origin) const { return Vec3f(1, 0, 0); }
+
     /* Debug */
     virtual void printNode(int level) const {}
 };

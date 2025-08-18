@@ -19,13 +19,15 @@ int main(int argc, char* argv[]) {
     /* Scenery */
     ShapeList world;
     Camera camera;
+    ShapeList lights;
+
     // Output Viewport settings
     camera.aspect_ratio      = 16.0f / 9.0f;
     camera.image_width       = 400;
     camera.samples_per_pixel = 30;
     camera.max_depth         = 25;
     // Scenery Display settings
-    int select = argc > 2 ? std::stoi(argv[2]) : 8; // temporary '-s | --scene <number>'
+    int select = argc > 2 ? std::stoi(argv[2]) : 6; // temporary '-s | --scene <number>'
     switch (select) {
         case 0: set_scenery_boucingSpheres(world, camera); break;
         case 1: set_scenery_checkerSpheres(world, camera); break;
@@ -33,7 +35,7 @@ int main(int argc, char* argv[]) {
         case 3: set_scenery_perlinSphere(world, camera); break;
         case 4: set_scenery_quads(world, camera); break;
         case 5: set_scenery_simpleLight(world, camera); break;
-        case 6: set_scenery_CornellBox(world, camera, 400, 10, 25); break;
+        case 6: set_scenery_CornellBox(world, camera, lights, 400, 10, 25); break;
         case 7: set_scenery_CornellSmoke(world, camera); break;
         case 8: set_scenery_finalScene(world, camera, 400, 250, 25); break;
         default: break;
@@ -51,7 +53,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
     Timer timer("Render");
-    camera.render(bvh_root, ouput_file);
+    camera.render(bvh_root, lights, ouput_file);
     timer.reply();
     ouput_file.close();
 
