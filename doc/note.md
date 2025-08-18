@@ -377,9 +377,10 @@ BRDF的定义
 
 ### 优化前记录
 
-WSL2 - Ubuntu 24.04 - 9955HX : SPP = 100, max_depth = 25, 600x600, Render Time = 10m13s
+WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 100, max_depth = 25, 600x600, Render Time = 10m13s
 
-WSL2 - Ubuntu 24.04 - 9955HX : SPP = 64, max_depth = 25, 400x400, Render Time = 2m54s
+WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 64, max_depth = 25, 400x400, Render Time = 2m54s
+WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 1000, max_depth = 25, 400x400, Render Time = 23m26s
 
 ### 13. 随机方向生成
 

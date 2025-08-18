@@ -180,7 +180,6 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights,
 
     // Light source
     // auto empty_material = make_shared<Material>();
-    // auto empty_mate = shared_ptr<Material>();
     world.add( make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
     lights.add(make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
 

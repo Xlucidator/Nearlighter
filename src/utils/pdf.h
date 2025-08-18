@@ -54,4 +54,25 @@ private:
     Point3f origin;
 };
 
+class MixturePDF : public PDF {
+public:
+    MixturePDF(shared_ptr<PDF> p0, shared_ptr<PDF> p1) {
+        p[0] = p0;
+        p[1] = p1;
+    }
+
+    float value(const Vec3f& direction) const override {
+        return 0.5 * p[0]->value(direction) + 0.5 * p[1]->value(direction);
+    }
+    Vec3f generate() const override {
+        if (random_float() < 0.5) 
+            return p[0]->generate();
+        else 
+            return p[1]->generate();
+    }
+
+private:
+    shared_ptr<PDF> p[2];
+};
+
 #endif // PDF_H

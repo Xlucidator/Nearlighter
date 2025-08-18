@@ -64,7 +64,7 @@ bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
  */
 float Quad::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
     HitRecord record; 
-    if (!this->hit(Ray(origin, direction), Interval(0.001, infinity), record)) return 0;
+    if (!this->hit(Ray(origin, direction), Interval(epsilon, infinity), record)) return 0;
     float distance_squared = record.t * record.t * direction.length_squared();
     float cosine = dot(direction, record.normal) / direction.length();
     cosine = std::fabs(cosine); // TODO: dealing with backward faces
