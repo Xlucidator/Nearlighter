@@ -9,15 +9,11 @@ public:
     Lambertian(shared_ptr<Texture> tex) : texture(tex) {}
 
     bool scatter(
-        const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered, 
-        float& pdf
+        const Ray& ray_in, const HitRecord& record, ScatterRecord& s_record
     ) const override {
-        ONB normal_basis = ONB(record.normal);
-        Vec3f scatter_direction = normal_basis.transform(random_cosine_unit_on_hemisphere());
-
-        scattered = Ray(record.point, scatter_direction, ray_in.time());
-        attenuation = texture->value(record.u, record.v, record.point);
-        pdf = dot(normal_basis.w(), scattered.direction()) / pi;
+        s_record.attenuation = texture->value(record.u, record.v, record.point);
+        s_record.pdf = make_shared<CosineHemispherePDF>(record.normal);
+        s_record.should_skip = false;
         return true;
     }
 

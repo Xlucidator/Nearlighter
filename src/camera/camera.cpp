@@ -113,30 +113,31 @@ Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world, const S
     if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
 
     HitRecord record;
+
     /* Background */
     if (!world.hit(ray, Interval(0.001f, infinity), record)) return background;
 
     /* Objects */
-    Ray scattered;
-    Color attenuation;
-    float pdf_value;
+    ScatterRecord s_record;
     Color color_from_emitted = record.material->emitted(ray, record, record.u, record.v, record.point);
     
     // check and get scattered ray
-    if (!record.material->scatter(ray, record, attenuation, scattered, pdf_value)) 
+    if (!record.material->scatter(ray, record, s_record)) 
         return color_from_emitted;
-    
+
+    // check if should skip pdf sampling
+    if (s_record.should_skip) 
+        return s_record.attenuation * getRayColor(s_record.skip_ray, depth-1, world, lights);
     
     auto light_pdf = make_shared<ShapePDF>(lights, record.point);  // sample to light
-    auto surface_pdf = make_shared<CosineHemispherePDF>(record.normal); // sample to surface
-    MixturePDF mixed_pdf(light_pdf, surface_pdf);
+    MixturePDF mixed_pdf(light_pdf, s_record.pdf);
 
-    scattered = Ray(record.point, mixed_pdf.generate(), ray.time()); // this scattered ray has no relationship with 'material->scatter'
-    pdf_value = mixed_pdf.value(scattered.direction());
+    Ray scattered = Ray(record.point, mixed_pdf.generate(), ray.time()); // this scattered ray has no relationship with 'material->scatter'
+    float pdf_value = mixed_pdf.value(scattered.direction());
     float scattering_pdf = record.material->getScatterPDF(ray, record, scattered); // brdf - scatter pdf
 
     Color sample_color = getRayColor(scattered, depth-1, world, lights);
-    Color color_from_scatter = attenuation * scattering_pdf * sample_color / pdf_value;
+    Color color_from_scatter = s_record.attenuation * scattering_pdf * sample_color / pdf_value;
     
     return color_from_emitted + color_from_scatter;
 }

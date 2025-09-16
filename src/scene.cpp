@@ -168,7 +168,8 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights,
     world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0  ), Vec3f(0  , 555,  0  ), white)); // back
 
     // Boxes
-    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
+    shared_ptr<Material> aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), aluminum);
     box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
     box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
     world.add(box1);

@@ -8,9 +8,12 @@ public:
     Dielectric(float refractive_index) : refractive_index(refractive_index) {}
 
     bool scatter(
-        const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered,
-        float& pdf
+        const Ray& ray_in, const HitRecord& record, ScatterRecord& s_record
     ) const override {
+        s_record.attenuation = Color(1.0f, 1.0f, 1.0f);
+        s_record.pdf = nullptr;
+        s_record.should_skip = true;
+
         float etai_over_etat = record.front_face ? (1.0f / refractive_index) : refractive_index;
   
         Vec3f direction;
@@ -32,8 +35,7 @@ public:
             direction = refract(unit_ray_in, record.normal, etai_over_etat);
         }
 
-        scattered = Ray(record.point, direction, ray_in.time());
-        attenuation = Color(1.0f, 1.0f, 1.0f);
+        s_record.skip_ray = Ray(record.point, direction, ray_in.time());
         return true;
     }
 

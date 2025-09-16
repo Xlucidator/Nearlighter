@@ -9,13 +9,11 @@ public:
     Isotropic(const Color& albedo) : texture(make_shared<SolidTexture>(albedo)) {}
 
     bool scatter(
-        const Ray& ray_in, const HitRecord& record, Color& attenuation, Ray& scattered,
-        float& pdf
+        const Ray& ray_in, const HitRecord& record, ScatterRecord& s_record
     ) const override {
-        scattered = Ray(record.point, Vec3f::random_unit_vector(), ray_in.time());
-        attenuation = texture->value(record.u, record.v, record.point);
-        // std::cout << "attenuation = " << attenuation << std::endl;
-        pdf = 1 / (4 * pi);
+        s_record.attenuation = texture->value(record.u, record.v, record.point);
+        s_record.pdf = make_shared<SpherePDF>();
+        s_record.should_skip = false;
         return true;
     }
 
