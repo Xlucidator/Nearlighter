@@ -19,5 +19,6 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights,
 void set_scenery_CornellSmoke(ShapeList& world, Camera& camera);
 void set_scenery_finalScene(ShapeList& world, Camera& camera, int width, int spp, int max_depth);
 
+void set_scenery_CornellBall(ShapeList& world, Camera& camera, ShapeList& lights, int width, int spp, int max_depth);
 
 #endif

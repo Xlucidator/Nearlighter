@@ -20,6 +20,11 @@ void writeColor(std::ostream& out, const Color& pixel_color) {
     auto g = pixel_color.y();  // value: [0,1]
     auto b = pixel_color.z();
 
+    // NaN check: replace NaN with zero
+    if (r != r) r = 0.0;
+    if (g != g) g = 0.0;
+    if (b != b) b = 0.0;
+
     // Translate [0, 1] to [0, 255]
     static const Interval intensity(0.000f, 0.999f);
     int r_byte = int(intensity.clamp(r) * 256);

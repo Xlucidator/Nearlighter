@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
     ShapeList lights;
 
     // Output Viewport settings
-    camera.aspect_ratio      = 16.0f / 9.0f;
+    camera.aspect_ratio      = 16.0 / 9.0;
     camera.image_width       = 400;
     camera.samples_per_pixel = 30;
     camera.max_depth         = 25;
@@ -35,9 +35,10 @@ int main(int argc, char* argv[]) {
         case 3: set_scenery_perlinSphere(world, camera); break;
         case 4: set_scenery_quads(world, camera); break;
         case 5: set_scenery_simpleLight(world, camera); break;
-        case 6: set_scenery_CornellBox(world, camera, lights, 400, 128, 25); break;
+        case 6: set_scenery_CornellBox(world, camera, lights, 400, 256, 25); break;
         case 7: set_scenery_CornellSmoke(world, camera); break;
         case 8: set_scenery_finalScene(world, camera, 400, 250, 25); break;
+        case 9: set_scenery_CornellBall(world, camera, lights, 400, 256, 25); break;
         default: break;
     }
 

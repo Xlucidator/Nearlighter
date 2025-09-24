@@ -159,6 +159,7 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights,
     auto white = make_shared<Lambertian>(Color(.73, .73, .73));
     auto green = make_shared<Lambertian>(Color(.12, .45, .15));
     auto light = make_shared<DiffuseLight>(Color(15, 15, 15));
+    auto aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
 
     // Environment
     world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(0  , 555,  0  ), green));
@@ -168,7 +169,6 @@ void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights,
     world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0  ), Vec3f(0  , 555,  0  ), white)); // back
 
     // Boxes
-    shared_ptr<Material> aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
     shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), aluminum);
     box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
     box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
@@ -301,6 +301,53 @@ void set_scenery_finalScene(ShapeList& world, Camera& camera, int width, int spp
     // Extrinsic
     camera.fov_vertical = 40.0;
     camera.position = Point3f(478, 278, -600);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
+}
+
+
+void set_scenery_CornellBall(ShapeList& world, Camera& camera, ShapeList& lights, int width, int spp, int max_depth) {
+    /* Objects Display */
+
+    // Material
+    auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
+    auto white = make_shared<Lambertian>(Color(.73, .73, .73));
+    auto green = make_shared<Lambertian>(Color(.12, .45, .15));
+    auto aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
+    auto glass = make_shared<Dielectric>(1.5);
+    auto light = make_shared<DiffuseLight>(Color(15, 15, 15));
+
+    // Environment
+    world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(0  , 555,  0  ), green));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0  ), Vec3f(0  , 0  ,  555), red  ));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(555, 0  ,  0  ), white)); // bottom
+    world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0  ), Vec3f(0  , 0  , -555), white)); // top
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0  ), Vec3f(0  , 555,  0  ), white)); // back
+
+    // Boxes & Balls
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
+    box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
+    box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
+    world.add(box1);
+    
+    auto ball = make_shared<Sphere>(Point3f(190, 90, 190), 90, glass);
+    world.add(ball);
+    lights.add(ball); // trick: make the pdf sample more concentrate to the glass ball
+
+    // Light source
+    auto light_quad = make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0, 0), Vec3f(0, 0, -105), light);
+    world.add(light_quad);
+    lights.add(light_quad);
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    camera.image_width  = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = max_depth;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(278, 278, -800);
     camera.look_at  = Point3f(278, 278, 0);
     // Intrinsic
 }

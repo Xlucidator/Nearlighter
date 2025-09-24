@@ -25,6 +25,9 @@ public:
     bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const override;
     const AABB& getBoundingBox() const override { return bounding_box; }
 
+    float getPDFValue(const Point3f& origin, const Vec3f& direction) const override;
+    Vec3f random(const Point3f& origin) const override;
+
 private:
     Point3f center;
     float   radius;
@@ -34,6 +37,7 @@ private:
     AABB    bounding_box;
     static AABB calculateAABB(const Point3f& center, const float& radius);
     static void calculateUV(const Point3f& point, float& u, float& v);
+    static Vec3f random_to_sphere(float radius, float distance_squared);
 };
 
 #endif
