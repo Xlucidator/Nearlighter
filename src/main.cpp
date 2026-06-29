@@ -1,5 +1,5 @@
-#include "scene.h"
-#include "utils/timer.h"
+#include <nearlighter/scene/scene.h>
+#include <nearlighter/base/timer.h>
 
 #include <fstream>
 

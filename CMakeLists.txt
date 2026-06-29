@@ -19,8 +19,10 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the build type." FORCE)
 endif()
 
-option(NEARLIGHTER_ENABLE_EXTRA_WARNINGS "Enable additional compiler warnings." OFF)
+# Option settings
+option(ENABLE_EXTRA_WARNINGS "Enable additional compiler warnings." OFF)
 
+# Import custom CMake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(smart_copy)
 
@@ -34,7 +36,7 @@ else()
     message(WARNING "LTO/IPO is not supported: ${IPO_ERROR}")
 endif()
 
-# Platform policy:
+# Compile options for different platform
 if(UNIX AND NOT MINGW)
     # 1. Unix-like is the primary development target.
     message(STATUS "Building on Unix-like platform.")
@@ -61,18 +63,20 @@ else()
     set(NEARLIGHTER_RELWITHDEBINFO_FLAGS)
 endif()
 
-if(NEARLIGHTER_ENABLE_EXTRA_WARNINGS AND NOT MSVC)
+if(ENABLE_EXTRA_WARNINGS AND NOT MSVC)
     list(APPEND NEARLIGHTER_DEBUG_FLAGS          -Wextra)
     list(APPEND NEARLIGHTER_RELEASE_FLAGS        -Wextra)
     list(APPEND NEARLIGHTER_RELWITHDEBINFO_FLAGS -Wextra)
 endif()
 
-function(nearlighter_apply_build_options target_name)
+function(target_apply_build_options target_name)
+    # Compiler flags for different build types
     target_compile_options(${target_name} PRIVATE
         $<$<CONFIG:Debug>:${NEARLIGHTER_DEBUG_FLAGS}>
         $<$<CONFIG:Release>:${NEARLIGHTER_RELEASE_FLAGS}>
         $<$<CONFIG:RelWithDebInfo>:${NEARLIGHTER_RELWITHDEBINFO_FLAGS}>
     )
+    # Custom definitions for different build types
     target_compile_definitions(${target_name} PRIVATE
         $<$<CONFIG:Debug>:DEBUG>
     )
@@ -97,52 +101,56 @@ target_include_directories(stb INTERFACE
 # 3. Nearlighter Core
 # =============================================================
 
-set(NEARLIGHTER_CORE_SOURCES
-    src/bvh/aabb.cpp
-    src/bvh/bvhnode.cpp
-    src/camera/camera.cpp
-    src/general/color.cpp
-    src/general/interval.cpp
-    src/medium/constant_medium.cpp
-    src/scene.cpp
-    src/shape/quad.cpp
-    src/shape/sphere.cpp
-    src/utils/imageloader.cpp
-    src/utils/perlin.cpp
+set(CORE_SOURCES
+    src/nearlighter/accel/bvh_node.cpp
+    src/nearlighter/base/color.cpp
+    src/nearlighter/base/interval.cpp
+    src/nearlighter/geometry/aabb.cpp
+    src/nearlighter/geometry/quad.cpp
+    src/nearlighter/geometry/shape_list.cpp
+    src/nearlighter/geometry/sphere.cpp
+    src/nearlighter/io/image_loader.cpp
+    src/nearlighter/material/dielectric.cpp
+    src/nearlighter/material/diffuse_light.cpp
+    src/nearlighter/material/isotropic.cpp
+    src/nearlighter/material/lambertian.cpp
+    src/nearlighter/material/material.cpp
+    src/nearlighter/material/metal.cpp
+    src/nearlighter/medium/constant_medium.cpp
+    src/nearlighter/render/camera.cpp
+    src/nearlighter/scene/scene.cpp
+    src/nearlighter/texture/checker_texture.cpp
+    src/nearlighter/texture/image_texture.cpp
+    src/nearlighter/texture/noise_texture.cpp
+    src/nearlighter/texture/perlin.cpp
+    src/nearlighter/texture/solid_texture.cpp
 )
-
-add_library(nearlighter_core STATIC
-    ${NEARLIGHTER_CORE_SOURCES}
-)
-
-target_include_directories(nearlighter_core PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/general"
-)
-
-target_link_libraries(nearlighter_core PUBLIC
-    glm::glm
-    stb
-)
-
-nearlighter_apply_build_options(nearlighter_core)
-message(STATUS "Target [nearlighter_core] configured.")
 
 
 # =============================================================
-# 4. Nearlighter Executable
+# 4. Nearlighter Application Build
 # =============================================================
 
-add_executable(Nearlighter
-    src/main.cpp
-)
+# --- CLI Version ---
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
+    add_executable(Nearlighter
+        src/main.cpp
+        ${CORE_SOURCES}
+    )
 
-target_link_libraries(Nearlighter PRIVATE
-    nearlighter_core
-)
+    target_include_directories(Nearlighter PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    )
 
-nearlighter_apply_build_options(Nearlighter)
-message(STATUS "Target [Nearlighter] configured.")
+    target_link_libraries(Nearlighter PRIVATE
+        glm::glm
+        stb
+    )
+
+    target_apply_build_options(Nearlighter)
+    message(STATUS "Target [Nearlighter] configured.")
+endif()
 
 
 # =============================================================
