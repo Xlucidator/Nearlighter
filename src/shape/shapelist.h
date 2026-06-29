@@ -31,7 +31,16 @@ public:
     }
     const AABB& getBoundingBox() const override { return bbox; }
 
+    bool hasPDF() const override {
+        for (const auto& object : objects) {
+            if (object->hasPDF()) return true;
+        }
+        return false;
+    }
+
     float getPDFValue(const Point3f& origin, const Vec3f& direction) const override { 
+        if (objects.empty()) return 0.0f;
+
         float weight = 1.0 / objects.size();
         float sum = 0.0;
         for (const auto& object : objects)
@@ -40,6 +49,7 @@ public:
     }
 
     Vec3f random(const Point3f& origin) const override { 
+        if (objects.empty()) return Vec3f(1, 0, 0);
         return objects[random_int(0, objects.size()-1)]->random(origin); 
     }
 

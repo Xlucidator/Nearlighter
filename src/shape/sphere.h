@@ -25,6 +25,7 @@ public:
     bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const override;
     const AABB& getBoundingBox() const override { return bounding_box; }
 
+    bool hasPDF() const override { return true; }
     float getPDFValue(const Point3f& origin, const Vec3f& direction) const override;
     Vec3f random(const Point3f& origin) const override;
 

@@ -129,11 +129,24 @@ Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world, const S
     if (s_record.should_skip) 
         return s_record.attenuation * getRayColor(s_record.skip_ray, depth-1, world, lights);
     
-    auto light_pdf = make_shared<ShapePDF>(lights, record.point);  // sample to light
-    MixturePDF mixed_pdf(light_pdf, s_record.pdf);
+    /*
+     * Sampling strategy:
+     *  - If the scene provides explicit PDF targets, mix light sampling with
+     *    the material scattering PDF.
+     *  - Otherwise, fall back to the material PDF only. This is required for
+     *    legacy scenes that do not fill the lights list.
+     */
+    shared_ptr<PDF> sample_pdf = s_record.pdf;
+    if (sample_pdf == nullptr) return color_from_emitted;
 
-    Ray scattered = Ray(record.point, mixed_pdf.generate(), ray.time()); // this scattered ray has no relationship with 'material->scatter'
-    float pdf_value = mixed_pdf.value(scattered.direction());
+    if (lights.hasPDF()) {
+        auto light_pdf = make_shared<ShapePDF>(lights, record.point);
+        sample_pdf = make_shared<MixturePDF>(light_pdf, s_record.pdf);
+    }
+
+    Ray scattered = Ray(record.point, sample_pdf->generate(), ray.time()); // this scattered ray has no relationship with 'material->scatter'
+    float pdf_value = sample_pdf->value(scattered.direction());
+    if (pdf_value <= 0.0f) return color_from_emitted;
     float scattering_pdf = record.material->getScatterPDF(ray, record, scattered); // brdf - scatter pdf
 
     Color sample_color = getRayColor(scattered, depth-1, world, lights);

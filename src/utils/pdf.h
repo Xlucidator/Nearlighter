@@ -6,7 +6,7 @@
 
 class PDF {
 public:
-    // virtual ~PDF() = default;
+    virtual ~PDF() = default;
     virtual float value(const Vec3f& direction) const = 0;
     virtual Vec3f generate() const = 0;
 };

@@ -16,7 +16,7 @@ public:
     inline const Point3f& origin() const { return orig; }
     inline const Vec3f& direction() const { return dir; }
     inline const Color& color() const { return colr; }
-    inline const float time() const { return tm; }
+    inline float time() const { return tm; }
 
     inline Point3f at(float t) const { return orig + t*dir; }
     inline bool in_inclusive_bound(const float t) const { return tmin <= t && t <= tmax; }
@@ -26,7 +26,7 @@ private:
     Point3f orig;
     Vec3f   dir;
     Color   colr;
-    float   tm;     // represent the time when the ray was generated
+    float   tm = 0.0f;     // represent the time when the ray was generated
 };
 
 #endif
