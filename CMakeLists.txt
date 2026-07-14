@@ -105,20 +105,27 @@ set(CORE_SOURCES
     src/nearlighter/accel/bvh_node.cpp
     src/nearlighter/base/color.cpp
     src/nearlighter/base/interval.cpp
+    src/nearlighter/io/image_loader.cpp
+
+    # ----- Rendering -----
+    src/nearlighter/render/camera.cpp
+    src/nearlighter/scene/scene.cpp
+
+    # ----- Geometry -----
     src/nearlighter/geometry/aabb.cpp
     src/nearlighter/geometry/quad.cpp
     src/nearlighter/geometry/shape_list.cpp
     src/nearlighter/geometry/sphere.cpp
-    src/nearlighter/io/image_loader.cpp
+
+    # ----- Material -----
     src/nearlighter/material/dielectric.cpp
     src/nearlighter/material/diffuse_light.cpp
     src/nearlighter/material/isotropic.cpp
     src/nearlighter/material/lambertian.cpp
-    src/nearlighter/material/material.cpp
     src/nearlighter/material/metal.cpp
     src/nearlighter/medium/constant_medium.cpp
-    src/nearlighter/render/camera.cpp
-    src/nearlighter/scene/scene.cpp
+
+    # ----- Texture -----
     src/nearlighter/texture/checker_texture.cpp
     src/nearlighter/texture/image_texture.cpp
     src/nearlighter/texture/noise_texture.cpp

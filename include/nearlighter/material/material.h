@@ -17,9 +17,34 @@ class Material {
 public:
     virtual ~Material() = default;
 
-    virtual Color emitted(const Ray& ray_in, const HitRecord& record, float u, float v, const Point3f& p) const;
-    virtual bool scatter(const Ray& ray_in, const HitRecord& record, ScatterRecord& s_record) const;
-    virtual float getScatterPDF(const Ray& ray_in, const HitRecord& record, Ray& ray_scattered) const;
+    virtual Color emitted(
+        const Ray& ray_in,        // Incoming ray that reaches the interaction.
+        const HitRecord& record,  // Geometry interaction information.
+        float u,                  // Horizontal texture coordinate.
+        float v,                  // Vertical texture coordinate.
+        const Point3f& p          // Interaction point used for texture evaluation.
+    ) const
+    {
+        return Color(0, 0, 0);
+    }
+
+    virtual bool scatter(
+        const Ray& ray_in,        // Incoming ray that reaches the interaction.
+        const HitRecord& record,  // Geometry interaction information.
+        ScatterRecord& s_record   // Output describing the scattering event.
+    ) const
+    {
+        return false;
+    }
+
+    virtual float getScatterPDF(
+        const Ray& ray_in,        // Incoming ray that reaches the interaction.
+        const HitRecord& record,  // Geometry interaction information.
+        Ray& ray_scattered        // Scattered ray whose PDF is evaluated.
+    ) const
+    {
+        return 0.0f;
+    }
 
 };
 

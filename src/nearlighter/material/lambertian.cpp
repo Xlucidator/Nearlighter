@@ -17,6 +17,7 @@ bool Lambertian::scatter(const Ray&, const HitRecord& record, ScatterRecord& s_r
 }
 
 float Lambertian::getScatterPDF(const Ray&, const HitRecord& record, Ray& ray_scattered) const {
+    // scatterPDF(w_o) = cos(theta_o) / pi
     float cos_theta_o = dot(record.normal, unit_vector(ray_scattered.direction()));
     return cos_theta_o > 0.0f ? cos_theta_o / pi : 0.0f;
 }

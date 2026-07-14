@@ -18,14 +18,17 @@ bool Dielectric::scatter(const Ray& ray_in, const HitRecord& record, ScatterReco
     float cos_theta_i = std::fmin(dot(-unit_ray_in, record.normal), 1.0f);
     float sin_theta_i = std::sqrt(1.0f - cos_theta_i * cos_theta_i);
 
-    // Total internal reflection happens when Snell's law has no real transmitted direction.
+    /* Consider Total Internal Reflection */
+    // etai * in_sin_theta = etao * out_sin_theta 
+    // => sin_theta_t = etai_over_etat * sin_theta_i
     bool total_internal_reflection = (etai_over_etat * sin_theta_i) > 1.0f;
 
     // Schlick Fresnel reflectance is used as the probability of sampling reflection.
+    /* Consider Fresnel Reflectance */
     bool fresnel_reflect = reflectance(cos_theta_i, etai_over_etat, 1.0f) > random_float();
 
     Vec3f direction;
-    if (total_internal_reflection || fresnel_reflect) {
+    if (total_internal_reflection || fresnel_reflect) { // total internal reflection
         direction = reflect(unit_ray_in, record.normal);
     } else {
         direction = refract(unit_ray_in, record.normal, etai_over_etat);

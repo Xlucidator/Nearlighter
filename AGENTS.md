@@ -4,7 +4,7 @@
 
 - Nearlighter is a learning-oriented CPU path tracer based on the Ray Tracing in One Weekend series.
 - Current priority is project cleanup and optimization before adding larger rendering features.
-- Core code currently lives in `src/`; vendored third-party headers currently live in `include/`.
+- Public headers live in `include/nearlighter/`, implementations live in `src/`, and third-party submodules live in `thirdparty/`.
 - Important docs: `README.md`, `doc/note.md`, and `doc/hit-calculation.md`.
 
 ## Collaboration
@@ -28,13 +28,24 @@
 
 - Prefer explicit local dependencies. A header may include the headers needed for its own value members, base classes, inline code, and public API contracts.
 - Umbrella headers are acceptable when they are intentional, stable, and convenience-oriented. Keep them thin, documented, and out of low-level module headers.
-- Keep `common.h` as a curated core vocabulary only. Do not grow it into a cross-module include hub for shapes, materials, textures, BVH, PDFs, or scene code.
+- Keep `nearlighter.h` as a curated core vocabulary only. Do not grow it into a cross-module include hub for shapes, materials, textures, BVH, PDFs, or scene code.
 - Forward declare types only when a pointer/reference/declaration is enough and the complete type is not required. Include concrete headers in `.cpp` files for implementation details.
 - Keep third-party code separate from project code. Prefer `thirdparty/` submodules plus CMake targets for external libraries.
 - Prefer target-based CMake (`target_sources`, `target_include_directories`, `target_link_libraries`) over global include/link settings.
 - Avoid global mutable state in new rendering code, especially for random generators and output/gamma configuration.
 - Add benchmarks or small deterministic tests before changing performance-sensitive code such as BVH, sampling, or intersection routines.
 - Add clear, structured comments for non-obvious rendering, geometry, math, ownership, and numerical assumptions. Prefer concise blocks that state intent, formula, assumptions, and invariants.
+
+## Skill Proposals
+
+- Notice recurring repository-specific workflows or non-obvious knowledge that may warrant a Codex skill, but do not create or substantially update one without explicit user approval.
+- Before requesting approval, explain:
+  + the recurring problem or concrete use cases;
+  + the skill's purpose, scope, and expected benefit;
+  + trigger scope: when it should and should not trigger;
+  + the proposed name, location, instructions, references, scripts, and validation method.
+- After approval, follow the official Codex skill-creation workflow and place repository-specific skills under `.agents/skills/`, and validate the result.
+- Keep one-off facts and general rules in documentation, tests, or `AGENTS.md` instead.
 
 ## Safety Notes
 
