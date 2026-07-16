@@ -16,6 +16,7 @@
 
 ## Engineering Principles
 
+- Favor semantically coherent abstractions, clear responsibility boundaries, reusable modular APIs, and simple, efficient implementations. Avoid redundant layers and generalized infrastructure without a current requirement.
 - Apply first-principles thinking. Do not assume the author always knows exactly what they want or the best way to achieve it.
 - Start from the raw requirements and the core problem.
   + If the goal or motivation is unclear, stop and align before implementation.
@@ -34,7 +35,20 @@
 - Prefer target-based CMake (`target_sources`, `target_include_directories`, `target_link_libraries`) over global include/link settings.
 - Avoid global mutable state in new rendering code, especially for random generators and output/gamma configuration.
 - Add benchmarks or small deterministic tests before changing performance-sensitive code such as BVH, sampling, or intersection routines.
-- Add clear, structured comments for non-obvious rendering, geometry, math, ownership, and numerical assumptions. Prefer concise blocks that state intent, formula, assumptions, and invariants.
+
+## Commenting Conventions
+
+### General Principles
+
+- Write comments proactively and generously where they improve readability, especially for non-obvious rendering, geometry, math, ownership, numerical, coordinate-space, and error-handling logic.
+- Explain intent, rationale, assumptions, constraints, and invariants rather than restating the code.
+- Update or remove stale comments when the implementation changes.
+
+### Comment Styles
+
+- Use Doxygen block comments (`/** ... */`) for classes and functions; do not use `///`. Place public API documentation before its declaration, describe the contract where relevant, and use tags such as `@param`, `@return`, and `@throws` only when helpful. Do not duplicate it on the `.cpp` definition.
+- Use ordinary block comments (`/* ... */`) inside function implementations to introduce major logical sections, algorithm stages, or process blocks.
+- Use line comments (`//`) for subordinate steps, specific implementation details, or short end-of-line clarification. Put longer explanations before the relevant code.
 
 ## Skill Proposals
 

@@ -133,6 +133,22 @@ set(CORE_SOURCES
     src/nearlighter/texture/solid_texture.cpp
 )
 
+add_library(nearlighter_core STATIC ${CORE_SOURCES})
+
+# Core sources are compiled once and shared by the CLI and test executables.
+# Third-party details remain private unless a public header requires them.
+target_include_directories(nearlighter_core
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+target_link_libraries(nearlighter_core
+    PUBLIC glm::glm
+    PRIVATE stb
+)
+
+target_apply_build_options(nearlighter_core)
+message(STATUS "Target [nearlighter_core] configured.")
+
 
 # =============================================================
 # 4. Nearlighter Application Build
@@ -142,26 +158,58 @@ set(CORE_SOURCES
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
     add_executable(Nearlighter
         src/main.cpp
-        ${CORE_SOURCES}
-    )
-
-    target_include_directories(Nearlighter PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src"
     )
 
     target_link_libraries(Nearlighter PRIVATE
-        glm::glm
-        stb
+        nearlighter_core
     )
 
     target_apply_build_options(Nearlighter)
     message(STATUS "Target [Nearlighter] configured.")
 endif()
 
+# --- GUI Version ---
+# TODO
 
 # =============================================================
-# 5. Runtime Assets
+# 5. Tests
+# =============================================================
+
+include(CTest)
+
+if(BUILD_TESTING)
+    # --- Geometry Tests ---
+    add_executable(nearlighter_geometry_tests
+        tests/geometry_tests.cpp
+    )
+    target_link_libraries(nearlighter_geometry_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(nearlighter_geometry_tests)
+    add_test(
+        NAME nearlighter.geometry
+        COMMAND nearlighter_geometry_tests
+    )
+
+    # --- Accel BVH Tests ---
+    add_executable(nearlighter_bvh_tests
+        tests/bvh_tests.cpp
+    )
+    target_link_libraries(nearlighter_bvh_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(nearlighter_bvh_tests)
+    add_test(
+        NAME nearlighter.bvh
+        COMMAND nearlighter_bvh_tests
+    )
+
+    message(STATUS "Nearlighter tests configured.")
+endif()
+
+
+# =============================================================
+# 6. Runtime Assets
 # =============================================================
 
 smart_copy_dir("assets")
