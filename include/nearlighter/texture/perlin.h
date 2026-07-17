@@ -2,11 +2,14 @@
 #define PERLIN_H
 
 #include <nearlighter/math/vec3f.h>
-#include <nearlighter/math/random.h>
+
+#include <cstdint>
+
+class Sampler;
 
 class PerlinGenerator {
 public:
-    PerlinGenerator();
+    explicit PerlinGenerator(std::uint64_t seed = 0);
 
     float noise(const Point3f& p) const;
     float turbulence(const Point3f& p, int depth = 7) const;
@@ -18,8 +21,8 @@ private:
     int perm_y[point_cnt];
     int perm_z[point_cnt]; // TODO: whether need another Vec3i
 
-    static void generate_permutations(int* p);
-    static void permute(int* p, int n);
+    static void generatePermutations(int* p, Sampler& sampler);
+    static void permute(int* p, int n, Sampler& sampler);
     static float perlin_interpolate(const Vec3f c[2][2][2], float u, float v, float w);
 };
 

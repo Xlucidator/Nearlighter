@@ -6,6 +6,7 @@
 #include <nearlighter/geometry/quad.h>
 #include <nearlighter/geometry/sphere.h>
 #include <nearlighter/math/constants.h>
+#include <nearlighter/sampling/sampler.h>
 #include <nearlighter/transform/rotate.h>
 #include <nearlighter/transform/translate.h>
 
@@ -20,12 +21,13 @@ std::shared_ptr<Material> noMaterial() {
 }
 
 void testSphere(nearlighter::test::Context& context) {
+    Sampler sampler(0);
     Sphere sphere(Point3f(0.0f, 0.0f, -1.0f), 0.5f, noMaterial());
 
     HitRecord record;
     const bool hit = sphere.hit(
         Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), record);
+        Interval(0.001f, infinity), record, sampler);
     context.expectTrue(hit, "sphere should be hit from outside");
     if (hit) {
         context.expectNear(record.t, 0.5f, kTolerance,
@@ -41,7 +43,7 @@ void testSphere(nearlighter::test::Context& context) {
     HitRecord inside_record;
     const bool inside_hit = sphere.hit(
         Ray(Point3f(0.0f, 0.0f, -1.0f), Vec3f(1.0f, 0.0f, 0.0f)),
-        Interval(0.001f, infinity), inside_record);
+        Interval(0.001f, infinity), inside_record, sampler);
     context.expectTrue(inside_hit, "sphere should be hit from inside");
     if (inside_hit) {
         context.expectNear(inside_record.t, 0.5f, kTolerance,
@@ -56,11 +58,12 @@ void testSphere(nearlighter::test::Context& context) {
     context.expectFalse(
         sphere.hit(
             Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 1.0f, 0.0f)),
-            Interval(0.001f, infinity), miss_record),
+            Interval(0.001f, infinity), miss_record, sampler),
         "sphere miss ray should not hit");
 }
 
 void testQuad(nearlighter::test::Context& context) {
+    Sampler sampler(0);
     Quad quad(Point3f(-1.0f, -1.0f, -1.0f),
               Vec3f(2.0f, 0.0f, 0.0f),
               Vec3f(0.0f, 2.0f, 0.0f), noMaterial());
@@ -68,7 +71,7 @@ void testQuad(nearlighter::test::Context& context) {
     HitRecord record;
     const bool hit = quad.hit(
         Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), record);
+        Interval(0.001f, infinity), record, sampler);
     context.expectTrue(hit, "quad center ray should hit");
     if (hit) {
         context.expectNear(record.t, 1.0f, kTolerance,
@@ -85,7 +88,7 @@ void testQuad(nearlighter::test::Context& context) {
     context.expectFalse(
         quad.hit(
             Ray(Point3f(2.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-            Interval(0.001f, infinity), miss_record),
+            Interval(0.001f, infinity), miss_record, sampler),
         "ray outside quad boundary should miss");
 }
 
@@ -104,6 +107,7 @@ void testAabb(nearlighter::test::Context& context) {
 }
 
 void testTransforms(nearlighter::test::Context& context) {
+    Sampler sampler(0);
     // Transform wrappers intersect in object space, then restore the hit point
     // and normal to world space. Check both values to cover that round trip.
     auto sphere = std::make_shared<Sphere>(
@@ -113,7 +117,7 @@ void testTransforms(nearlighter::test::Context& context) {
     HitRecord translated_record;
     const bool translated_hit = translated.hit(
         Ray(Point3f(2.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), translated_record);
+        Interval(0.001f, infinity), translated_record, sampler);
     context.expectTrue(translated_hit, "translated sphere should be hit");
     if (translated_hit) {
         context.expectVecNear(translated_record.point,
@@ -131,7 +135,7 @@ void testTransforms(nearlighter::test::Context& context) {
     HitRecord rotated_record;
     const bool rotated_hit = rotated.hit(
         Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(-1.0f, 0.0f, 0.0f)),
-        Interval(0.001f, infinity), rotated_record);
+        Interval(0.001f, infinity), rotated_record, sampler);
     context.expectTrue(rotated_hit, "rotated sphere should be hit");
     if (rotated_hit) {
         context.expectNear(rotated_record.t, 1.5f, kTolerance,

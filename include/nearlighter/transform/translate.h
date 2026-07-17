@@ -9,13 +9,14 @@ public:
         bbox = shape->getBoundingBox() + offset;
     }
 
-    bool hit(const Ray& ray, Interval ray_t, HitRecord& record) const override {
+    bool hit(const Ray& ray, Interval ray_t, HitRecord& record,
+             Sampler& sampler) const override {
         /* Transform the ray from world space to object space */
         // Move the ray in the opposite direction of the translation
-        Ray translated_ray(ray.origin() - offset, ray.direction());
+        Ray translated_ray(ray.origin() - offset, ray.direction(), ray.time());
 
         // Hit object with translated ray
-        if (!shape->hit(translated_ray, ray_t, record))
+        if (!shape->hit(translated_ray, ray_t, record, sampler))
             return false;
         
         /* Transform the intersection from object space back to world spac */

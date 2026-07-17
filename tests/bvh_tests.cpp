@@ -6,6 +6,7 @@
 #include <nearlighter/geometry/shape_list.h>
 #include <nearlighter/geometry/sphere.h>
 #include <nearlighter/math/constants.h>
+#include <nearlighter/sampling/sampler.h>
 
 #include <array>
 #include <memory>
@@ -37,9 +38,12 @@ void compareHit(nearlighter::test::Context& context,
     HitRecord list_record;
     HitRecord bvh_record;
     const Interval ray_interval(0.001f, infinity);
+    Sampler list_sampler(0);
+    Sampler bvh_sampler(0);
 
-    const bool list_hit = world.hit(ray, ray_interval, list_record);
-    const bool bvh_hit = bvh.hit(ray, ray_interval, bvh_record);
+    const bool list_hit = world.hit(ray, ray_interval, list_record,
+                                    list_sampler);
+    const bool bvh_hit = bvh.hit(ray, ray_interval, bvh_record, bvh_sampler);
 
     context.expectTrue(list_hit == bvh_hit,
                        std::string(ray_name) + " hit state");

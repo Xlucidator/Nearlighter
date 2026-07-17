@@ -1,6 +1,6 @@
 #include <nearlighter/geometry/shape_list.h>
 
-#include <nearlighter/math/random.h>
+#include <nearlighter/sampling/sampler.h>
 
 ShapeList::ShapeList() {}
 
@@ -8,13 +8,14 @@ ShapeList::ShapeList(shared_ptr<Shape> object) {
     add(object);
 }
 
-bool ShapeList::hit(const Ray& r, Interval ray_t, HitRecord& closest_hitrec) const {
+bool ShapeList::hit(const Ray& r, Interval ray_t, HitRecord& closest_hitrec,
+                    Sampler& sampler) const {
     HitRecord tmp_rec;
     bool hit_anything = false;
     float closest_t = ray_t.max;
 
     for (const auto& object : objects) {
-        if (object->hit(r, Interval(ray_t.min, closest_t), tmp_rec)) {
+        if (object->hit(r, Interval(ray_t.min, closest_t), tmp_rec, sampler)) {
             hit_anything = true;
             closest_t = tmp_rec.t;
             closest_hitrec = tmp_rec;
@@ -42,10 +43,10 @@ float ShapeList::getPDFValue(const Point3f& origin, const Vec3f& direction) cons
     return sum;
 }
 
-Vec3f ShapeList::random(const Point3f& origin) const {
+Vec3f ShapeList::random(const Point3f& origin, Sampler& sampler) const {
     if (objects.empty()) return Vec3f(1, 0, 0);
-    int index = random_int(0, static_cast<int>(objects.size()) - 1);
-    return objects[index]->random(origin);
+    int index = sampler.nextInt(0, static_cast<int>(objects.size()) - 1);
+    return objects[index]->random(origin, sampler);
 }
 
 void ShapeList::clear() {

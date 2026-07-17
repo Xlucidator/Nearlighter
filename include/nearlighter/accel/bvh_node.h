@@ -18,7 +18,8 @@ public:
     BVHNode(std::vector<shared_ptr<Shape>>& objects, size_t start, size_t end);
     BVHNode(std::vector<shared_ptr<Shape>>::iterator start, std::vector<shared_ptr<Shape>>::iterator end);
 
-    bool hit(const Ray& ray, Interval ray_t, HitRecord& record) const override;
+    bool hit(const Ray& ray, Interval ray_t, HitRecord& record,
+             Sampler& sampler) const override;
     const AABB& getBoundingBox() const override { return bbox; }
 
     bool isLeaf() const { return shapes != nullptr; }

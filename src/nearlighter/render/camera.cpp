@@ -1,158 +1,102 @@
 #include <nearlighter/render/camera.h>
 
 #include <nearlighter/math/math.h>
-#include <nearlighter/sampling/pdf.h>
-#include <nearlighter/material/material.h>
+#include <nearlighter/sampling/sampler.h>
 
-/////// Public Method
+#include <cmath>
+#include <stdexcept>
 
-void Camera::render(const Shape& world, const Shape& lights, std::ostream& out) {
-    initialize();
-
-    out << "P3\n" << image_width << ' ' << image_height << "\n255\n";
-
-    for (int j = 0; j < image_height; j++) {
-        std::clog << "\rScanling remaining: " << (image_height - j) << ' ' << std::flush;
-        for (int i = 0; i < image_width; i++) {
-            /* Generate Rays and Get Color */
-            Color pixel_color(0.0f, 0.0f, 0.0f);
-            // Stratified Sampling
-            for (int sample_i = 0; sample_i < sqrt_spp; sample_i++) {
-                for (int sample_j = 0; sample_j < sqrt_spp; sample_j++) {
-                    pixel_color += getRayColor(getRay(i, j, sample_i, sample_j), max_depth, world, lights);
-                }
-            }
-            pixel_color *= pixel_samples_scale;
-
-            /* Draw */
-            writeColor(out, pixel_color);
-        }
+Camera::Prepared Camera::prepare(int image_width, int image_height) const {
+    if (image_width <= 0 || image_height <= 0) {
+        throw std::invalid_argument("Camera output dimensions must be positive");
     }
-    std::clog << "\rDone.                 \n";
-}
-
-
-/////// Private Method
-
-void Camera::initialize() {
-    /* Image */
-    image_height = int(image_width / aspect_ratio);
-    image_height = (image_height < 1) ? 1 : image_height;
-
-    /* Sampling */
-    sqrt_spp = int(std::sqrt(samples_per_pixel));
-    pixel_samples_scale = 1.0f / (sqrt_spp * sqrt_spp);
-    reverse_sqrt_spp = 1.0 / sqrt_spp;
-
-    /* Viewport */
-    // Calculate Viewport Size
-    //         ·
-    //    y   /| 
-    //    ^  / | h = tan(fov_angle/2)
-    //    | /  |         
-    //    0----1--------(|)----> -z
-    //              focal_length = focus_distance, place viewport here
-    center = position;
-    float h = std::tan(degrees_to_radians(fov_vertical) / 2);
-    float viewport_height = 2 * h * focus_distance;
-    float viewport_width = viewport_height * (float(image_width) / image_height);
-
-    // Calculate Camera Pose (Should avoid illegal case)
-    front = unit_vector(look_at - position);
-    right = unit_vector(cross(front, world_up));
-    up = cross(right, front);
-    
-    // Calculate Viewport in 3D space
-    Vec3f viewport_u = viewport_width * right;  // vector for u-axis: point rightward
-    Vec3f viewport_v = viewport_height * -up ;  // vector for v-axis: point downward
-    pixel_interval_u = viewport_u / image_width;   // vector indicates pixel interval of u direction
-    pixel_interval_v = viewport_v / image_height;  // vector indicates pixel interval of v direction
-
-    Point3f viewport_upper_left = center + focus_distance * front
-                                - viewport_u / 2 - viewport_v / 2;  // notice that v has reversed
-    pixel_start = viewport_upper_left + 0.5f * (pixel_interval_u + pixel_interval_v); // pixels should locate in the grid center 
-
-    // Calculate camera Defocus Disk Basis Vectors
-    float defocus_radius = focus_distance * std::tan(degrees_to_radians(defocus_angle / 2));
-    defocus_disk_u = defocus_radius * right;
-    defocus_disk_v = defocus_radius * up;
-}
-
-/* Get ray for sample pixel around the origin pixel point 
- *  - sample point: located around (pixel_x, pixel_y)
- *  - straitified sampling: the target pixel was divided into grid of sqrt_spp * sqrt_spp
- *    => offset in the pixel: (sample_x, sample_y)
- */
-Ray Camera::getRay(int pixel_x, int pixel_y, int sample_x, int sample_y) const {
-    Vec3f offset = genSampleSquareStratified(sample_x, sample_y); // genSampleSquare();
-    Vec3f pixel_sample = pixel_start 
-                    + (pixel_x + offset.x()) * pixel_interval_u
-                    + (pixel_y + offset.y()) * pixel_interval_v;
-
-    Vec3f ray_origin = (defocus_angle <= 0) ? center : genSampleDeforceDisk();
-    float ray_time = random_float();
-
-    return Ray(ray_origin, pixel_sample - ray_origin, ray_time); // TODO: is unit_vector(pixel_sample - ray_origin) needed (or better needed) ?
-}
-
-Vec3f Camera::genSampleSquare() const {
-    return Vec3f(random_float() - 0.5f, random_float() - 0.5f, 0);
-}
-
-// Stratified: (sx, sy) in 'sqrt_spp * sqrt_spp' grid of [0, 1]
-Vec3f Camera::genSampleSquareStratified(int sx, int sy) const {
-    float px = (sx + random_float()) * reverse_sqrt_spp;
-    float py = (sy + random_float()) * reverse_sqrt_spp;
-    return Vec3f(px - 0.5f, py - 0.5f, 0);
-}
-
-Vec3f Camera::genSampleDeforceDisk() const {
-    Vec3f p = random_unit_in_disk();
-    return center + p.x() * defocus_disk_u + p.y() * defocus_disk_v;
-}
-
-Color Camera::getRayColor(const Ray& ray, int depth, const Shape& world, const Shape& lights) const {
-    if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
-
-    HitRecord record;
-
-    /* Background */
-    if (!world.hit(ray, Interval(0.001f, infinity), record)) return background;
-
-    /* Objects */
-    ScatterRecord s_record;
-    Color color_from_emitted = record.material->emitted(ray, record, record.u, record.v, record.point);
-    
-    // check and get scattered ray
-    if (!record.material->scatter(ray, record, s_record)) 
-        return color_from_emitted;
-
-    // check if should skip pdf sampling
-    if (s_record.should_skip) 
-        return s_record.attenuation * getRayColor(s_record.skip_ray, depth-1, world, lights);
-    
-    /*
-     * Sampling strategy:
-     *  - If the scene provides explicit PDF targets, mix light sampling with
-     *    the material scattering PDF.
-     *  - Otherwise, fall back to the material PDF only. This is required for
-     *    legacy scenes that do not fill the lights list.
-     */
-    shared_ptr<PDF> sample_pdf = s_record.pdf;
-    if (sample_pdf == nullptr) return color_from_emitted;
-
-    if (lights.hasPDF()) {
-        auto light_pdf = make_shared<ShapePDF>(lights, record.point);
-        sample_pdf = make_shared<MixturePDF>(light_pdf, s_record.pdf);
+    if (vertical_fov <= 0.0f || vertical_fov >= 180.0f) {
+        throw std::invalid_argument("Camera vertical field of view must be in (0, 180)");
+    }
+    if (focus_distance <= 0.0f) {
+        throw std::invalid_argument("Camera focus distance must be positive");
+    }
+    if (defocus_angle < 0.0f || defocus_angle >= 180.0f) {
+        throw std::invalid_argument("Camera defocus angle must be in [0, 180)");
     }
 
-    Ray scattered = Ray(record.point, sample_pdf->generate(), ray.time()); // this scattered ray has no relationship with 'material->scatter'
-    float pdf_value = sample_pdf->value(scattered.direction());
-    if (pdf_value <= 0.0f) return color_from_emitted;
-    float scattering_pdf = record.material->getScatterPDF(ray, record, scattered); // brdf - scatter pdf
+    /* Establish an orthonormal camera basis in world space. */
+    const Vec3f view_direction = look_at - position;
+    if (view_direction.near_zero()) {
+        throw std::invalid_argument("Camera position and look-at point must differ");
+    }
+    const Vec3f front = unit_vector(view_direction);
+    const Vec3f right_unnormalized = cross(front, world_up);
+    if (right_unnormalized.near_zero()) {
+        throw std::invalid_argument("Camera world-up vector must not be parallel to its view direction");
+    }
+    const Vec3f right = unit_vector(right_unnormalized);
+    const Vec3f up = cross(right, front);
 
-    Color sample_color = getRayColor(scattered, depth-1, world, lights);
-    Color color_from_scatter = s_record.attenuation * scattering_pdf * sample_color / pdf_value;
-    
-    return color_from_emitted + color_from_scatter;
+    /* Project the requested image aspect ratio onto the focus plane. */
+    const float half_height =
+        std::tan(degrees_to_radians(vertical_fov) * 0.5f) * focus_distance;
+    const float viewport_height = 2.0f * half_height;
+    const float aspect_ratio = static_cast<float>(image_width) /
+                               static_cast<float>(image_height);
+    const float viewport_width = viewport_height * aspect_ratio;
+    const Vec3f viewport_u = viewport_width * right;
+    const Vec3f viewport_v = viewport_height * -up;
+    const Vec3f pixel_interval_u = viewport_u / static_cast<float>(image_width);
+    const Vec3f pixel_interval_v = viewport_v / static_cast<float>(image_height);
+    const Point3f viewport_upper_left =
+        position + focus_distance * front - viewport_u * 0.5f -
+        viewport_v * 0.5f;
+    const Point3f pixel_start =
+        viewport_upper_left + 0.5f * (pixel_interval_u + pixel_interval_v);
+
+    const float defocus_radius =
+        focus_distance * std::tan(degrees_to_radians(defocus_angle) * 0.5f);
+    return Prepared(image_width, image_height, position, pixel_start,
+                    pixel_interval_u, pixel_interval_v,
+                    defocus_radius * right, defocus_radius * up,
+                    defocus_angle > 0.0f);
+}
+
+Camera::Prepared::Prepared(int image_width, int image_height,
+                           const Point3f& center,
+                           const Point3f& pixel_start,
+                           const Vec3f& pixel_interval_u,
+                           const Vec3f& pixel_interval_v,
+                           const Vec3f& defocus_disk_u,
+                           const Vec3f& defocus_disk_v,
+                           bool use_defocus)
+    : image_width_(image_width),
+      image_height_(image_height),
+      center_(center),
+      pixel_start_(pixel_start),
+      pixel_interval_u_(pixel_interval_u),
+      pixel_interval_v_(pixel_interval_v),
+      defocus_disk_u_(defocus_disk_u),
+      defocus_disk_v_(defocus_disk_v),
+      use_defocus_(use_defocus) {}
+
+Ray Camera::Prepared::generateRay(int pixel_x, int pixel_y,
+                                  Sampler& sampler) const {
+    if (pixel_x < 0 || pixel_x >= image_width_ ||
+        pixel_y < 0 || pixel_y >= image_height_) {
+        throw std::out_of_range("Primary-ray pixel is outside the prepared camera");
+    }
+
+    // Center the uniform subpixel offset around the addressed pixel center.
+    const float offset_x = sampler.next1D() - 0.5f;
+    const float offset_y = sampler.next1D() - 0.5f;
+    const Point3f pixel_sample =
+        pixel_start_ + (static_cast<float>(pixel_x) + offset_x) *
+                           pixel_interval_u_ +
+        (static_cast<float>(pixel_y) + offset_y) * pixel_interval_v_;
+
+    Point3f ray_origin = center_;
+    if (use_defocus_) {
+        const Vec3f disk_sample = sampler.nextInUnitDisk();
+        ray_origin += disk_sample.x() * defocus_disk_u_ +
+                      disk_sample.y() * defocus_disk_v_;
+    }
+
+    return Ray(ray_origin, pixel_sample - ray_origin, sampler.next1D());
 }

@@ -1,24 +1,53 @@
+#ifndef NEARLIGHTER_SCENE_SCENE_H
+#define NEARLIGHTER_SCENE_SCENE_H
 
-#ifndef SCENE_H
-#define SCENE_H
-
-#include <nearlighter/nearlighter.h>
-
+#include <nearlighter/base/color.h>
 #include <nearlighter/geometry/shape_list.h>
 #include <nearlighter/render/camera.h>
-#include <nearlighter/accel/bvh_node.h>
+#include <nearlighter/render/render_settings.h>
 
-void set_scenery_boucingSpheres(ShapeList& world, Camera& camera, bool is_random = true);
-void set_scenery_checkerSpheres(ShapeList& world, Camera& camera);
-void set_scenery_earth(ShapeList& world, Camera& camera);
-void set_scenery_perlinSphere(ShapeList& world, Camera& camera);
-void set_scenery_quads(ShapeList& world, Camera& camera);
-void set_scenery_simpleLight(ShapeList& world, Camera& camera);
-void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights);
-void set_scenery_CornellBox(ShapeList& world, Camera& camera, ShapeList& lights, int width, int spp, int max_depth);
-void set_scenery_CornellSmoke(ShapeList& world, Camera& camera);
-void set_scenery_finalScene(ShapeList& world, Camera& camera, int width, int spp, int max_depth);
+#include <string>
 
-void set_scenery_CornellBall(ShapeList& world, Camera& camera, ShapeList& lights, int width, int spp, int max_depth);
+/**
+ * Owns the complete immutable runtime state required to render one scene.
+ *
+ * Shapes and materials use shared ownership internally, so moving a Scene is
+ * inexpensive even when it contains many objects.
+ */
+class Scene {
+public:
+    /** Constructs a complete runtime scene from already-created core objects. */
+    Scene(std::string name, Camera camera,
+          RenderSettings default_render_settings, Color background,
+          ShapeList world, ShapeList sampling_targets = {});
 
-#endif
+    /** Returns the human-readable scene name. */
+    const std::string& name() const { return name_; }
+
+    /** Returns the scene camera parameters. */
+    const Camera& camera() const { return camera_; }
+
+    /** Returns the scene's reproducible default render settings. */
+    const RenderSettings& defaultRenderSettings() const {
+        return default_render_settings_;
+    }
+
+    /** Returns the linear environment color used when rays miss the world. */
+    const Color& background() const { return background_; }
+
+    /** Returns all shapes participating in ray intersection. */
+    const ShapeList& world() const { return world_; }
+
+    /** Returns shapes explicitly used to guide importance sampling. */
+    const ShapeList& samplingTargets() const { return sampling_targets_; }
+
+private:
+    std::string name_;
+    Camera camera_;
+    RenderSettings default_render_settings_;
+    Color background_;
+    ShapeList world_;
+    ShapeList sampling_targets_;
+};
+
+#endif  // NEARLIGHTER_SCENE_SCENE_H

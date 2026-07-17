@@ -1,51 +1,63 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#ifndef NEARLIGHTER_RENDER_CAMERA_H
+#define NEARLIGHTER_RENDER_CAMERA_H
 
-#include <nearlighter/nearlighter.h>
-#include <nearlighter/geometry/shape.h>
+#include <nearlighter/base/ray.h>
 
+class Sampler;
+
+/**
+ * Stores the physical and projective parameters of a perspective camera.
+ *
+ * Resolution and sampling quality are render settings rather than camera
+ * properties. Call prepare() once for a render to derive resolution-dependent
+ * ray-generation state.
+ */
 class Camera {
 public:
-    float	aspect_ratio = 1.0f;// Ratio of image width over height
-    int 	image_width = 100;	// Rendered image width
-    int     samples_per_pixel = 10; // Render samples for each pixel
-    int     max_depth = 10;     // Max bounce times for a ray
-    Color   background = Color(0.70f, 0.80f, 1.00f);
+    // Perspective projection and world-space pose.
+    float vertical_fov = 90.0f;
+    Point3f position = Point3f(0.0f, 0.0f, 0.0f);
+    Point3f look_at = Point3f(0.0f, 0.0f, -1.0f);
+    Vec3f world_up = Vec3f(0.0f, 1.0f, 0.0f);
 
-    float   fov_vertical = 90.0f;   // Vertical view angle
-    Point3f position = Point3f(0.0f, 0.0f,  0.0f);
-    Point3f look_at  = Point3f(0.0f, 0.0f, -1.0f);
-    Vec3f   world_up = Vec3f(0.0f, 1.0f, 0.0f);
+    // Thin-lens parameters; zero defocus disables depth of field.
+    float defocus_angle = 0.0f;
+    float focus_distance = 10.0f;
 
-    float   defocus_angle = 0.0f;   // Variation angle of ray through each pixel
-    float   focus_distance = 10.0f; // Camera focus distance: camera position <--> plane of perfect focus
+    class Prepared;
 
-    void render(const Shape& world, const Shape& lights, std::ostream& out = std::cout);
-
-private:
-    int     image_height;		// Rendered image height
-    float   pixel_samples_scale;// Color scale factor
-    int     sqrt_spp;           // Square root of samples_per_pixel
-    float   reverse_sqrt_spp;   // 1 / sqrt(samples_per_pixel)
-    Point3f center;				// Camera center location in world coordinate
-    Point3f pixel_start;		// Location of pixel[0][0] in world coordinate
-    Vec3f   pixel_interval_u;	// Intervals between pixel in u direction in world coordinate
-    Vec3f   pixel_interval_v;	// Intervals between pixel in v direction in world coordinate
-
-    Vec3f   front, right, up;   // Eular angle form : TODO quaternion
-                // = u    = -v 
-
-    Vec3f   defocus_disk_u;     // Defocus disk horizontal radius
-    Vec3f   defocus_disk_v;
-
-    void initialize();
-
-    Ray getRay(int pixel_x, int pixel_y, int sample_x, int sample_y) const;
-    Vec3f genSampleSquare() const;
-    Vec3f genSampleSquareStratified(int sx, int sy) const;
-    Vec3f genSampleDeforceDisk() const;
-
-    Color getRayColor(const Ray& r, int depth, const Shape& world, const Shape& lights) const;
+    /**
+     * Precomputes the camera frame and pixel geometry for one output size.
+     *
+     * @throws std::invalid_argument if the resolution or camera configuration
+     * is degenerate.
+     */
+    Prepared prepare(int image_width, int image_height) const;
 };
 
-#endif // CAMERA_H
+/** Holds immutable, resolution-dependent primary-ray generation state. */
+class Camera::Prepared {
+public:
+    /** Generates one jittered primary ray for the requested pixel. */
+    Ray generateRay(int pixel_x, int pixel_y, Sampler& sampler) const;
+
+private:
+    friend class Camera;
+
+    Prepared(int image_width, int image_height, const Point3f& center,
+             const Point3f& pixel_start, const Vec3f& pixel_interval_u,
+             const Vec3f& pixel_interval_v, const Vec3f& defocus_disk_u,
+             const Vec3f& defocus_disk_v, bool use_defocus);
+
+    int image_width_;
+    int image_height_;
+    Point3f center_;
+    Point3f pixel_start_;
+    Vec3f pixel_interval_u_;
+    Vec3f pixel_interval_v_;
+    Vec3f defocus_disk_u_;
+    Vec3f defocus_disk_v_;
+    bool use_defocus_;
+};
+
+#endif  // NEARLIGHTER_RENDER_CAMERA_H

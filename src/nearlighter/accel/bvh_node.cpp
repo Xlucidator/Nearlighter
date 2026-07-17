@@ -87,23 +87,26 @@ BVHNode::BVHNode(std::vector<shared_ptr<Shape>>::iterator start, std::vector<sha
 }
 
 #ifndef OFFICIAL
-bool BVHNode::hit(const Ray& ray, Interval ray_t, HitRecord& record) const {
+bool BVHNode::hit(const Ray& ray, Interval ray_t, HitRecord& record,
+                  Sampler& sampler) const {
     if (!bbox.hit(ray, ray_t)) return false;
-    if (isLeaf()) return shapes->hit(ray, ray_t, record);
+    if (isLeaf()) return shapes->hit(ray, ray_t, record, sampler);
     
-    bool hit_lchild = lchild->hit(ray, ray_t, record);
+    bool hit_lchild = lchild->hit(ray, ray_t, record, sampler);
     if (hit_lchild) ray_t.max = record.t;
-    bool hit_rchild = rchild->hit(ray, ray_t, record);
+    bool hit_rchild = rchild->hit(ray, ray_t, record, sampler);
     
     return hit_lchild || hit_rchild;
 }
 #else
-bool BVHNode::hit(const Ray& r, Interval ray_t, HitRecord& rec) const {
+bool BVHNode::hit(const Ray& r, Interval ray_t, HitRecord& rec,
+                  Sampler& sampler) const {
     if (!bbox.hit(r, ray_t))
         return false;
 
-    bool hit_left = left->hit(r, ray_t, rec);
-    bool hit_right = right->hit(r, Interval(ray_t.min, hit_left ? rec.t : ray_t.max), rec);
+    bool hit_left = left->hit(r, ray_t, rec, sampler);
+    bool hit_right = right->hit(
+        r, Interval(ray_t.min, hit_left ? rec.t : ray_t.max), rec, sampler);
 
     return hit_left || hit_right;
 }

@@ -1,14 +1,16 @@
 #include <nearlighter/texture/perlin.h>
 
 #include <nearlighter/math/math.h>
+#include <nearlighter/sampling/sampler.h>
 
-PerlinGenerator::PerlinGenerator() {
+PerlinGenerator::PerlinGenerator(std::uint64_t seed) {
+    Sampler sampler(seed);
     for (int i = 0; i < point_cnt; i++) 
-        randvec[i] = Vec3f::random_unit_vector();  // unit_vector(Vec3f::random(-1, 1))
+        randvec[i] = sampler.nextUnitVector();
 
-    generate_permutations(perm_x);
-    generate_permutations(perm_y);
-    generate_permutations(perm_z);
+    generatePermutations(perm_x, sampler);
+    generatePermutations(perm_y, sampler);
+    generatePermutations(perm_z, sampler);
 }
 
 /* Perlin Noise
@@ -52,15 +54,15 @@ float PerlinGenerator::turbulence(const Point3f& p, int depth) const {
 
 /* Private */
 
-void PerlinGenerator::generate_permutations(int* p) {
+void PerlinGenerator::generatePermutations(int* p, Sampler& sampler) {
     for (int i = 0; i < point_cnt; ++i) p[i] = i;
-    permute(p, point_cnt);
+    permute(p, point_cnt, sampler);
 }
 
-void PerlinGenerator::permute(int* p, int n) {
+void PerlinGenerator::permute(int* p, int n, Sampler& sampler) {
     int target;
     for (int i = n-1; i > 0; --i) {
-        target = random_int(0, i);
+        target = sampler.nextInt(0, i);
         std::swap(p[i], p[target]);
     }
 }

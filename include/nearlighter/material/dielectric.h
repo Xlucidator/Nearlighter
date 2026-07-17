@@ -7,7 +7,8 @@ class Dielectric : public Material {
 public:
     Dielectric(float refractive_index);
 
-    bool scatter(const Ray& ray_in, const HitRecord& record, ScatterRecord& s_record) const override;
+    bool scatter(const Ray& ray_in, const HitRecord& record,
+                 ScatterRecord& s_record, Sampler& sampler) const override;
 
 private:
     float refractive_index; // refractive index in vacuum, or index over the other enclosing media

@@ -14,12 +14,13 @@ public:
     ShapeList();
     ShapeList(shared_ptr<Shape> object);
 
-    bool hit(const Ray& r, Interval ray_t, HitRecord& closest_hitrec) const override;
+    bool hit(const Ray& r, Interval ray_t, HitRecord& closest_hitrec,
+             Sampler& sampler) const override;
     const AABB& getBoundingBox() const override { return bbox; }
 
     bool hasPDF() const override;
     float getPDFValue(const Point3f& origin, const Vec3f& direction) const override;
-    Vec3f random(const Point3f& origin) const override;
+    Vec3f random(const Point3f& origin, Sampler& sampler) const override;
 
     void clear();
     void add(shared_ptr<Shape> object);

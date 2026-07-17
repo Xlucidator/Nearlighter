@@ -1,7 +1,9 @@
 #include <nearlighter/medium/constant_medium.h>
 
 #include <nearlighter/material/isotropic.h>
+#include <nearlighter/sampling/sampler.h>
 
+#include <algorithm>
 
 // ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Material> phase_function)
 //     : boundary(boundary), density(density), phase_function(phase_function) {
@@ -32,19 +34,21 @@ ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, const 
  *    TODO: implement for non-convex boundary
  * 2. Whether the ray will be scattered when traveling through the boundary
  *      => Pr(Scatter) = density * distance_to_scattered
- *       - let Pr(Scatterd) = - log(random_float())
+ *       - let Pr(Scattered) = -log(sampler.next1D())
  *      => distance_to_scattered = Pr(Scattered) / density
- *                               = log(random_float()) * (-1 / density)
+ *                               = log(sample) * (-1 / density)
  * 3. Set hit record
  */
-bool ConstantMedium::hit(const Ray& r, Interval ray_t, HitRecord& record) const {
+bool ConstantMedium::hit(const Ray& r, Interval ray_t, HitRecord& record,
+                         Sampler& sampler) const {
     // std::cout << "[Hit Constant Medium] origin = " << r.origin() << " -> direction = " << r.direction() << "\n";
     HitRecord record_enter, record_leave;
 
     /* Check Boundary First: whether in the boundary */
-    if (!boundary->hit(r, Interval::universe, record_enter)) return false;  // check whether the ray enter the boundary
+    if (!boundary->hit(r, Interval::universe, record_enter, sampler)) return false;  // check whether the ray enter the boundary
     // std::cout << "[Hit CM] pass bcheck 1: enter_t = " << record_enter.t << std::endl;
-    if (!boundary->hit(r, Interval(record_enter.t + 0.0001f, infinity), record_leave)) return false;  // check whether the ray leave the boundary
+    if (!boundary->hit(r, Interval(record_enter.t + 0.0001f, infinity),
+                       record_leave, sampler)) return false;  // check whether the ray leave the boundary
     // std::cout << "\t pass bcheck 2: leave_t = " << record_leave.t << std::endl;
     if (record_leave.t < 0) return false; // the ray has already leave the boundary
     record_enter.t = std::fmax(record_enter.t, ray_t.min); 
@@ -57,7 +61,8 @@ bool ConstantMedium::hit(const Ray& r, Interval ray_t, HitRecord& record) const 
 
     /* Check Volume Scattered */
     float ray_length = r.direction().length(); //  speed of t: | \vec{d} |
-    float distance_to_scattered = std::log(random_float()) * neg_inv_density;   // ray spread distance before scattered (hit) when travel inside the boundary
+    const float random_value = std::max(sampler.next1D(), 1e-7f);
+    float distance_to_scattered = std::log(random_value) * neg_inv_density;   // ray spread distance before scattered (hit) when travel inside the boundary
     float distance_to_travel = (record_leave.t - record_enter.t) * ray_length;  // the distance that ray need to travel inside the boundary
     if (distance_to_scattered > distance_to_travel) return false; // ray will not be scatterd in this travel interval
 
@@ -69,8 +74,11 @@ bool ConstantMedium::hit(const Ray& r, Interval ray_t, HitRecord& record) const 
     /* Than It Really Hits & Scattered */
     record.t = record_enter.t + distance_to_scattered / ray_length;  // std::cout << "[Hit CM] " << record.t << std::endl;
     record.point = r.at(record.t);
-    record.normal = Vec3f::random_unit_vector(); // test
+    // Isotropic phase functions do not use a surface orientation or UVs.
+    record.normal = Vec3f(1.0f, 0.0f, 0.0f);
     record.front_face = true;
+    record.u = 0.0f;
+    record.v = 0.0f;
     record.material = phase_function;
 
     return true;

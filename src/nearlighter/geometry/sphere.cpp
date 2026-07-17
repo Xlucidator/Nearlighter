@@ -1,6 +1,7 @@
 #include <nearlighter/geometry/sphere.h>
 
 #include <nearlighter/math/math.h>
+#include <nearlighter/sampling/sampler.h>
 
 Sphere::Sphere()
     : radius(1.0f) {}
@@ -29,7 +30,13 @@ Sphere::Sphere(const Point3f& center_start, const Point3f& center_end, const flo
  *  => Solving the Quadratic equation: a = \vec{d}^2, b = 2\vec{d}(o-c), c = (o-c)^2-r^2
  *  => Solution t should in the ray bound
  */
-bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
+bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record,
+                 Sampler&) const {
+    return hitDeterministic(r, ray_t, hit_record);
+}
+
+bool Sphere::hitDeterministic(const Ray& r, Interval ray_t,
+                              HitRecord& hit_record) const {
     Point3f current_center = moving_center.at(r.time());
     Vec3f oc = current_center - r.origin();
     
@@ -62,7 +69,8 @@ bool Sphere::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
  */
 float Sphere::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
     HitRecord record;
-    if (!this->hit(Ray(origin, direction), Interval(epsilon, infinity), record)) return 0;
+    if (!hitDeterministic(Ray(origin, direction),
+                          Interval(epsilon, infinity), record)) return 0;
 
     float distance_squared = (origin - moving_center.at(0)).length_squared();
     float cos_theta_max = std::sqrt(1 - radius * radius / distance_squared);
@@ -78,11 +86,11 @@ float Sphere::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
  *        transform to world coordinates using ONB.
  *  => sample uniformly in the cone formed by the sphere viewed from the origin.
  */
-Vec3f Sphere::random(const Point3f& origin) const {
+Vec3f Sphere::random(const Point3f& origin, Sampler& sampler) const {
     Vec3f direction = moving_center.at(0) - origin;  // moving_center.at(0) = center
     float distance_squared = direction.length_squared();
     ONB uvw(direction);
-    return uvw.transform(random_to_sphere(radius, distance_squared));
+    return uvw.transform(randomToSphere(radius, distance_squared, sampler));
 }
 
 
@@ -128,8 +136,10 @@ void Sphere::calculateUV(const Point3f& point, float& u, float& v) {
  *  - cos theta = 1 + r2 (cos theta_max - 1)
  *  - phi = 2 pi r1
  */
-Vec3f Sphere::random_to_sphere(float radius, float distance_squared) {
-    float r1 = random_float(), r2 = random_float();
+Vec3f Sphere::randomToSphere(float radius, float distance_squared,
+                             Sampler& sampler) {
+    const float r1 = sampler.next1D();
+    const float r2 = sampler.next1D();
     float z = 1 + r2 * (std::sqrt(1 - radius * radius / distance_squared) - 1);
 
     float phi = 2 * pi * r1;

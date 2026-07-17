@@ -103,12 +103,13 @@ target_include_directories(stb INTERFACE
 
 set(CORE_SOURCES
     src/nearlighter/accel/bvh_node.cpp
-    src/nearlighter/base/color.cpp
+    src/nearlighter/base/image.cpp
     src/nearlighter/base/interval.cpp
-    src/nearlighter/io/image_loader.cpp
 
     # ----- Rendering -----
     src/nearlighter/render/camera.cpp
+    src/nearlighter/render/renderer.cpp
+    src/nearlighter/sampling/sampler.cpp
     src/nearlighter/scene/scene.cpp
 
     # ----- Geometry -----
@@ -143,7 +144,6 @@ target_include_directories(nearlighter_core
 )
 target_link_libraries(nearlighter_core
     PUBLIC glm::glm
-    PRIVATE stb
 )
 
 target_apply_build_options(nearlighter_core)
@@ -151,17 +151,37 @@ message(STATUS "Target [nearlighter_core] configured.")
 
 
 # =============================================================
-# 4. Nearlighter Application Build
+# 4. Nearlighter I/O
+# =============================================================
+
+add_library(nearlighter_io STATIC
+    src/nearlighter/io/image_io.cpp
+)
+target_include_directories(nearlighter_io
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+target_link_libraries(nearlighter_io
+    PUBLIC nearlighter_core
+    PRIVATE stb
+)
+target_apply_build_options(nearlighter_io)
+message(STATUS "Target [nearlighter_io] configured.")
+
+
+# =============================================================
+# 5. Application Build
 # =============================================================
 
 # --- CLI Version ---
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
     add_executable(Nearlighter
         src/main.cpp
+        src/legacy_scenes.cpp
     )
 
     target_link_libraries(Nearlighter PRIVATE
         nearlighter_core
+        nearlighter_io
     )
 
     target_apply_build_options(Nearlighter)
@@ -172,7 +192,7 @@ endif()
 # TODO
 
 # =============================================================
-# 5. Tests
+# 6. Unit Tests
 # =============================================================
 
 include(CTest)
@@ -204,12 +224,38 @@ if(BUILD_TESTING)
         COMMAND nearlighter_bvh_tests
     )
 
+    # --- Deterministic Sampler Tests ---
+    add_executable(nearlighter_sampler_tests
+        tests/sampler_tests.cpp
+    )
+    target_link_libraries(nearlighter_sampler_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(nearlighter_sampler_tests)
+    add_test(
+        NAME nearlighter.sampler
+        COMMAND nearlighter_sampler_tests
+    )
+
+    # --- In-memory Renderer Smoke Tests ---
+    add_executable(nearlighter_renderer_smoke_tests
+        tests/renderer_smoke_tests.cpp
+    )
+    target_link_libraries(nearlighter_renderer_smoke_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(nearlighter_renderer_smoke_tests)
+    add_test(
+        NAME nearlighter.renderer_smoke
+        COMMAND nearlighter_renderer_smoke_tests
+    )
+
     message(STATUS "Nearlighter tests configured.")
 endif()
 
 
 # =============================================================
-# 6. Runtime Assets
+# 7. Runtime Assets
 # =============================================================
 
 smart_copy_dir("assets")

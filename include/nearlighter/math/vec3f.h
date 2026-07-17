@@ -3,10 +3,8 @@
 
 #include <cmath>
 #include <iostream>
-#include <random>
 #include <assert.h>
 
-#include <nearlighter/math/random.h>
 #include <nearlighter/math/constants.h>
 
 class Vec3f {
@@ -55,20 +53,6 @@ public:
         return (std::fabs(e[0]) < small) && (std::fabs(e[1]) < small) && (std::fabs(e[2]) < small);
     }
 
-    static Vec3f random() {
-        return Vec3f(random_float(), random_float(), random_float());
-    }
-
-    static Vec3f random(float min, float max) {
-        return Vec3f(random_float(min,max), random_float(min,max), random_float(min,max));
-    }
-
-    static Vec3f random_unit_vector() {
-        static std::mt19937 gen(std::random_device{}());
-        static std::normal_distribution<float> dis(0.0f, 1.0f);
-        Vec3f v(dis(gen), dis(gen), dis(gen));
-        return v /= v.length();
-    }
 };
 
 typedef Vec3f Point3f;
@@ -117,31 +101,6 @@ inline Vec3f cross(const Vec3f& u, const Vec3f& v) {
 
 inline Vec3f unit_vector(const Vec3f& v) {
     return v / v.length();
-}
-
-inline Vec3f random_unit_on_hemisphere(const Vec3f& normal) {
-    Vec3f unit_vec = Vec3f::random_unit_vector();
-    return (dot(unit_vec, normal) > 0.0f) ? unit_vec : -unit_vec;
-}
-
-inline Vec3f random_unit_in_disk() {
-    while (true) {
-        Vec3f p(random_float(-1.0f, 1.0f), random_float(-1.0f, 1.0f), 0.0f);
-        if (p.length_squared() < 1) return p;
-    }
-}
-
-inline Vec3f random_cosine_unit_on_hemisphere() {
-    // Inversion method : z axis to be the normal
-    float r1 = random_float(), r2 = random_float();
-    
-    float phi = 2 * pi * r1;
-    float sin_theta = std::sqrt(r2), cos_theta = std::sqrt(1-r2);
-
-    float x = sin_theta * std::cos(phi);
-    float y = sin_theta * std::sin(phi);
-    float z = cos_theta;
-    return Vec3f(x, y, z);
 }
 
 inline Vec3f reflect(const Vec3f& vin, const Vec3f& normal) {

@@ -5,6 +5,7 @@
 #include <nearlighter/geometry/aabb.h>
 
 class Material;
+class Sampler;
 
 struct HitRecord {
     Point3f point;
@@ -25,15 +26,30 @@ struct HitRecord {
 class Shape {
 public:
     virtual ~Shape() = default;
-    virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const = 0;
+
+    /** Intersects the shape and records the closest accepted interaction. */
+    virtual bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record,
+                     Sampler& sampler) const = 0;
+
+    /** Returns the shape's world-space axis-aligned bounding box. */
     virtual const AABB& getBoundingBox() const = 0;
 
     virtual bool hasPDF() const { return false; }
-    virtual float getPDFValue(const Point3f& origin, const Vec3f& direction) const { return 0.0f; }
-    virtual Vec3f random(const Point3f& origin) const { return Vec3f(1, 0, 0); }
+    virtual float getPDFValue(
+        [[maybe_unused]] const Point3f& origin,
+        [[maybe_unused]] const Vec3f& direction
+    ) const {
+        return 0.0f;
+    }
+    virtual Vec3f random(
+        [[maybe_unused]] const Point3f& origin,
+        [[maybe_unused]] Sampler& sampler
+    ) const {
+        return Vec3f(1, 0, 0);
+    }
 
     /* Debug */
-    virtual void printNode(int level) const {}
+    virtual void printNode([[maybe_unused]] int level) const {}
 };
 
 #endif

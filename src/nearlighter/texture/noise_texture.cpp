@@ -4,8 +4,8 @@
 
 NoiseTexture::NoiseTexture() {}
 
-NoiseTexture::NoiseTexture(float scale)
-    : scale(scale) {}
+NoiseTexture::NoiseTexture(float scale, std::uint64_t seed)
+    : perlin(seed), scale(scale) {}
 
 Color NoiseTexture::value(float, float, const Point3f& p) const {
     // Marble-like texture: turbulence controls the phase of the sine wave.

@@ -8,12 +8,13 @@ class Quad : public Shape {
 public:
     Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, shared_ptr<Material> material);
 
-    bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const override;
+    bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record,
+             Sampler& sampler) const override;
     const AABB& getBoundingBox() const override { return bounding_box; }
 
     bool hasPDF() const override { return true; }
     float getPDFValue(const Point3f& origin, const Vec3f& direction) const override; 
-    Vec3f random(const Point3f& origin) const override;
+    Vec3f random(const Point3f& origin, Sampler& sampler) const override;
 
 private:
     // Described in Vector form
@@ -30,6 +31,8 @@ private:
 
     AABB    bounding_box;
     static AABB calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v);
+    bool hitDeterministic(const Ray& r, Interval ray_t,
+                          HitRecord& hit_record) const;
 };
 
 /* Create Box */

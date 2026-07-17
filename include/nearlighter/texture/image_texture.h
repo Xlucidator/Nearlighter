@@ -1,20 +1,18 @@
-#ifndef IMAGE_H
-#define IMAGE_H
+#ifndef NEARLIGHTER_TEXTURE_IMAGE_TEXTURE_H
+#define NEARLIGHTER_TEXTURE_IMAGE_TEXTURE_H
 
+#include <nearlighter/base/image.h>
 #include <nearlighter/texture/texture.h>
-#include <nearlighter/io/image_loader.h>
 
-#include <string>
-
+/** Samples an already-decoded linear RGB Image as a surface texture. */
 class ImageTexture : public Texture {
 public:
-    ImageTexture(const std::string& filename);
+    explicit ImageTexture(Image image);
 
     Color value(float u, float v, const Point3f& p) const override;
 
 private:
-    ImageLoader _image;  // TODO: should it better to be a pointer?
-    std::string image_name;
+    Image image_;
 };
 
-#endif
+#endif  // NEARLIGHTER_TEXTURE_IMAGE_TEXTURE_H

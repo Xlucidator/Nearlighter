@@ -5,7 +5,7 @@
 - Nearlighter is a learning-oriented CPU path tracer based on the Ray Tracing in One Weekend series.
 - Current priority is project cleanup and optimization before adding larger rendering features.
 - Public headers live in `include/nearlighter/`, implementations live in `src/`, and third-party submodules live in `thirdparty/`.
-- Important docs: `README.md`, `doc/note.md`, and `doc/hit-calculation.md`.
+- Important docs: `README.md`, `doc/note.md`, `doc/hit-calculation.md`, and `doc/tests-note.md`.
 
 ## Collaboration
 
@@ -31,10 +31,16 @@
 - Umbrella headers are acceptable when they are intentional, stable, and convenience-oriented. Keep them thin, documented, and out of low-level module headers.
 - Keep `nearlighter.h` as a curated core vocabulary only. Do not grow it into a cross-module include hub for shapes, materials, textures, BVH, PDFs, or scene code.
 - Forward declare types only when a pointer/reference/declaration is enough and the complete type is not required. Include concrete headers in `.cpp` files for implementation details.
+- Keep meaningful parameter names in public declarations, including parameters unused by inline default implementations. Use C++17 `[[maybe_unused]]` when necessary; do not remove names merely to silence compiler warnings. Out-of-line definitions may omit genuinely unused names when the public declaration already documents them.
 - Keep third-party code separate from project code. Prefer `thirdparty/` submodules plus CMake targets for external libraries.
 - Prefer target-based CMake (`target_sources`, `target_include_directories`, `target_link_libraries`) over global include/link settings.
 - Avoid global mutable state in new rendering code, especially for random generators and output/gamma configuration.
-- Add benchmarks or small deterministic tests before changing performance-sensitive code such as BVH, sampling, or intersection routines.
+
+## Testing Conventions
+
+- Add tests for core behavior whose regressions can remain silent during normal use. Do not test trivial behavior or failures that normal execution already exposes clearly.
+- Keep tests small, deterministic, focused, and proportionate to the regression risk. Add coverage before changing performance-sensitive code such as BVH, sampling, or intersection routines.
+- Document every test topic in `doc/tests-note.md`, including its purpose, coverage, and implementation logic. Update the document in the same change that adds or materially changes a test.
 
 ## Commenting Conventions
 

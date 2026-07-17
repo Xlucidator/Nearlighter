@@ -1,13 +1,14 @@
 #include <nearlighter/material/dielectric.h>
 
-#include <nearlighter/math/random.h>
+#include <nearlighter/sampling/sampler.h>
 
 #include <cmath>
 
 Dielectric::Dielectric(float refractive_index)
     : refractive_index(refractive_index) {}
 
-bool Dielectric::scatter(const Ray& ray_in, const HitRecord& record, ScatterRecord& s_record) const {
+bool Dielectric::scatter(const Ray& ray_in, const HitRecord& record,
+                         ScatterRecord& s_record, Sampler& sampler) const {
     s_record.attenuation = Color(1.0f, 1.0f, 1.0f);
     s_record.pdf = nullptr;
     s_record.should_skip = true;
@@ -23,9 +24,10 @@ bool Dielectric::scatter(const Ray& ray_in, const HitRecord& record, ScatterReco
     // => sin_theta_t = etai_over_etat * sin_theta_i
     bool total_internal_reflection = (etai_over_etat * sin_theta_i) > 1.0f;
 
-    // Schlick Fresnel reflectance is used as the probability of sampling reflection.
     /* Consider Fresnel Reflectance */
-    bool fresnel_reflect = reflectance(cos_theta_i, etai_over_etat, 1.0f) > random_float();
+    // Schlick Fresnel reflectance is used as the probability of sampling reflection.
+    bool fresnel_reflect =
+        reflectance(cos_theta_i, etai_over_etat, 1.0f) > sampler.next1D();
 
     Vec3f direction;
     if (total_internal_reflection || fresnel_reflect) { // total internal reflection

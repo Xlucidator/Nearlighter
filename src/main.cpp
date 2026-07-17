@@ -1,62 +1,44 @@
-#include <nearlighter/scene/scene.h>
-#include <nearlighter/base/timer.h>
+#include "legacy_scenes.h"
 
-#include <fstream>
+#include <nearlighter/io/image_io.h>
+#include <nearlighter/render/renderer.h>
 
-void validate() {
-    std::cout << "infinity = " << infinity << std::endl
-              << "empty interval: " << Interval::empty << std::endl
-              << "universe interval: " << Interval::universe << std::endl;
-    std::cout << "empty aabb: " << AABB::empty() << std::endl
-              << "universe aabb: " << AABB::universe() << std::endl;
+#include <exception>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+
+namespace {
+
+int parseSceneSelection(int argc, char* argv[]) {
+    if (argc == 1) return 6;
+    if (argc == 3 &&
+        (std::string(argv[1]) == "-s" ||
+         std::string(argv[1]) == "--scene")) {
+        return std::stoi(argv[2]);
+    }
+
+    throw std::invalid_argument(
+        "Usage: Nearlighter [-s|--scene <number 0-9>]");
 }
 
+}  // namespace
+
 int main(int argc, char* argv[]) {
-    /* Configure */
-    initGammaLUT(2.2f);
-    if constexpr (false) validate();
+    try {
+        const int selection = parseSceneSelection(argc, argv);
+        Scene scene = makeLegacyScene(selection);
+        Renderer renderer(scene.defaultRenderSettings());
 
-    /* Scenery */
-    ShapeList world;
-    Camera camera;
-    ShapeList lights;
+        std::clog << "Rendering '" << scene.name() << "'...\n";
+        RenderResult result = renderer.render(scene);
+        writePPM("out.ppm", result.image);
 
-    // Output Viewport settings
-    camera.aspect_ratio      = 16.0 / 9.0;
-    camera.image_width       = 400;
-    camera.samples_per_pixel = 30;
-    camera.max_depth         = 25;
-    // Scenery Display settings
-    int select = argc > 2 ? std::stoi(argv[2]) : 6; // temporary '-s | --scene <number>'
-    switch (select) {
-        case 0: set_scenery_boucingSpheres(world, camera); break;
-        case 1: set_scenery_checkerSpheres(world, camera); break;
-        case 2: set_scenery_earth(world, camera); break;
-        case 3: set_scenery_perlinSphere(world, camera); break;
-        case 4: set_scenery_quads(world, camera); break;
-        case 5: set_scenery_simpleLight(world, camera); break;
-        case 6: set_scenery_CornellBox(world, camera, lights, 400, 256, 25); break;
-        case 7: set_scenery_CornellSmoke(world, camera); break;
-        case 8: set_scenery_finalScene(world, camera, 400, 250, 25); break;
-        case 9: set_scenery_CornellBall(world, camera, lights, 400, 256, 25); break;
-        default: break;
+        std::clog << "Render: " << result.stats.wall_time.count() << " s, "
+                  << result.stats.samples_per_second << " samples/s\n";
+        return 0;
+    } catch (const std::exception& error) {
+        std::cerr << "ERROR: " << error.what() << '\n';
+        return 1;
     }
-
-    /* Acceleration */
-    BVHNode bvh_root = BVHNode(world);
-    // std::cout << "object size = " << world.size() << std::endl;
-    // bvh_root.printNode(0);
-
-    /* Render */
-    std::ofstream ouput_file("out.ppm");
-    if (!ouput_file) {
-        std::cerr << "ERROR: Failed to Open out.ppm\n";
-        return -1;
-    }
-    Timer timer("Render");
-    camera.render(bvh_root, lights, ouput_file);
-    timer.reply();
-    ouput_file.close();
-
-    return 0;
 }

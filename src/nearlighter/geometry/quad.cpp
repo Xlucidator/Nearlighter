@@ -2,6 +2,7 @@
 
 #include <nearlighter/math/constants.h>
 #include <nearlighter/geometry/shape_list.h>
+#include <nearlighter/sampling/sampler.h>
 
 Quad::Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, shared_ptr<Material> material)
     : p0(p0), u(u), v(v), material(material) {
@@ -38,7 +39,13 @@ Quad::Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, shared_ptr<Materia
  *          => a = (n cross(v, p)) / (n cross(v, u)) = (n cross(p, v)) / (n cross(u, v))
  *      => we can previously cache the variable \vec{w} = n / (n cross(u, v)) = n / (n n)
  */
-bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
+bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& hit_record,
+               Sampler&) const {
+    return hitDeterministic(r, ray_t, hit_record);
+}
+
+bool Quad::hitDeterministic(const Ray& r, Interval ray_t,
+                            HitRecord& hit_record) const {
     float d_n = dot(r.direction(), normal);
     // std::cout << "start hit, d_n " << std::fabs(d_n) << std::endl;
     if (std::fabs(d_n) < epsilon) return false; // which means ray is nearly parallel to the quad plane
@@ -74,7 +81,8 @@ bool Quad::hit(const Ray& r, Interval ray_t, HitRecord& hit_record) const {
  */
 float Quad::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
     HitRecord record; 
-    if (!this->hit(Ray(origin, direction), Interval(epsilon, infinity), record)) return 0;
+    if (!hitDeterministic(Ray(origin, direction),
+                          Interval(epsilon, infinity), record)) return 0;
     float distance_squared = record.t * record.t * direction.length_squared();
     float cosine = dot(direction, record.normal) / direction.length();
     cosine = std::fabs(cosine); // TODO: dealing with backward faces
@@ -84,8 +92,8 @@ float Quad::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
 /**
  * Generate a random direction from origin under the distribution of the quad
  */
-Vec3f Quad::random(const Point3f& origin) const {
-    Vec3f end = p0 + u * random_float() + v * random_float();
+Vec3f Quad::random(const Point3f& origin, Sampler& sampler) const {
+    Vec3f end = p0 + u * sampler.next1D() + v * sampler.next1D();
     return end - origin;
 }
 

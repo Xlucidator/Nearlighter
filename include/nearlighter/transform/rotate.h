@@ -22,14 +22,15 @@ public:
         calculateRotatedBoundingBox(shape->getBoundingBox(), rotation);
     }
 
-    bool hit(const Ray& ray, Interval ray_t, HitRecord& record) const override {
+    bool hit(const Ray& ray, Interval ray_t, HitRecord& record,
+             Sampler& sampler) const override {
         /* Transform the ray from world space to object space */
         Vec3f rotated_origin = to_vec3f(inv_rotation * glm::vec4(to_glm_vec3(ray.origin()), 1.0f));
         Vec3f rotated_direction = to_vec3f(inv_rotation * glm::vec4(to_glm_vec3(ray.direction()), 0.0f));
-        Ray rotated_ray = Ray(rotated_origin, rotated_direction);
+        Ray rotated_ray = Ray(rotated_origin, rotated_direction, ray.time());
 
         // Hit object with rotated ray
-        if (!shape->hit(rotated_ray, ray_t, record))
+        if (!shape->hit(rotated_ray, ray_t, record, sampler))
             return false;
 
         /* Transform the intersection from object space back to world space */

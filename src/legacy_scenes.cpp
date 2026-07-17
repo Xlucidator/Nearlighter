@@ -1,0 +1,453 @@
+#include "legacy_scenes.h"
+
+#include <nearlighter/accel/bvh_node.h>
+#include <nearlighter/io/image_io.h>
+#include <nearlighter/scene/scene.h>
+#include <nearlighter/sampling/sampler.h>
+
+#include <nearlighter/geometry/all.h>
+#include <nearlighter/material/all.h>
+#include <nearlighter/medium/constant_medium.h>
+#include <nearlighter/math/math.h>
+#include <nearlighter/texture/all.h>
+#include <nearlighter/transform/transform.h>
+
+#include <algorithm>
+#include <array>
+#include <stdexcept>
+#include <string>
+#include <utility>
+
+namespace {
+
+/** Retains the old combined camera/render fields during numbered-scene migration. */
+struct LegacyCamera {
+    float aspect_ratio = 16.0f / 9.0f;
+    int image_width = 400;
+    int samples_per_pixel = 30;
+    int max_depth = 25;
+    Color background = Color(0.70f, 0.80f, 1.00f);
+    float fov_vertical = 90.0f;
+    Point3f position = Point3f(0.0f, 0.0f, 0.0f);
+    Point3f look_at = Point3f(0.0f, 0.0f, -1.0f);
+    Vec3f world_up = Vec3f(0.0f, 1.0f, 0.0f);
+    float defocus_angle = 0.0f;
+    float focus_distance = 10.0f;
+};
+
+shared_ptr<ImageTexture> loadLegacyTexture(const std::string& filename) {
+    return make_shared<ImageTexture>(
+        loadImage(std::filesystem::path("assets/textures") / filename));
+}
+
+void set_scenery_CornellBox(ShapeList& world, LegacyCamera& camera,
+                            ShapeList& sampling_targets, int width, int spp,
+                            int max_depth);
+
+void set_scenery_boucingSpheres(ShapeList& world, LegacyCamera& camera,
+                                bool is_random, Sampler& sampler) {
+    /* Objects Display */
+    // Gound
+    auto checker = make_shared<CheckerTexture>(0.32, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    auto mat_ground = make_shared<Lambertian>(checker);
+    world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, mat_ground));
+    // (Random) Balls Grid
+    int grid_size = 8;
+    float radius = 0.2, interval = 0.9;
+    for (int i = -grid_size; i < grid_size; ++i) {
+        for (int j = -grid_size; j < grid_size; ++j) {
+            float choise = is_random ? sampler.next1D() : (static_cast<float>(i + grid_size) / (grid_size * 2));
+            Point3f ball_center = is_random ? Point3f(i + interval * sampler.next1D(), radius, j + interval * sampler.next1D()) : Point3f(i, radius, j);
+
+            if ((ball_center - Point3f(4, radius, 0)).length() > interval) {
+                shared_ptr<Material> ball_material;
+
+                if (choise < 0.8) { // Diffuse Material
+                    auto albedo = sampler.nextVec3() * sampler.nextVec3();
+                    ball_material = make_shared<Lambertian>(albedo);
+                    auto move_center_end = ball_center + Vec3f(0, is_random ? sampler.next1D(0, 0.5f) : 0.25f, 0);
+                    world.add(make_shared<Sphere>(ball_center, move_center_end, radius, ball_material));
+                    continue;
+                } else if (choise < 0.95) { // Metal Material
+                    auto albedo = sampler.nextVec3(0.5f, 1.0f);
+                    auto fuzz = sampler.next1D(0.0f, 0.5f);
+                    ball_material = make_shared<Metal>(albedo, fuzz);
+                } else { // Dielectric Material: Glass
+                    ball_material = make_shared<Dielectric>(1.5);
+                }
+
+                world.add(make_shared<Sphere>(ball_center, radius, ball_material));
+            }
+        }
+    }
+    // Main Balls
+    auto mat_middle = make_shared<Dielectric>(1.5);
+    world.add(make_shared<Sphere>(Point3f(0, 1, 0), 1.0, mat_middle));
+    auto mat_back = make_shared<Lambertian>(Color(0.4, 0.2, 0.1));
+    world.add(make_shared<Sphere>(Point3f(-4, 1, 0), 1.0, mat_back));
+    auto mat_front = make_shared<Metal>(Color(0.7, 0.6, 0.5), 0.0);
+    world.add(make_shared<Sphere>(Point3f(4, 1, 0), 1.0, mat_front));
+    // Hollow Glass
+    // auto mat_left   = make_shared<Dielectric>(1.5f);
+    // auto mat_bubble = make_shared<Dielectric>(1.0f / 1.5f);
+    // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.5f, mat_left));   // hollow glass outer
+    // world.add(make_shared<Sphere>(Point3f(-1.0f,    0.0f, -1.0f),   0.4f, mat_bubble)); // hollow glass inner
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(13, 2, 3);    // Point3f(-2, 2,  1);
+    camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
+    camera.world_up = Vec3f(0, 1, 0);
+    // Intrinsic
+    camera.defocus_angle = 0.6;
+    camera.focus_distance = 10.0;
+}
+
+void set_scenery_checkerSpheres(ShapeList& world, LegacyCamera& camera) {
+    /* Objects Display */
+    auto checker = make_shared<CheckerTexture>(0.32, Color(0.2, 0.3, 0.1), Color(0.9, 0.9, 0.9));
+    world.add(make_shared<Sphere>(Point3f(0,-10, 0), 10, make_shared<Lambertian>(checker)));
+    world.add(make_shared<Sphere>(Point3f(0, 10, 0), 10, make_shared<Lambertian>(checker)));
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(13, 2, 3);
+    camera.look_at  = Point3f(0, 0, 0);     // Point3f( 0, 0, -1);
+    camera.world_up = Vec3f(0, 1, 0);
+    // Intrinsic
+}
+
+void set_scenery_earth(ShapeList& world, LegacyCamera& camera) {
+    /* Objects Display */
+    auto earth_texture = loadLegacyTexture("earthmap.png");
+    auto earth_material = make_shared<Lambertian>(earth_texture);
+    world.add(make_shared<Sphere>(Point3f(0, 0, 0), 2, earth_material));
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(0, 0, 12);
+    camera.look_at  = Point3f(0, 0, 0); 
+    // Intrinsic
+}
+
+void set_scenery_perlinSphere(ShapeList& world, LegacyCamera& camera) {
+    auto perlin_texture = make_shared<NoiseTexture>(4);
+    world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, make_shared<Lambertian>(perlin_texture)));
+    world.add(make_shared<Sphere>(Point3f(0, 2, 0), 2, make_shared<Lambertian>(perlin_texture)));
+
+    /* Camera Parameters */
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(13, 2, 3);
+    camera.look_at  = Point3f(0, 0, 0);
+    // Intrinsic
+}
+
+void set_scenery_quads(ShapeList& world, LegacyCamera& camera) {
+    /* Objects Display */
+    auto left_red     = make_shared<Lambertian>(Color(1.0, 0.2, 0.2));
+    auto back_green   = make_shared<Lambertian>(Color(0.2, 1.0, 0.2));
+    auto right_blue   = make_shared<Lambertian>(Color(0.2, 0.2, 1.0));
+    auto upper_orange = make_shared<Lambertian>(Color(1.0, 0.5, 0.0));
+    auto lower_teal   = make_shared<Lambertian>(Color(0.2, 0.8, 0.8));
+
+    world.add(make_shared<Quad>(Point3f(-3,-2, 5), Vec3f(0, 0,-4), Vec3f(0, 4, 0), left_red));
+    world.add(make_shared<Quad>(Point3f(-2,-2, 0), Vec3f(4, 0, 0), Vec3f(0, 4, 0), back_green));
+    world.add(make_shared<Quad>(Point3f( 3,-2, 1), Vec3f(0, 0, 4), Vec3f(0, 4, 0), right_blue));
+    world.add(make_shared<Quad>(Point3f(-2, 3, 1), Vec3f(4, 0, 0), Vec3f(0, 0, 4), upper_orange));
+    world.add(make_shared<Quad>(Point3f(-2,-3, 5), Vec3f(4, 0, 0), Vec3f(0, 0,-4), lower_teal));
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    // Extrinsic
+    camera.fov_vertical = 80;
+    camera.position = Point3f(0, 0, 9);
+    camera.look_at  = Point3f(0, 0, 0);
+    // Intrinsic
+}
+
+void set_scenery_simpleLight(ShapeList& world, LegacyCamera& camera) {
+    /* Objects Display */
+    auto perlin_texture = make_shared<NoiseTexture>(4);
+    world.add(make_shared<Sphere>(Point3f(0, -1000, 0), 1000, make_shared<Lambertian>(perlin_texture)));
+    world.add(make_shared<Sphere>(Point3f(0, 2, 0), 2, make_shared<Lambertian>(perlin_texture)));
+
+    auto light = make_shared<DiffuseLight>(Color(0.9, 0.9, 0.4)); // has exceed the meaning of Color, could be over (1, 1, 1)
+    world.add(make_shared<Sphere>(Point3f(0,7,0), 2, light));
+    world.add(make_shared<Quad>(Point3f(3, 1, -2), Vec3f(2, 0, 0), Vec3f(0, 2, 0), light));
+    
+    /* Camera Parameters */
+    camera.background = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 20.0;
+    camera.position = Point3f(26, 3, 6);
+    camera.look_at  = Point3f(0, 2, 0);
+    // Intrinsic
+}
+
+void set_scenery_CornellBox(ShapeList& world, LegacyCamera& camera, ShapeList& sampling_targets, int width, int spp, int max_depth) {
+    /* Objects Display */
+    auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
+    auto white = make_shared<Lambertian>(Color(.73, .73, .73));
+    auto green = make_shared<Lambertian>(Color(.12, .45, .15));
+    auto light = make_shared<DiffuseLight>(Color(15, 15, 15));
+    auto aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
+
+    // Environment
+    world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(0  , 555,  0  ), green));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0  ), Vec3f(0  , 0  ,  555), red  ));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(555, 0  ,  0  ), white)); // bottom
+    world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0  ), Vec3f(0  , 0  , -555), white)); // top
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0  ), Vec3f(0  , 555,  0  ), white)); // back
+
+    // Boxes
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), aluminum);
+    box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
+    box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
+    world.add(box1);
+    
+    shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
+    box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
+    box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
+    world.add(box2);
+
+    // Light source
+    // auto empty_material = make_shared<Material>();
+    world.add( make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
+    sampling_targets.add(make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0  , 0  ), Vec3f(0  , 0  , -105), light));
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    camera.image_width  = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = max_depth;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(278, 278, -800);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
+}
+
+void set_scenery_CornellSmoke(ShapeList& world, LegacyCamera& camera) {
+    /* Objects Display */
+    auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
+    auto white = make_shared<Lambertian>(Color(.73, .73, .73));
+    auto green = make_shared<Lambertian>(Color(.12, .45, .15));
+    auto light = make_shared<DiffuseLight>(Color(7, 7, 7));
+
+    // Environment
+    world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), green));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0), Vec3f(0, 0  ,  555), red  ));
+    world.add(make_shared<Quad>(Point3f(113, 554, 127), Vec3f( 330, 0  , 0), Vec3f(0, 0 ,  305), light));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 555, 0  , 0), Vec3f(0, 0  ,  555), white));
+    world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0), Vec3f(0, 0  , -555), white));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0), Vec3f(0, 555,  0  ), white));
+
+    // Smoke Boxes
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
+    box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
+    box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
+    world.add(make_shared<ConstantMedium>(box1, 0.01, Color(0, 0, 0)));  // Smoke 1
+    
+    shared_ptr<Shape> box2 = box(Point3f(0, 0, 0), Point3f(165, 165, 165), white);
+    box2 = make_shared<Rotate>(box2, Vec3f(0, 1, 0), degrees_to_radians(-18));
+    box2 = make_shared<Translate>(box2, Vec3f(130, 0, 65));
+    world.add(make_shared<ConstantMedium>(box2, 0.01, Color(1, 1, 1)));  // Smoke 2
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    // camera.image_width  = 600;
+    camera.samples_per_pixel = 200;
+    camera.max_depth = 50;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(278, 278, -800);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
+}
+
+void set_scenery_finalScene(ShapeList& world, LegacyCamera& camera, int width,
+                            int spp, int max_depth, Sampler& sampler) {
+    /* Objects Display */
+
+    // Irregular Ground
+    auto ground_material = make_shared<Lambertian>(Color(0.48, 0.83, 0.53));
+    ShapeList boxes_ground;
+    const int boxes_per_side = 20;
+    for (int i = 0; i < boxes_per_side; ++i) {
+        for (int j = 0; j < boxes_per_side; ++j) {
+            float w = 100.0;
+            float x0 = -1000.0 + i*w, y0 = 0.0, z0 = -1000.0 + j*w;
+            float x1 = x0 + w, y1 = sampler.next1D(1.0f, 101.0f), z1= z0 + w;
+            boxes_ground.add(box(Point3f(x0, y0, z0), Point3f(x1, y1, z1), ground_material));
+        }
+    }
+    world.add(make_shared<BVHNode>(boxes_ground));
+
+    // Light
+    auto light = make_shared<DiffuseLight>(Color(7, 7, 7));
+    world.add(make_shared<Quad>(Point3f(123, 554, 147), Vec3f(300, 0, 0), Vec3f(0, 0, 265), light));
+
+    // Spheres
+    auto center_start = Point3f(400, 400, 200);
+    auto center_end   = center_start + Vec3f(30, 0, 0);
+    world.add(make_shared<Sphere>(center_start, center_end, 50, make_shared<Lambertian>(Color(0.7, 0.3, 0.1))));
+    world.add(make_shared<Sphere>(Point3f(260, 150, 45), 50, make_shared<Dielectric>(1.5)));
+    world.add(make_shared<Sphere>(Point3f(0, 150, 145), 50, make_shared<Metal>(Color(0.8, 0.8, 0.9), 1.0)));
+
+    // Medium
+    auto medium_boundary = make_shared<Sphere>(Point3f(360, 160, 45), 70, make_shared<Dielectric>(1.5));
+    world.add(medium_boundary);
+    world.add(make_shared<ConstantMedium>(medium_boundary, 0.2, Color(0.2, 0.4, 0.9)));
+    medium_boundary = make_shared<Sphere>(Point3f(0, 0, 0), 5000, make_shared<Dielectric>(1.5));
+    world.add(make_shared<ConstantMedium>(medium_boundary, 0.0001, Color(1, 1, 1)));
+
+    // Earth Map
+    auto earth_material = make_shared<Lambertian>(loadLegacyTexture("earthmap.jpg"));
+    world.add(make_shared<Sphere>(Point3f(400, 200, 400), 100, earth_material));
+
+    // Perlin Noise
+    auto perlin_material = make_shared<Lambertian>(make_shared<NoiseTexture>(0.2));
+    world.add(make_shared<Sphere>(Point3f(220, 280, 300), 80, perlin_material));
+
+    // Transform Balls
+    ShapeList balls_box;
+    auto white_material = make_shared<Lambertian>(Color(0.73, 0.73, 0.73));
+    int ns = 1000;
+    for (int j = 0; j < ns; ++j) {
+        balls_box.add(make_shared<Sphere>(sampler.nextVec3(0.0f, 165.0f),
+                                          10, white_material));
+    }
+    world.add(make_shared<Translate>(
+        make_shared<Rotate>(make_shared<BVHNode>(balls_box), Vec3f(0, 1, 0), degrees_to_radians(15)),
+        Vec3f(-100, 270, 395)
+    ));
+
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    camera.image_width  = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = max_depth;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(478, 278, -600);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
+}
+
+
+void set_scenery_CornellBall(ShapeList& world, LegacyCamera& camera, ShapeList& sampling_targets, int width, int spp, int max_depth) {
+    /* Objects Display */
+
+    // Material
+    auto red   = make_shared<Lambertian>(Color(.65, .05, .05));
+    auto white = make_shared<Lambertian>(Color(.73, .73, .73));
+    auto green = make_shared<Lambertian>(Color(.12, .45, .15));
+    auto aluminum = make_shared<Metal>(Color(0.8, 0.85, 0.88), 0.0);
+    auto glass = make_shared<Dielectric>(1.5);
+    auto light = make_shared<DiffuseLight>(Color(15, 15, 15));
+
+    // Environment
+    world.add(make_shared<Quad>(Point3f(555, 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(0  , 555,  0  ), green));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 555, 0  ), Vec3f(0  , 0  ,  555), red  ));
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 0  ), Vec3f( 0  , 0  , 555), Vec3f(555, 0  ,  0  ), white)); // bottom
+    world.add(make_shared<Quad>(Point3f(555, 555, 555), Vec3f(-555, 0  , 0  ), Vec3f(0  , 0  , -555), white)); // top
+    world.add(make_shared<Quad>(Point3f(0  , 0  , 555), Vec3f( 555, 0  , 0  ), Vec3f(0  , 555,  0  ), white)); // back
+
+    // Boxes & Balls
+    shared_ptr<Shape> box1 = box(Point3f(0, 0, 0), Point3f(165, 330, 165), white);
+    box1 = make_shared<Rotate>(box1, Vec3f(0, 1, 0), degrees_to_radians(15));
+    box1 = make_shared<Translate>(box1, Vec3f(265, 0, 295));
+    world.add(box1);
+    
+    auto ball = make_shared<Sphere>(Point3f(190, 90, 190), 90, glass);
+    world.add(ball);
+    sampling_targets.add(ball); // trick: make the pdf sample more concentrate to the glass ball
+
+    // Light source
+    auto light_quad = make_shared<Quad>(Point3f(343, 554, 332), Vec3f(-130, 0, 0), Vec3f(0, 0, -105), light);
+    world.add(light_quad);
+    sampling_targets.add(light_quad);
+
+    /* Camera Parameters */
+    camera.aspect_ratio = 1.0;
+    camera.image_width  = width;
+    camera.samples_per_pixel = spp;
+    camera.max_depth = max_depth;
+    camera.background   = Color(0, 0, 0);
+    // Extrinsic
+    camera.fov_vertical = 40.0;
+    camera.position = Point3f(278, 278, -800);
+    camera.look_at  = Point3f(278, 278, 0);
+    // Intrinsic
+}
+
+}  // namespace
+
+Scene makeLegacyScene(int selection, std::uint64_t generation_seed) {
+    static const std::array<const char*, 10> kSceneNames = {
+        "Bouncing Spheres", "Checker Spheres", "Earth", "Perlin Sphere",
+        "Quads", "Simple Light", "Cornell Box", "Cornell Smoke",
+        "Final Scene", "Cornell Ball"};
+    if (selection < 0 || selection >= static_cast<int>(kSceneNames.size())) {
+        throw std::out_of_range("Legacy scene number must be between 0 and 9");
+    }
+
+    ShapeList world;
+    ShapeList sampling_targets;
+    LegacyCamera legacy_camera;
+    Sampler generation_sampler(generation_seed);
+
+    switch (selection) {
+        case 0:
+            set_scenery_boucingSpheres(world, legacy_camera, true,
+                                       generation_sampler);
+            break;
+        case 1: set_scenery_checkerSpheres(world, legacy_camera); break;
+        case 2: set_scenery_earth(world, legacy_camera); break;
+        case 3: set_scenery_perlinSphere(world, legacy_camera); break;
+        case 4: set_scenery_quads(world, legacy_camera); break;
+        case 5: set_scenery_simpleLight(world, legacy_camera); break;
+        case 6:
+            set_scenery_CornellBox(world, legacy_camera, sampling_targets,
+                                   400, 256, 25);
+            break;
+        case 7: set_scenery_CornellSmoke(world, legacy_camera); break;
+        case 8:
+            set_scenery_finalScene(world, legacy_camera, 400, 250, 25,
+                                   generation_sampler);
+            break;
+        case 9:
+            set_scenery_CornellBall(world, legacy_camera, sampling_targets,
+                                    400, 256, 25);
+            break;
+    }
+
+    Camera camera;
+    camera.vertical_fov = legacy_camera.fov_vertical;
+    camera.position = legacy_camera.position;
+    camera.look_at = legacy_camera.look_at;
+    camera.world_up = legacy_camera.world_up;
+    camera.defocus_angle = legacy_camera.defocus_angle;
+    camera.focus_distance = legacy_camera.focus_distance;
+
+    RenderSettings settings;
+    settings.image_width = legacy_camera.image_width;
+    settings.image_height = std::max(
+        1, static_cast<int>(legacy_camera.image_width /
+                            legacy_camera.aspect_ratio));
+    settings.samples_per_pixel = legacy_camera.samples_per_pixel;
+    settings.max_depth = legacy_camera.max_depth;
+    settings.seed = 0;
+
+    return Scene(kSceneNames[static_cast<std::size_t>(selection)], camera,
+                 settings, legacy_camera.background, std::move(world),
+                 std::move(sampling_targets));
+}

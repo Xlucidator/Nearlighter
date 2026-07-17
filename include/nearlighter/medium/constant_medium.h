@@ -12,7 +12,8 @@ public:
     ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Texture> tex);
     ConstantMedium(shared_ptr<Shape> boundary, float density, const Color& albedo);
 
-    bool hit(const Ray& r, Interval ray_t, HitRecord& record) const override;
+    bool hit(const Ray& r, Interval ray_t, HitRecord& record,
+             Sampler& sampler) const override;
     const AABB& getBoundingBox() const override { return boundary->getBoundingBox(); }
 
 private:

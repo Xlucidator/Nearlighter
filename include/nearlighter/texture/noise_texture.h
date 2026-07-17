@@ -4,10 +4,12 @@
 #include <nearlighter/texture/texture.h>
 #include <nearlighter/texture/perlin.h>
 
+#include <cstdint>
+
 class NoiseTexture : public Texture {
 public:
     NoiseTexture();
-    NoiseTexture(float scale);
+    explicit NoiseTexture(float scale, std::uint64_t seed = 0);
 
     Color value(float u, float v, const Point3f& p) const override;
 
