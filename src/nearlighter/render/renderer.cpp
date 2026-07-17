@@ -25,7 +25,7 @@ Renderer::Renderer(RenderSettings settings) : settings_(settings) {
 }
 
 RenderResult Renderer::render(const Scene& scene) const {
-    const Camera::Prepared camera =
+    const Camera::Prepared prepared_camera =
         scene.camera().prepare(settings_.image_width, settings_.image_height);
     Image image(settings_.image_width, settings_.image_height);
 
@@ -51,7 +51,7 @@ RenderResult Renderer::render(const Scene& scene) const {
                     settings_.seed, static_cast<std::uint32_t>(x),
                     static_cast<std::uint32_t>(y),
                     static_cast<std::uint32_t>(sample_index)));
-                const Ray ray = camera.generateRay(x, y, sampler);
+                const Ray ray = prepared_camera.generateRay(x, y, sampler);
                 pixel += trace(ray, settings_.max_depth, *world,
                                scene.samplingTargets(), scene.background(),
                                sampler);
