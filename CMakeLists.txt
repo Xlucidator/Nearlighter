@@ -198,6 +198,8 @@ endif()
 include(CTest)
 
 if(BUILD_TESTING)
+    set(NEARLIGHTER_TEST_RUNTIME_DIRECTORY "${CMAKE_BINARY_DIR}/ctest")
+
     # --- Geometry Tests ---
     add_executable(nearlighter_geometry_tests
         tests/geometry_tests.cpp
@@ -206,6 +208,9 @@ if(BUILD_TESTING)
         nearlighter_core
     )
     target_apply_build_options(nearlighter_geometry_tests)
+    set_target_properties(nearlighter_geometry_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
     add_test(
         NAME nearlighter.geometry
         COMMAND nearlighter_geometry_tests
@@ -219,6 +224,9 @@ if(BUILD_TESTING)
         nearlighter_core
     )
     target_apply_build_options(nearlighter_bvh_tests)
+    set_target_properties(nearlighter_bvh_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
     add_test(
         NAME nearlighter.bvh
         COMMAND nearlighter_bvh_tests
@@ -232,6 +240,9 @@ if(BUILD_TESTING)
         nearlighter_core
     )
     target_apply_build_options(nearlighter_sampler_tests)
+    set_target_properties(nearlighter_sampler_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
     add_test(
         NAME nearlighter.sampler
         COMMAND nearlighter_sampler_tests
@@ -245,6 +256,9 @@ if(BUILD_TESTING)
         nearlighter_core
     )
     target_apply_build_options(nearlighter_renderer_smoke_tests)
+    set_target_properties(nearlighter_renderer_smoke_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
     add_test(
         NAME nearlighter.renderer_smoke
         COMMAND nearlighter_renderer_smoke_tests
