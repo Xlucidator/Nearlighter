@@ -99,6 +99,11 @@ target_include_directories(stb INTERFACE
 # --- argparse (version: 3.2.0, commit: 3eda91b2e1ce) ---
 add_subdirectory(thirdparty/argparse)
 
+# --- nlohmann/json (version: 3.12.0-develop, commit: 3565f40229515411177c196ec912a06307802ed6) ---
+set(JSON_BuildTests OFF CACHE INTERNAL "Disable nlohmann/json tests")
+set(JSON_Install OFF CACHE INTERNAL "Disable nlohmann/json install rules")
+add_subdirectory(thirdparty/json)
+
 
 # =============================================================
 # 3. Nearlighter Core
@@ -160,13 +165,16 @@ message(STATUS "Target [nearlighter_core] configured.")
 add_library(nearlighter_io STATIC
     src/nearlighter/io/console_io.cpp
     src/nearlighter/io/image_io.cpp
+    src/nearlighter/io/scene_loader.cpp
 )
 target_include_directories(nearlighter_io
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 target_link_libraries(nearlighter_io
     PUBLIC nearlighter_core
-    PRIVATE stb
+    PRIVATE
+        nlohmann_json::nlohmann_json
+        stb
 )
 target_apply_build_options(nearlighter_io)
 message(STATUS "Target [nearlighter_io] configured.")

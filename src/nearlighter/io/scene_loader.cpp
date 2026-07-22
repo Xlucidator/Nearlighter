@@ -1,0 +1,336 @@
+#include <nearlighter/io/scene_loader.h>
+
+#include <nearlighter/geometry/quad.h>
+#include <nearlighter/io/image_io.h>
+#include <nearlighter/material/diffuse_light.h>
+#include <nearlighter/material/lambertian.h>
+#include <nearlighter/material/metal.h>
+#include <nearlighter/math/math.h>
+#include <nearlighter/texture/image_texture.h>
+#include <nearlighter/transform/rotate.h>
+#include <nearlighter/transform/translate.h>
+
+#include <nlohmann/json.hpp>
+
+#include <cstdint>
+#include <fstream>
+#include <stdexcept>
+#include <unordered_map>
+#include <utility>
+
+struct SceneLoader::LoadContext {
+    /** Binds one parsed document to its resource-resolution base path. */
+    LoadContext(std::filesystem::path path, nlohmann::json source)
+        : scene_path(std::move(path)), document(std::move(source)) {}
+
+    std::filesystem::path scene_path;
+    nlohmann::json document;
+
+    std::unordered_map<std::string, std::shared_ptr<Texture>> textures;
+    std::unordered_map<std::string, std::shared_ptr<Material>> materials;
+    std::unordered_map<std::string, std::shared_ptr<Shape>> objects;
+};
+
+// ==================================================
+// Utility Functions
+// ==================================================
+
+Vec3f SceneLoader::readVector(const std::array<float, 3>& components) {
+    return Vec3f(components[0], components[1], components[2]);
+}
+
+void SceneLoader::fail(const LoadContext& context,
+                       const std::string& reason) {
+    throw std::runtime_error("Failed to load scene '" +
+                             context.scene_path.string() + "': " + reason);
+}
+
+std::shared_ptr<Texture> SceneLoader::findTexture(
+    const LoadContext& context, const std::string& texture_id) {
+    const auto texture = context.textures.find(texture_id);
+    if (texture == context.textures.end()) {
+        fail(context, "unknown texture reference '" + texture_id + "'");
+    }
+    return texture->second;
+}
+
+// ==================================================
+// Loading Stages
+// ==================================================
+
+RenderSettings SceneLoader::loadRenderSettings(
+    const LoadContext& context) const {
+    const nlohmann::json& render = context.document.at("render");
+    const nlohmann::json& resolution = render.at("resolution");
+    RenderSettings settings;
+    settings.image_width = resolution.at("width").get<int>();
+    settings.image_height = resolution.at("height").get<int>();
+    settings.samples_per_pixel = render.at("samples_per_pixel").get<int>();
+    settings.max_depth = render.at("max_depth").get<int>();
+    settings.seed = render.at("seed").get<std::uint64_t>();
+    return settings;
+}
+
+Camera SceneLoader::loadCamera(const LoadContext& context) const {
+    const nlohmann::json& data = context.document.at("camera");
+    const std::string type =
+        data.value("type", std::string("perspective"));
+    if (type != "perspective") {
+        fail(context, "unsupported camera type '" + type + "'");
+    }
+
+    Camera camera;
+    camera.position = readVector(
+        data.at("position").get<std::array<float, 3>>());
+    camera.look_at = readVector(
+        data.at("look_at").get<std::array<float, 3>>());
+    camera.vertical_fov = data.at("vertical_fov").get<float>();
+    if (data.contains("world_up")) {
+        camera.world_up = readVector(
+            data.at("world_up").get<std::array<float, 3>>());
+    }
+    camera.defocus_angle = data.value("defocus_angle", 0.0f);
+    camera.focus_distance = data.value("focus_distance", 10.0f);
+    return camera;
+}
+
+Color SceneLoader::loadBackground(const LoadContext& context) const {
+    if (!context.document.contains("background")) {
+        return Color(0.0f, 0.0f, 0.0f);
+    }
+    return readVector(
+        context.document.at("background").get<std::array<float, 3>>());
+}
+
+void SceneLoader::loadTextures(LoadContext& context) const {
+    if (!context.document.contains("textures")) return;
+
+    for (const auto& entry : context.document.at("textures").items()) {
+        const std::string& id = entry.key();
+        const nlohmann::json& data = entry.value();
+        const std::string type = data.at("type").get<std::string>();
+        if (type != "image") {
+            fail(context, "unsupported texture type '" + type + "'");
+        }
+
+        ImageLoadOptions options;
+        const std::string color_space =
+            data.value("source_color_space", std::string("srgb"));
+        if (color_space == "linear") {
+            options.source_color_space = SourceColorSpace::Linear;
+        } else if (color_space != "srgb") {
+            fail(context,
+                 "unsupported texture color space '" + color_space + "'");
+        }
+
+        std::filesystem::path texture_path = data.at("path").get<std::string>();
+        if (texture_path.is_relative()) {
+            texture_path = context.scene_path.parent_path() / texture_path;
+        }
+        try {
+            context.textures.emplace(
+                id, std::make_shared<ImageTexture>(
+                    loadImage(texture_path.lexically_normal(), options)
+                ));
+        } catch (const std::exception& error) {
+            fail(context, error.what());
+        }
+    }
+}
+
+void SceneLoader::loadMaterials(LoadContext& context) const {
+    for (const auto& entry : context.document.at("materials").items()) {
+        const std::string& id = entry.key();
+        const nlohmann::json& data = entry.value();
+        const std::string type = data.at("type").get<std::string>();
+        std::shared_ptr<Material> material;
+
+        if (type == "lambertian") {
+            const bool has_albedo = data.contains("albedo");
+            const bool has_texture = data.contains("texture");
+            if (has_albedo == has_texture) {
+                fail(context,
+                     "lambertian material '" + id +
+                         "' requires exactly one of albedo or texture");
+            }
+            if (has_texture) {
+                const std::string texture_id =
+                    data.at("texture").get<std::string>();
+                material = std::make_shared<Lambertian>(
+                    findTexture(context, texture_id));
+            } else {
+                material = std::make_shared<Lambertian>(readVector(
+                    data.at("albedo").get<std::array<float, 3>>()));
+            }
+        } else if (type == "metal") {
+            material = std::make_shared<Metal>(
+                readVector(data.at("albedo").get<std::array<float, 3>>()),
+                data.value("fuzz", 0.0f));
+        } else if (type == "diffuse_light") {
+            const bool has_radiance = data.contains("radiance");
+            const bool has_texture = data.contains("texture");
+            if (has_radiance == has_texture) {
+                fail(context,
+                     "diffuse light material '" + id +
+                         "' requires exactly one of radiance or texture");
+            }
+            if (has_texture) {
+                const std::string texture_id =
+                    data.at("texture").get<std::string>();
+                material = std::make_shared<DiffuseLight>(
+                    findTexture(context, texture_id));
+            } else {
+                material = std::make_shared<DiffuseLight>(readVector(
+                    data.at("radiance").get<std::array<float, 3>>()));
+            }
+        } else {
+            fail(context, "unsupported material type '" + type + "'");
+        }
+
+        context.materials.emplace(id, std::move(material));
+    }
+}
+
+std::shared_ptr<Shape> SceneLoader::loadGeometry(
+    const LoadContext& context, std::size_t object_index,
+    const std::shared_ptr<Material>& material) const {
+    const nlohmann::json& geometry =
+        context.document.at("objects").at(object_index).at("geometry");
+    const std::string type = geometry.at("type").get<std::string>();
+
+    if (type == "quad") {
+        const Point3f origin = readVector(
+            geometry.at("origin").get<std::array<float, 3>>());
+        const Vec3f u =
+            readVector(geometry.at("u").get<std::array<float, 3>>());
+        const Vec3f v =
+            readVector(geometry.at("v").get<std::array<float, 3>>());
+        if (cross(u, v).near_zero()) {
+            fail(context, "quad edges must define a non-zero area");
+        }
+        return std::make_shared<Quad>(origin, u, v, material);
+    }
+
+    if (type == "box") {
+        const Point3f minimum = readVector(
+            geometry.at("min").get<std::array<float, 3>>());
+        const Point3f maximum = readVector(
+            geometry.at("max").get<std::array<float, 3>>());
+        if (minimum.x() >= maximum.x() || minimum.y() >= maximum.y() ||
+            minimum.z() >= maximum.z()) {
+            fail(context, "box max must be greater than min on every axis");
+        }
+        return box(minimum, maximum, material);
+    }
+
+    fail(context, "unsupported geometry type '" + type + "'");
+}
+
+std::shared_ptr<Shape> SceneLoader::loadTransforms(
+    const LoadContext& context, std::size_t object_index,
+    std::shared_ptr<Shape> shape) const {
+    const nlohmann::json& object =
+        context.document.at("objects").at(object_index);
+    if (!object.contains("transform")) return shape;
+
+    for (const nlohmann::json& transform : object.at("transform")) {
+        const std::string type = transform.at("type").get<std::string>();
+        if (type == "rotate_y") {
+            shape = std::make_shared<Rotate>(
+                std::move(shape), Vec3f(0.0f, 1.0f, 0.0f),
+                degrees_to_radians(transform.at("degrees").get<float>()));
+        } else if (type == "translate") {
+            const Vec3f offset = readVector(
+                transform.at("offset").get<std::array<float, 3>>());
+            shape = std::make_shared<Translate>(
+                std::move(shape), offset);
+        } else {
+            fail(context, "unsupported transform type '" + type + "'");
+        }
+    }
+    return shape;
+}
+
+ShapeList SceneLoader::loadObjects(LoadContext& context) const {
+    ShapeList world;
+    const nlohmann::json& objects = context.document.at("objects");
+    for (std::size_t index = 0; index < objects.size(); ++index) {
+        const nlohmann::json& data = objects.at(index);
+        const std::string id = data.at("id").get<std::string>();
+        if (context.objects.count(id) != 0) {
+            fail(context, "duplicate object ID '" + id + "'");
+        }
+
+        const std::string material_id =
+            data.at("material").get<std::string>();
+        const auto material = context.materials.find(material_id);
+        if (material == context.materials.end()) {
+            fail(context, "unknown material reference '" + material_id + "'");
+        }
+
+        std::shared_ptr<Shape> shape =
+            loadGeometry(context, index, material->second);
+        shape = loadTransforms(context, index, std::move(shape));
+        context.objects.emplace(id, shape);
+        world.add(std::move(shape));
+    }
+    return world;
+}
+
+ShapeList SceneLoader::loadSamplingTargets(
+    const LoadContext& context) const {
+    ShapeList sampling_targets;
+    if (!context.document.contains("sampling") ||
+        !context.document.at("sampling").contains("targets")) {
+        return sampling_targets;
+    }
+
+    for (const nlohmann::json& target :
+         context.document.at("sampling").at("targets")) {
+        const std::string id = target.get<std::string>();
+        const auto object = context.objects.find(id);
+        if (object == context.objects.end()) {
+            fail(context, "unknown sampling target '" + id + "'");
+        }
+        sampling_targets.add(object->second);
+    }
+    return sampling_targets;
+}
+
+// ==================================================
+// Public Interface
+// ==================================================
+
+Scene SceneLoader::load(const std::filesystem::path& scene_path) const {
+    std::ifstream input(scene_path);
+    if (!input) {
+        throw std::runtime_error("Failed to open scene file '" +
+                                 scene_path.string() + "'");
+    }
+
+    try {
+        LoadContext context(scene_path, nlohmann::json::parse(input));
+        if (context.document.at("schema_version").get<int>() != 1) {
+            fail(context, "unsupported schema version");
+        }
+
+        /* Parse independent values before resolving referenced resources. */
+        RenderSettings render_settings = loadRenderSettings(context);
+        Camera camera = loadCamera(context);
+        Color background = loadBackground(context);
+
+        /* Resource dependencies require textures -> materials -> objects. */
+        loadTextures(context);
+        loadMaterials(context);
+        ShapeList world = loadObjects(context);
+        ShapeList sampling_targets = loadSamplingTargets(context);
+
+        return Scene(context.document.at("name").get<std::string>(),
+                     std::move(camera), render_settings, background,
+                     std::move(world), std::move(sampling_targets));
+    } catch (const nlohmann::json::exception& error) {
+        throw std::runtime_error(
+            "Failed to load scene '" + scene_path.string() +
+            "': invalid or missing JSON data: " + error.what());
+    }
+}

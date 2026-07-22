@@ -18,18 +18,18 @@ struct ImageLoadOptions {
     SourceColorSpace source_color_space = SourceColorSpace::Srgb;
 };
 
-// ============================================================================
-// PPM Output
-//   PPMWriter supports complete-image and incremental row output
-// ============================================================================
-
 /** PPM encoding and streaming options */
 struct PPMWriteOptions {
     float gamma = 2.2f;
     double flush_interval_seconds = 1.0;
 };
 
-/** Ordered ASCII PPM row writer */
+/**
+ * Ordered ASCII PPM row writer
+ *
+ * - provides a way to write an image row by row in the PPM format.
+ * - supports incremental writing and flushing of the output file.
+ */
 class PPMWriter {
 public:
     /**

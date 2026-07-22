@@ -35,10 +35,22 @@ Nearlighter 是一个基于物理的CPU端路径追踪渲染器，支持简单�
 git submodule update --init --recursive
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
-./build/Nearlighter -s <scene_num>
+./build/Nearlighter
 ```
 
-CLI 默认在终端显示渲染进度，并将已完成的图像行持续写入 `out.ppm`。支持的参数可通过帮助信息查看：
+CLI 默认加载 `assets/scenes/cornell_box_rtow.json`，在终端显示渲染进度，并将已完成的图像行持续写入 `out.ppm`。也可以显式加载其他 JSON 场景：
+
+```
+./build/Nearlighter --scene assets/scenes/cornell_box_rtow.json
+```
+
+尚未迁移的旧场景通过临时兼容参数选择：
+
+```
+./build/Nearlighter --legacy-scene <scene_num>
+```
+
+`--scene` 与 `--legacy-scene` 不能同时使用。全部参数可通过帮助信息查看：
 
 ```
 ./build/Nearlighter --help
@@ -47,13 +59,13 @@ CLI 默认在终端显示渲染进度，并将已完成的图像行持续写入 
 只关闭终端进度可使用：
 
 ```
-./build/Nearlighter --scene 6 --no-progress
+./build/Nearlighter --no-progress
 ```
 
 默认每秒将新增图像行刷新到 `out.ppm`。可单独调整刷新间隔：
 
 ```
-./build/Nearlighter --scene 6 --flush-interval 0.5
+./build/Nearlighter --flush-interval 0.5
 ```
 
 支持跨平台
@@ -81,6 +93,7 @@ MultiBalls
 ├── thirdparty/           # 第三方库 submodule
 │   ├── argparse/
 │   ├── glm/
+│   ├── json/
 │   └── stb/
 ├── assets/               # 运行时纹理与模型资源
 ├── cmake/                # 项目 CMake 辅助脚本
@@ -94,3 +107,4 @@ MultiBalls
 - [STB图像库文档](https://github.com/nothings/stb)
 - [GLM数学库](https://glm.g-truc.net/)
 - [argparse](https://github.com/p-ranav/argparse)
+- [JSON for Modern C++](https://github.com/nlohmann/json)

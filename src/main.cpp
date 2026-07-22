@@ -2,12 +2,15 @@
 
 #include <nearlighter/io/console_io.h>
 #include <nearlighter/io/image_io.h>
+#include <nearlighter/io/scene_loader.h>
 #include <nearlighter/render/renderer.h>
 
 #include <argparse/argparse.hpp>
 
 #include <exception>
+#include <filesystem>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -15,7 +18,9 @@ namespace {
 
 /** CLI-only application options */
 struct CliOptions {
-    int scene_selection = 6;
+    std::filesystem::path scene_path =
+        "assets/scenes/cornell_box_rtow.json";
+    std::optional<int> legacy_scene;
     bool show_progress = true;
     double flush_interval_seconds = 1.0;
 };
@@ -25,8 +30,10 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     argparse::ArgumentParser program("Nearlighter", "0.1.0");
     program.add_description("CPU path tracer");
     program.add_argument("-s", "--scene")
-        .help("select a legacy scene from 0 to 9")
-        .default_value(6)
+        .help("load a JSON scene file")
+        .default_value(std::string("assets/scenes/cornell_box_rtow.json"));
+    program.add_argument("--legacy-scene")
+        .help("select a temporary legacy C++ scene from 0 to 9")
         .scan<'i', int>()
         .choices(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
     program.add_argument("--no-progress")
@@ -44,8 +51,21 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
             std::string(error.what()) + "\n\n" + program.help().str());
     }
 
+    if (program.is_used("--scene") &&
+        program.is_used("--legacy-scene")) {
+        throw std::invalid_argument(
+            "--scene and --legacy-scene cannot be used together\n\n" +
+            program.help().str());
+    }
+
+    std::optional<int> legacy_scene;
+    if (program.is_used("--legacy-scene")) {
+        legacy_scene = program.get<int>("--legacy-scene");
+    }
+
     return CliOptions{
-        program.get<int>("--scene"),
+        program.get<std::string>("--scene"),
+        legacy_scene,
         !program.get<bool>("--no-progress"),
         program.get<double>("--flush-interval"),
     };
@@ -56,7 +76,9 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
 int main(int argc, char* argv[]) {
     try {
         const CliOptions options = parseCommandLine(argc, argv);
-        Scene scene = makeLegacyScene(options.scene_selection);
+        Scene scene = options.legacy_scene
+                          ? makeLegacyScene(*options.legacy_scene)
+                          : SceneLoader().load(options.scene_path);
         Renderer renderer(scene.defaultRenderSettings());
 
         const RenderSettings& settings = renderer.settings();

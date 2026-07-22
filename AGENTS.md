@@ -54,15 +54,16 @@
 ### Comment Styles
 
 - Level 1 — file or class sections: line-comment banners (`// =====`)
-  + Scope: related declarations or major sections
+  + Scope: groups of related declarations or definitions, such as public APIs, utility functions, and loading stages
   + Content: concise title; optional relationship or structure
-  + Constraint: sparse use; Doxygen retained on public declarations
+  + Requirement: use when a class or file contains multiple recognizable responsibility groups
+  + Constraint: omit for isolated declarations and small single-purpose files; Doxygen retained on public declarations
 
   ```
-  // ==========================================================================
+  // ==================================================
   // Section Title
   //   Optional relationship or structure
-  // ==========================================================================
+  // ==================================================
   ```
 - Level 2 — classes and functions: Doxygen blocks (`/** ... */`)
   + Position: before declarations; never `///`

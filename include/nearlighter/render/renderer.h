@@ -13,7 +13,7 @@ class Sampler;
 class Scene;
 class Shape;
 
-// ============================================================================
+// ==================================================
 // Render Lifecycle Data
 //
 // Renderer::render()
@@ -21,7 +21,7 @@ class Shape;
 //   `-- returns RenderResult
 //         +-- Image
 //         `-- RenderStats
-// ============================================================================
+// ==================================================
 
 /** Final integration metrics */
 struct RenderStats {
