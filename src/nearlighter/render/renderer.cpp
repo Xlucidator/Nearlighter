@@ -24,7 +24,10 @@ Renderer::Renderer(RenderSettings settings) : settings_(settings) {
     }
 }
 
-RenderResult Renderer::render(const Scene& scene) const {
+RenderResult Renderer::render(
+    const Scene& scene,
+    RenderProgressCallback progress_callback
+) const {
     const Camera::Prepared prepared_camera =
         scene.camera().prepare(settings_.image_width, settings_.image_height);
     Image image(settings_.image_width, settings_.image_height);
@@ -39,7 +42,9 @@ RenderResult Renderer::render(const Scene& scene) const {
         world = bvh.get();
     }
 
-    const auto start_time = std::chrono::steady_clock::now();
+    using Clock = std::chrono::steady_clock;
+    const auto start_time = Clock::now();
+    Clock::duration callback_time{};
     for (int y = 0; y < settings_.image_height; ++y) {
         for (int x = 0; x < settings_.image_width; ++x) {
             Color pixel(0.0f, 0.0f, 0.0f);
@@ -60,19 +65,27 @@ RenderResult Renderer::render(const Scene& scene) const {
             image.at(x, y) =
                 pixel / static_cast<float>(settings_.samples_per_pixel);
         }
+
+        if (progress_callback) {
+            /* Keep front-end reporting and checkpoint I/O out of core timing. */
+            const auto callback_start = Clock::now();
+            const RenderProgress progress{
+                y + 1,
+                settings_.image_height,
+                callback_start - start_time - callback_time,
+            };
+            progress_callback(progress, image);
+            callback_time += Clock::now() - callback_start;
+        }
     }
-    const auto end_time = std::chrono::steady_clock::now();
+    const auto end_time = Clock::now();
 
     RenderStats stats;
-    stats.wall_time = end_time - start_time;
+    stats.integration_time = end_time - start_time - callback_time;
     stats.sample_count =
         static_cast<std::uint64_t>(settings_.image_width) *
         static_cast<std::uint64_t>(settings_.image_height) *
         static_cast<std::uint64_t>(settings_.samples_per_pixel);
-    if (stats.wall_time.count() > 0.0) {
-        stats.samples_per_second =
-            static_cast<double>(stats.sample_count) / stats.wall_time.count();
-    }
 
     return RenderResult{std::move(image), stats};
 }

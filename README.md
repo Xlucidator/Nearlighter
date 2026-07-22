@@ -38,6 +38,24 @@ cmake --build build
 ./build/Nearlighter -s <scene_num>
 ```
 
+CLI 默认在终端显示渲染进度，并将已完成的图像行持续写入 `out.ppm`。支持的参数可通过帮助信息查看：
+
+```
+./build/Nearlighter --help
+```
+
+只关闭终端进度可使用：
+
+```
+./build/Nearlighter --scene 6 --no-progress
+```
+
+默认每秒将新增图像行刷新到 `out.ppm`。可单独调整刷新间隔：
+
+```
+./build/Nearlighter --scene 6 --flush-interval 0.5
+```
+
 支持跨平台
 
 ### 渲染示例
@@ -61,6 +79,7 @@ MultiBalls
 │   ├── main.cpp          # 命令行程序入口
 │   └── nearlighter/      # 与公开头文件对应的实现文件
 ├── thirdparty/           # 第三方库 submodule
+│   ├── argparse/
 │   ├── glm/
 │   └── stb/
 ├── assets/               # 运行时纹理与模型资源
@@ -74,3 +93,4 @@ MultiBalls
 - [GAMES101课程](https://games-cn.org/intro-graphics/)
 - [STB图像库文档](https://github.com/nothings/stb)
 - [GLM数学库](https://glm.g-truc.net/)
+- [argparse](https://github.com/p-ranav/argparse)

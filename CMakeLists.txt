@@ -96,6 +96,9 @@ target_include_directories(stb INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty"
 )
 
+# --- argparse (version: 3.2.0, commit: 3eda91b2e1ce) ---
+add_subdirectory(thirdparty/argparse)
+
 
 # =============================================================
 # 3. Nearlighter Core
@@ -155,6 +158,7 @@ message(STATUS "Target [nearlighter_core] configured.")
 # =============================================================
 
 add_library(nearlighter_io STATIC
+    src/nearlighter/io/console_io.cpp
     src/nearlighter/io/image_io.cpp
 )
 target_include_directories(nearlighter_io
@@ -180,6 +184,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
     )
 
     target_link_libraries(Nearlighter PRIVATE
+        argparse::argparse
         nearlighter_core
         nearlighter_io
     )

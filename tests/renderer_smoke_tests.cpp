@@ -52,7 +52,23 @@ void testRenderer(nearlighter::test::Context& context) {
     const Scene scene = makeScene();
     const RenderSettings settings = scene.defaultRenderSettings();
     const Renderer renderer(settings);
-    const RenderResult first = renderer.render(scene);
+    int progress_updates = 0;
+    bool progress_contract_valid = true;
+    double previous_integration_time = 0.0;
+    const RenderResult first = renderer.render(
+        scene,
+        [&](const RenderProgress& progress, const Image& partial_image) {
+            ++progress_updates;
+            progress_contract_valid &=
+                progress.completed_rows == progress_updates &&
+                progress.total_rows == settings.image_height &&
+                partial_image.width() == settings.image_width &&
+                partial_image.height() == settings.image_height &&
+                progress.integration_time.count() >=
+                    previous_integration_time;
+            previous_integration_time = progress.integration_time.count();
+        }
+    );
     const RenderResult second = renderer.render(scene);
 
     context.expectTrue(first.image.width() == settings.image_width,
@@ -61,6 +77,10 @@ void testRenderer(nearlighter::test::Context& context) {
                        "rendered image height should match RenderSettings");
     context.expectTrue(imagesEqual(first.image, second.image),
                        "equal scene settings and seed should reproduce every pixel");
+    context.expectTrue(progress_updates == settings.image_height,
+                       "Renderer should report each completed image row");
+    context.expectTrue(progress_contract_valid,
+                       "render progress should be ordered and match the output image");
 
     bool non_black = false;
     bool all_finite = true;
@@ -80,8 +100,8 @@ void testRenderer(nearlighter::test::Context& context) {
         static_cast<std::uint64_t>(settings.samples_per_pixel);
     context.expectTrue(first.stats.sample_count == expected_samples,
                        "render statistics should report every primary sample");
-    context.expectTrue(first.stats.wall_time.count() >= 0.0,
-                       "render wall time should not be negative");
+    context.expectTrue(first.stats.integration_time.count() >= 0.0,
+                       "render integration time should not be negative");
 
     RenderSettings changed_settings = settings;
     ++changed_settings.seed;

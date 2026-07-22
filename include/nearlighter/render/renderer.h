@@ -6,24 +6,56 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 
 class Ray;
 class Sampler;
 class Scene;
 class Shape;
 
-/** Records the core integration work performed by Renderer. */
+// ============================================================================
+// Render Lifecycle Data
+//
+// Renderer::render()
+//   +-- emits RenderProgress while integrating
+//   `-- returns RenderResult
+//         +-- Image
+//         `-- RenderStats
+// ============================================================================
+
+/** Final integration metrics */
 struct RenderStats {
-    std::chrono::duration<double> wall_time{};
+    std::chrono::duration<double> integration_time{};
     std::uint64_t sample_count = 0;
-    double samples_per_second = 0.0;
+
+    /** Primary sample throughput */
+    double samplesPerSecond() const {
+        if (integration_time.count() <= 0.0) return 0.0;
+        return static_cast<double>(sample_count) / integration_time.count();
+    }
 };
 
-/** Bundles a linear image with the statistics from the render that produced it. */
+/** Completed image and integration metrics */
 struct RenderResult {
     Image image;
     RenderStats stats;
 };
+
+/** Row-level integration state */
+struct RenderProgress {
+    int completed_rows = 0;
+    int total_rows = 0;
+    std::chrono::duration<double> integration_time{};
+};
+
+/**
+ * Receives row-level progress and a read-only view of the partial image.
+ *
+ * Rows before completed_rows contain final values for this render. The Image
+ * reference is valid only for the duration of the callback invocation.
+ */
+using RenderProgressCallback =
+    std::function<void(const RenderProgress&, const Image&)>;
 
 /** Integrates a Scene into a linear RGB Image without performing file I/O. */
 class Renderer {
@@ -38,8 +70,14 @@ public:
      *
      * BVH construction and camera preparation occur before the reported core
      * integration time, matching the previous command-line timing boundary.
+     * When supplied, progress_callback runs once after every completed row.
+     * Its execution time is excluded from the returned render statistics.
+     * Exceptions raised by the callback propagate to the caller.
      */
-    RenderResult render(const Scene& scene) const;
+    RenderResult render(
+        const Scene& scene,
+        RenderProgressCallback progress_callback = {}
+    ) const;
 
 private:
     Color trace(const Ray& ray, int depth, const Shape& world,

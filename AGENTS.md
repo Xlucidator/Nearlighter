@@ -32,6 +32,7 @@
 - Keep `nearlighter.h` as a curated core vocabulary only. Do not grow it into a cross-module include hub for shapes, materials, textures, BVH, PDFs, or scene code.
 - Forward declare types only when a pointer/reference/declaration is enough and the complete type is not required. Include concrete headers in `.cpp` files for implementation details.
 - Keep meaningful parameter names in public declarations, including parameters unused by inline default implementations. Use C++17 `[[maybe_unused]]` when necessary; do not remove names merely to silence compiler warnings. Out-of-line definitions may omit genuinely unused names when the public declaration already documents them.
+- Keep established technical acronyms uppercase in identifiers, such as `AABB`, `BVH`, `PDF`, `PPM`, and `RGB`.
 - Keep third-party code separate from project code. Prefer `thirdparty/` submodules plus CMake targets for external libraries.
 - Prefer target-based CMake (`target_sources`, `target_include_directories`, `target_link_libraries`) over global include/link settings.
 - Avoid global mutable state in new rendering code, especially for random generators and output/gamma configuration.
@@ -52,9 +53,26 @@
 
 ### Comment Styles
 
-- Use Doxygen block comments (`/** ... */`) for classes and functions; do not use `///`. Place public API documentation before its declaration, describe the contract where relevant, and use tags such as `@param`, `@return`, and `@throws` only when helpful. Do not duplicate it on the `.cpp` definition.
-- Use ordinary block comments (`/* ... */`) inside function implementations to introduce major logical sections, algorithm stages, or process blocks.
-- Use line comments (`//`) for subordinate steps, specific implementation details, or short end-of-line clarification. Put longer explanations before the relevant code.
+- Level 1 — file or class sections: line-comment banners (`// =====`)
+  + Scope: related declarations or major sections
+  + Content: concise title; optional relationship or structure
+  + Constraint: sparse use; Doxygen retained on public declarations
+
+  ```
+  // ==========================================================================
+  // Section Title
+  //   Optional relationship or structure
+  // ==========================================================================
+  ```
+- Level 2 — classes and functions: Doxygen blocks (`/** ... */`)
+  + Position: before declarations; never `///`
+  + Content: concise purpose; contract, invariant, ownership, or Doxygen tags only when useful
+  + Constraint: no duplicate API documentation on `.cpp` definitions
+- Level 3 — function logic blocks: ordinary blocks (`/* ... */`)
+  + Scope: major stages, algorithms, or process blocks
+- Level 4 — local details: line comments (`//`)
+  + Scope: subordinate steps or specific implementation details
+  + End-of-line form: short clarification only
 
 ## Skill Proposals
 

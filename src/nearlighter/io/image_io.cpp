@@ -67,28 +67,106 @@ Image loadImage(const std::filesystem::path& path,
     return image;
 }
 
-void writePPM(const std::filesystem::path& path, const Image& image,
-              const PpmWriteOptions& options) {
-    if (options.gamma <= 0.0f) {
+void PPMWriter::write(const Image& image) {
+    if (finished_) {
+        throw std::logic_error("Cannot write to a finished PPM output");
+    }
+    if (image.width() != width_ || image.height() != height_) {
+        throw std::invalid_argument(
+            "PPM source image dimensions do not match the output");
+    }
+
+    while (next_row_ < height_) {
+        writeRow(image, next_row_);
+    }
+}
+
+PPMWriter::PPMWriter(const std::filesystem::path& path, int width, int height,
+                     const PPMWriteOptions& options)
+    : path_(path), width_(width), height_(height) {
+    if (width <= 0 || height <= 0) {
+        throw std::invalid_argument("PPM dimensions must be positive");
+    }
+    if (!std::isfinite(options.gamma) || options.gamma <= 0.0f) {
         throw std::invalid_argument("PPM gamma must be positive");
     }
+    if (!std::isfinite(options.flush_interval_seconds) ||
+        options.flush_interval_seconds <= 0.0) {
+        throw std::invalid_argument("PPM flush interval must be positive");
+    }
+    inverse_gamma_ = 1.0f / options.gamma;
+    flush_interval_ =
+        std::chrono::duration<double>(options.flush_interval_seconds);
 
-    std::ofstream output(path);
-    if (!output) {
+    output_.open(path_);
+    if (!output_) {
         throw std::runtime_error("Failed to open PPM output '" +
-                                 path.string() + "'");
+                                 path_.string() + "'");
+    }
+    output_ << "P3\n" << width_ << ' ' << height_ << "\n255\n";
+    if (!output_) {
+        throw std::runtime_error("Failed while writing PPM header: " +
+                                 path_.string());
+    }
+    last_flush_time_ = std::chrono::steady_clock::now();
+}
+
+void PPMWriter::writeRow(const Image& image, int row) {
+    if (finished_) {
+        throw std::logic_error("Cannot write to a finished PPM output");
+    }
+    if (image.width() != width_ || image.height() != height_) {
+        throw std::invalid_argument(
+            "PPM source image dimensions do not match the output");
+    }
+    if (row != next_row_) {
+        throw std::invalid_argument("PPM rows must be written in order");
     }
 
-    output << "P3\n" << image.width() << ' ' << image.height() << "\n255\n";
-    const float inverse_gamma = 1.0f / options.gamma;
-    for (const Color& color : image.pixels()) {
-        output << encodeChannel(color.x(), inverse_gamma) << ' '
-               << encodeChannel(color.y(), inverse_gamma) << ' '
-               << encodeChannel(color.z(), inverse_gamma) << '\n';
+    const std::size_t row_offset =
+        static_cast<std::size_t>(row) * static_cast<std::size_t>(width_);
+    for (int column = 0; column < width_; ++column) {
+        const Color& color =
+            image.pixels()[row_offset + static_cast<std::size_t>(column)];
+        output_ << encodeChannel(color.x(), inverse_gamma_) << ' '
+                << encodeChannel(color.y(), inverse_gamma_) << ' '
+                << encodeChannel(color.z(), inverse_gamma_) << '\n';
     }
 
-    if (!output) {
+    if (!output_) {
         throw std::runtime_error("Failed while writing PPM output '" +
-                                 path.string() + "'");
+                                 path_.string() + "'");
     }
+    ++next_row_;
+
+    if (std::chrono::steady_clock::now() - last_flush_time_ >=
+        flush_interval_) {
+        flush();
+    }
+}
+
+void PPMWriter::flush() {
+    if (finished_) return;
+
+    output_.flush();
+    if (!output_) {
+        throw std::runtime_error("Failed while flushing PPM output '" +
+                                 path_.string() + "'");
+    }
+    last_flush_time_ = std::chrono::steady_clock::now();
+}
+
+void PPMWriter::finish() {
+    if (finished_) return;
+    if (next_row_ != height_) {
+        throw std::logic_error("Cannot finish an incomplete PPM output");
+    }
+
+    output_.flush();
+    output_.close();
+    if (!output_) {
+        throw std::runtime_error("Failed while closing PPM output '" +
+                                 path_.string() + "'");
+    }
+    finished_ = true;
 }
