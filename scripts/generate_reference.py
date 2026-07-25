@@ -53,7 +53,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--seed", required=True, type=int)
     parser.add_argument(
         "--build-directory",
-        default="build-release",
+        default="build/release",
         help="CMake build directory",
     )
     parser.add_argument(

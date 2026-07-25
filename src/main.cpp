@@ -23,8 +23,7 @@ namespace {
 
 /** CLI-only application options */
 struct CliOptions {
-    std::filesystem::path scene_path =
-        "assets/scenes/cornell_box_rtow.json";
+    std::filesystem::path scene_path = "cornell_box_rtow.json";
     std::filesystem::path output_path = "out.ppm";
     std::optional<std::filesystem::path> linear_output_path;
     std::optional<int> legacy_scene;
@@ -41,13 +40,31 @@ struct CliOptions {
 // Command-line Processing
 // ==================================================
 
+/**
+ * Resolves bundled scene filenames without changing explicit paths.
+ *
+ * Bare filename: executable/assets/scenes/<filename>.
+ * Absolute or directory-qualified path: unchanged.
+ */
+std::filesystem::path resolveScenePath(
+    const std::filesystem::path& scene_path,
+    const std::filesystem::path& executable_path) {
+    if (scene_path.is_absolute() || scene_path.has_parent_path()) {
+        return scene_path;
+    }
+
+    const std::filesystem::path executable_directory =
+        std::filesystem::absolute(executable_path).parent_path();
+    return executable_directory / "assets" / "scenes" / scene_path;
+}
+
 /** Parses command-line options and prints library-generated help on failure */
 CliOptions parseCommandLine(int argc, char* argv[]) {
     argparse::ArgumentParser program("Nearlighter", "0.1.0");
     program.add_description("CPU path tracer");
     program.add_argument("-s", "--scene")
-        .help("load a JSON scene file")
-        .default_value(std::string("assets/scenes/cornell_box_rtow.json"));
+        .help("load a bundled scene filename or an explicit JSON path")
+        .default_value(std::string("cornell_box_rtow.json"));
     program.add_argument("--legacy-scene")
         .help("select a temporary legacy C++ scene from 0 to 9")
         .scan<'i', int>()
@@ -148,9 +165,11 @@ void applyRenderOverrides(RenderSettings& settings,
 int main(int argc, char* argv[]) {
     try {
         const CliOptions options = parseCommandLine(argc, argv);
+        const std::filesystem::path scene_path =
+            resolveScenePath(options.scene_path, argv[0]);
         Scene scene = options.legacy_scene
                           ? makeLegacyScene(*options.legacy_scene)
-                          : SceneLoader().load(options.scene_path);
+                          : SceneLoader().load(scene_path);
         RenderSettings render_settings = scene.defaultRenderSettings();
         applyRenderOverrides(render_settings, options);
         Renderer renderer(render_settings);

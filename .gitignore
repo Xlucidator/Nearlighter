@@ -1,15 +1,22 @@
-build*/
-*.o
+
+# Self
+benchmark/**
+!benchmark/.gitkeep
 *.pdf
+ref/
+
+# C++
+*.o
+
+# Python
 __pycache__/
 *.py[cod]
 
-benchmark/**
-!benchmark/.gitkeep
-
-.vscode/
-.lingma/
+# CMake
+build*/
+CMakeUserPresets.json
 
 # Agent Concerned
-ref
+.vscode/
+.lingma/
 .agents/

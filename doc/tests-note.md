@@ -14,9 +14,9 @@
 构建并运行全部测试：
 
 ```bash
-cmake -S . -B build -DBUILD_TESTING=ON
-cmake --build build
-ctest --test-dir build --output-on-failure
+cmake --preset debug
+cmake --build --preset debug
+ctest --preset debug
 ```
 
 CTest 负责启动测试可执行文件并汇总退出状态。每个测试程序使用 `tests/test_support.h` 中的轻量 expectation 工具收集失败信息，不依赖 GoogleTest。

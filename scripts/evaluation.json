@@ -1,6 +1,6 @@
 {
   "build": {
-    "directory": "build-release",
+    "directory": "build/release",
     "configuration": "Release"
   },
 

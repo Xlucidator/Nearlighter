@@ -27,64 +27,122 @@ Nearlighter 是一个基于物理的CPU端路径追踪渲染器，支持简单�
 - [ ] GPU并行加速渲染(CUDA)
 - [ ] 实时光线追踪支持，降噪算法
 
+### 环境与依赖
+
+基础构建环境：
+
+- CMake 3.20 或更高版本
+- 支持 C++17 的编译器
+- Git 与项目 submodule
+- GNU Make；仓库内置 preset 当前使用 `Unix Makefiles`
+
+集成评估额外需要 Python 3，基础构建和运行不依赖 Python。第三方库统一以 submodule 存放在 `thirdparty/`，克隆项目后初始化一次：
+
+```bash
+# 获取或更新项目依赖
+git submodule update --init --recursive
+
+# 确认 CMake 版本
+cmake --version
+```
+
+如需使用 Ninja、Visual Studio 等其他 generator，可在不提交的 `CMakeUserPresets.json` 中定义本地 preset。
+
+### 构建
+
+Debug 与 Release 使用独立构建目录，分别生成到 `build/debug/` 和 `build/release/`：
+
+```bash
+# Release：用于正常运行和性能评估
+cmake --preset release
+cmake --build --preset release
+
+# Debug：用于开发和错误检查
+cmake --preset debug
+cmake --build --preset debug
+```
+
+配置完成后，也可以直接调用 preset 生成的 Makefile 进行增量构建：
+
+```bash
+# 等价的 Debug 增量构建
+make -C build/debug -j
+
+# 等价的 Release 增量构建
+make -C build/release -j
+```
+
+每个构建目录的根部包含 `Nearlighter` 可执行文件，静态库位于 `lib/`，测试程序位于 `ctest/`。配置阶段会优先为 `assets/` 创建指向源码资源的符号链接；平台或权限不支持时，改为增量复制资源。
+
 ### 使用方式
 
-构建： CMake
+CLI 默认加载项目提供的 Cornell Box，在终端显示渲染进度，并将已完成的图像行持续写入当前目录的 `out.ppm`：
 
-```
-git submodule update --init --recursive
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-./build/Nearlighter
-```
+```bash
+# 使用默认场景和设置
+./build/release/Nearlighter
 
-CLI 默认加载 `assets/scenes/cornell_box_rtow.json`，在终端显示渲染进度，并将已完成的图像行持续写入 `out.ppm`。也可以显式加载其他 JSON 场景：
+# 仅提供文件名：从可执行文件同级的 assets/scenes/ 加载
+./build/release/Nearlighter --scene cornell_box_rtow.json
 
-```
-./build/Nearlighter --scene assets/scenes/cornell_box_rtow.json
-```
+# 包含目录的相对路径：相对于当前工作目录加载
+./build/release/Nearlighter --scene experiments/test.json
 
-尚未迁移的旧场景通过临时兼容参数选择：
-
-```
-./build/Nearlighter --legacy-scene <scene_num>
+# 绝对路径：直接加载指定文件
+./build/release/Nearlighter --scene /path/to/test.json
 ```
 
-`--scene` 与 `--legacy-scene` 不能同时使用。全部参数可通过帮助信息查看：
+常用输出与兼容选项：
 
-```
-./build/Nearlighter --help
+```bash
+# 选择尚未迁移的旧 C++ 场景
+./build/release/Nearlighter --legacy-scene <scene_num>
+
+# 关闭终端进度显示
+./build/release/Nearlighter --no-progress
+
+# 每 0.5 秒将新增图像行刷新到输出文件
+./build/release/Nearlighter --flush-interval 0.5
+
+# 查看完整参数说明
+./build/release/Nearlighter --help
 ```
 
-只关闭终端进度可使用：
+`--scene` 与 `--legacy-scene` 不能同时使用。
 
-```
-./build/Nearlighter --no-progress
-```
+### 单元测试
 
-默认每秒将新增图像行刷新到 `out.ppm`。可单独调整刷新间隔：
+构建完成后，通过对应 preset 运行 CTest：
 
-```
-./build/Nearlighter --flush-interval 0.5
+```bash
+# Debug 测试
+ctest --preset debug
+
+# Release 测试
+ctest --preset release
+
+# 已进入 Make 工作流时的等价 Debug 测试
+make -C build/debug test
 ```
 
 ### 集成评估
 
-日常快速检查：
+集成评估用于一次增量开发后的正确性与性能检查。脚本默认配置并构建 Release、运行 CTest、执行 suite 中的固定 cases，并将渲染结果与固定线性 PFM reference 比较：
 
-```
+```bash
+# 日常快速检查
 python3 scripts/evaluate.py --suite quick
-```
 
-阶段性完整检查：
-
-```
+# 阶段性完整检查
 python3 scripts/evaluate.py --suite full
+
+# 复用已有 Release 构建
+python3 scripts/evaluate.py --suite quick --skip-build
 ```
 
-脚本默认构建 Release 版本、运行 CTest、执行 suite 中的固定 cases，并输出 MSE、RMSE、relative MSE、PSNR、渲染时间和采样吞吐量。reference 由 `scripts/generate_reference.py` 独立生成，evaluation 不会自动创建或覆盖。完整用法见 `scripts/README.md`。
+评估输出包括 MSE、RMSE、relative MSE、PSNR、渲染时间和采样吞吐量。每次运行的图像、日志与汇总报告独立写入 `build/evaluation/runs/`。
 
-支持跨平台
+固定 reference 位于 `benchmark/references/`，由 `scripts/generate_reference.py` 显式生成；evaluation 只读取，不会自动创建或覆盖。reference 生成方式、配置结构和完整产物说明见 [scripts/README.md](scripts/README.md)。
 
 ### 渲染示例
 
@@ -111,8 +169,11 @@ MultiBalls
 │   ├── glm/
 │   ├── json/
 │   └── stb/
-├── assets/               # 运行时纹理与模型资源
-├── cmake/                # 项目 CMake 辅助脚本
+├── assets/               # 运行时场景、纹理与模型资源
+├── benchmark/            # 测评数据与固定 reference
+├── cmake/                # 项目 CMake 辅助模块
+├── scripts/              # 构建、reference 生成与集成评估脚本
+├── tests/                # 确定性 C++ 测试
 └── doc/                  # 实现笔记与渲染结果
 ```
 

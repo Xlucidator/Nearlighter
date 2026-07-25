@@ -296,7 +296,7 @@ def main() -> int:
     # ----- Initial manifest -----
     build_config = config.get("build", {})
     build_directory = resolve_project_path(
-        build_config.get("directory", "build-release")
+        build_config.get("directory", "build/release")
     )
     configuration = build_config.get("configuration", "Release")
     manifest: Dict[str, Any] = {

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.20)
 
 project(Nearlighter
     VERSION 0.1.0
@@ -19,12 +19,9 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the build type." FORCE)
 endif()
 
-# Option settings
-option(ENABLE_EXTRA_WARNINGS "Enable additional compiler warnings." OFF)
-
-# Import custom CMake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-include(smart_copy)
+include(link_or_copy)
+include(target_config)
 
 # Enable LTO/IPO for Release builds when the toolchain supports it.
 include(CheckIPOSupported)
@@ -40,48 +37,40 @@ endif()
 if(UNIX AND NOT MINGW)
     # 1. Unix-like is the primary development target.
     message(STATUS "Building on Unix-like platform.")
-    set(NEARLIGHTER_DEBUG_FLAGS           -O0 -Wall)
+    set(NEARLIGHTER_WARNING_FLAGS         -Wall -Wextra)
+    set(NEARLIGHTER_DEBUG_FLAGS           -O0)
     set(NEARLIGHTER_RELEASE_FLAGS         -march=native -funroll-loops)
     set(NEARLIGHTER_RELWITHDEBINFO_FLAGS  -march=native)
 elseif(MINGW)
     # 2. MinGW is the preferred Windows toolchain when possible.
     message(STATUS "Building on Windows MinGW.")
-    set(NEARLIGHTER_DEBUG_FLAGS           -O0 -g -Wall)
+    set(NEARLIGHTER_WARNING_FLAGS         -Wall -Wextra)
+    set(NEARLIGHTER_DEBUG_FLAGS           -O0 -g)
     set(NEARLIGHTER_RELEASE_FLAGS         -march=native -funroll-loops -static)
     set(NEARLIGHTER_RELWITHDEBINFO_FLAGS  -march=native -static)
 elseif(MSVC)
     # 3. MSVC is supported, but not the primary tuning target.
     message(STATUS "Building on Windows MSVC.")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-    set(NEARLIGHTER_DEBUG_FLAGS           /Od /Zi /W4 /permissive-)
+    set(NEARLIGHTER_WARNING_FLAGS         /W4 /permissive-)
+    set(NEARLIGHTER_DEBUG_FLAGS           /Od /Zi)
     set(NEARLIGHTER_RELEASE_FLAGS         /Oi /Ot /GL)
     set(NEARLIGHTER_RELWITHDEBINFO_FLAGS  /Oi /Ot)
 else()
     message(STATUS "Building on an unknown platform; using conservative flags.")
-    set(NEARLIGHTER_DEBUG_FLAGS           -O0 -Wall)
+    set(NEARLIGHTER_WARNING_FLAGS         -Wall -Wextra)
+    set(NEARLIGHTER_DEBUG_FLAGS           -O0)
     set(NEARLIGHTER_RELEASE_FLAGS)
     set(NEARLIGHTER_RELWITHDEBINFO_FLAGS)
 endif()
 
-if(ENABLE_EXTRA_WARNINGS AND NOT MSVC)
-    list(APPEND NEARLIGHTER_DEBUG_FLAGS          -Wextra)
-    list(APPEND NEARLIGHTER_RELEASE_FLAGS        -Wextra)
-    list(APPEND NEARLIGHTER_RELWITHDEBINFO_FLAGS -Wextra)
-endif()
-
-function(target_apply_build_options target_name)
-    # Compiler flags for different build types
-    target_compile_options(${target_name} PRIVATE
-        $<$<CONFIG:Debug>:${NEARLIGHTER_DEBUG_FLAGS}>
-        $<$<CONFIG:Release>:${NEARLIGHTER_RELEASE_FLAGS}>
-        $<$<CONFIG:RelWithDebInfo>:${NEARLIGHTER_RELWITHDEBINFO_FLAGS}>
-    )
-    # Custom definitions for different build types
-    target_compile_definitions(${target_name} PRIVATE
-        $<$<CONFIG:Debug>:DEBUG>
-    )
-endfunction()
-
+set(NEARLIGHTER_BUILD_OPTIONS
+    COMMON ${NEARLIGHTER_WARNING_FLAGS}
+    DEBUG ${NEARLIGHTER_DEBUG_FLAGS}
+    RELEASE ${NEARLIGHTER_RELEASE_FLAGS}
+    RELWITHDEBINFO ${NEARLIGHTER_RELWITHDEBINFO_FLAGS}
+    DEBUG_DEFINITIONS DEBUG
+)
 
 # =============================================================
 # 2. Third-party Dependencies
@@ -143,6 +132,9 @@ set(CORE_SOURCES
 )
 
 add_library(nearlighter_core STATIC ${CORE_SOURCES})
+target_set_output_directory(
+    nearlighter_core ARCHIVE "${CMAKE_BINARY_DIR}/lib"
+)
 
 # Core sources are compiled once and shared by the CLI and test executables.
 # Third-party details remain private unless a public header requires them.
@@ -154,7 +146,9 @@ target_link_libraries(nearlighter_core
     PUBLIC glm::glm
 )
 
-target_apply_build_options(nearlighter_core)
+target_apply_build_options(
+    nearlighter_core ${NEARLIGHTER_BUILD_OPTIONS}
+)
 message(STATUS "Target [nearlighter_core] configured.")
 
 
@@ -167,6 +161,9 @@ add_library(nearlighter_io STATIC
     src/nearlighter/io/image_io.cpp
     src/nearlighter/io/scene_loader.cpp
 )
+target_set_output_directory(
+    nearlighter_io ARCHIVE "${CMAKE_BINARY_DIR}/lib"
+)
 target_include_directories(nearlighter_io
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
@@ -176,7 +173,9 @@ target_link_libraries(nearlighter_io
         nlohmann_json::nlohmann_json
         stb
 )
-target_apply_build_options(nearlighter_io)
+target_apply_build_options(
+    nearlighter_io ${NEARLIGHTER_BUILD_OPTIONS}
+)
 message(STATUS "Target [nearlighter_io] configured.")
 
 
@@ -197,7 +196,10 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
         nearlighter_io
     )
 
-    target_apply_build_options(Nearlighter)
+    target_set_output_directory(
+        Nearlighter RUNTIME "${CMAKE_BINARY_DIR}"
+    )
+    target_apply_build_options(Nearlighter ${NEARLIGHTER_BUILD_OPTIONS})
     message(STATUS "Target [Nearlighter] configured.")
 endif()
 
@@ -220,9 +222,12 @@ if(BUILD_TESTING)
     target_link_libraries(nearlighter_geometry_tests PRIVATE
         nearlighter_core
     )
-    target_apply_build_options(nearlighter_geometry_tests)
-    set_target_properties(nearlighter_geometry_tests PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    target_apply_build_options(
+        nearlighter_geometry_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_geometry_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
     )
     add_test(
         NAME nearlighter.geometry
@@ -236,9 +241,12 @@ if(BUILD_TESTING)
     target_link_libraries(nearlighter_bvh_tests PRIVATE
         nearlighter_core
     )
-    target_apply_build_options(nearlighter_bvh_tests)
-    set_target_properties(nearlighter_bvh_tests PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    target_apply_build_options(
+        nearlighter_bvh_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_bvh_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
     )
     add_test(
         NAME nearlighter.bvh
@@ -252,9 +260,12 @@ if(BUILD_TESTING)
     target_link_libraries(nearlighter_sampler_tests PRIVATE
         nearlighter_core
     )
-    target_apply_build_options(nearlighter_sampler_tests)
-    set_target_properties(nearlighter_sampler_tests PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    target_apply_build_options(
+        nearlighter_sampler_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_sampler_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
     )
     add_test(
         NAME nearlighter.sampler
@@ -268,9 +279,12 @@ if(BUILD_TESTING)
     target_link_libraries(nearlighter_renderer_smoke_tests PRIVATE
         nearlighter_core
     )
-    target_apply_build_options(nearlighter_renderer_smoke_tests)
-    set_target_properties(nearlighter_renderer_smoke_tests PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    target_apply_build_options(
+        nearlighter_renderer_smoke_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_renderer_smoke_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
     )
     add_test(
         NAME nearlighter.renderer_smoke
@@ -285,4 +299,9 @@ endif()
 # 7. Runtime Assets
 # =============================================================
 
-smart_copy_dir("assets")
+if(TARGET Nearlighter)
+    link_or_copy_directory(
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets"
+        "${CMAKE_BINARY_DIR}/assets"
+    )
+endif()
