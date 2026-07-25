@@ -68,6 +68,22 @@ CLI 默认加载 `assets/scenes/cornell_box_rtow.json`，在终端显示渲染�
 ./build/Nearlighter --flush-interval 0.5
 ```
 
+### 集成评估
+
+日常快速检查：
+
+```
+python3 scripts/evaluate.py --suite quick
+```
+
+阶段性完整检查：
+
+```
+python3 scripts/evaluate.py --suite full
+```
+
+脚本默认构建 Release 版本、运行 CTest、执行 suite 中的固定 cases，并输出 MSE、RMSE、relative MSE、PSNR、渲染时间和采样吞吐量。reference 由 `scripts/generate_reference.py` 独立生成，evaluation 不会自动创建或覆盖。完整用法见 `scripts/README.md`。
+
 支持跨平台
 
 ### 渲染示例

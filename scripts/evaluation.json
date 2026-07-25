@@ -1,0 +1,60 @@
+{
+  "build": {
+    "directory": "build-release",
+    "configuration": "Release"
+  },
+
+  "cases": {
+    "cornell_box_rtow_quick": {
+      "scene": "assets/scenes/cornell_box_rtow.json",
+      "render": {
+        "resolution": {
+          "width": 64,
+          "height": 64
+        },
+        "samples_per_pixel": 8,
+        "max_depth": 8,
+        "seed": 0
+      },
+      "reference": "benchmark/references/cornell_box_rtow_quick_v1/reference.pfm",
+      "metrics": [
+        "mse",
+        "rmse",
+        "relative_mse",
+        "psnr"
+      ]
+    },
+    "cornell_box_rtow_full": {
+      "scene": "assets/scenes/cornell_box_rtow.json",
+      "render": {
+        "resolution": {
+          "width": 256,
+          "height": 256
+        },
+        "samples_per_pixel": 128,
+        "max_depth": 25,
+        "seed": 0
+      },
+      "reference": "benchmark/references/cornell_box_rtow_full_v1/reference.pfm",
+      "metrics": [
+        "mse",
+        "rmse",
+        "relative_mse",
+        "psnr"
+      ]
+    }
+  },
+  
+  "suites": {
+    "quick": {
+      "cases": [
+        "cornell_box_rtow_quick"
+      ]
+    },
+    "full": {
+      "cases": [
+        "cornell_box_rtow_full"
+      ]
+    }
+  }
+}

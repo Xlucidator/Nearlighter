@@ -4,7 +4,9 @@
 #include <stb/stb_image.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <cmath>
+#include <cstring>
 #include <fstream>
 #include <memory>
 #include <stdexcept>
@@ -26,7 +28,31 @@ int encodeChannel(float linear_value, float inverse_gamma) {
     return static_cast<int>(std::clamp(encoded, 0.0f, 0.999f) * 256.0f);
 }
 
+bool isLittleEndian() {
+    const std::uint16_t value = 1;
+    return *reinterpret_cast<const unsigned char*>(&value) == 1;
+}
+
+void writeLittleEndianFloat(std::ostream& output, float value) {
+    static_assert(sizeof(float) == sizeof(std::uint32_t),
+                  "PFM output requires 32-bit float storage");
+
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(value));
+    if (!isLittleEndian()) {
+        bits = ((bits & 0x000000ffu) << 24u) |
+               ((bits & 0x0000ff00u) << 8u) |
+               ((bits & 0x00ff0000u) >> 8u) |
+               ((bits & 0xff000000u) >> 24u);
+    }
+    output.write(reinterpret_cast<const char*>(&bits), sizeof(bits));
+}
+
 }  // namespace
+
+// ==================================================
+// Image Loading
+// ==================================================
 
 Image loadImage(const std::filesystem::path& path,
                 const ImageLoadOptions& options) {
@@ -66,6 +92,10 @@ Image loadImage(const std::filesystem::path& path,
 
     return image;
 }
+
+// ==================================================
+// PPM Output
+// ==================================================
 
 void PPMWriter::write(const Image& image) {
     if (finished_) {
@@ -169,4 +199,41 @@ void PPMWriter::finish() {
                                  path_.string() + "'");
     }
     finished_ = true;
+}
+
+// ==================================================
+// PFM Output
+// ==================================================
+
+PFMWriter::PFMWriter(const std::filesystem::path& path) : path_(path) {}
+
+void PFMWriter::write(const Image& image) const {
+    if (image.empty() || image.width() <= 0 || image.height() <= 0) {
+        throw std::invalid_argument("Cannot write an empty PFM image");
+    }
+
+    std::ofstream output(path_, std::ios::binary);
+    if (!output) {
+        throw std::runtime_error("Failed to open PFM output '" +
+                                 path_.string() + "'");
+    }
+
+    /* A negative scale marks the payload as little-endian. */
+    output << "PF\n" << image.width() << ' ' << image.height() << "\n-1.0\n";
+
+    // PFM rows run from the bottom of the image to the top.
+    for (int y = image.height() - 1; y >= 0; --y) {
+        for (int x = 0; x < image.width(); ++x) {
+            const Color& color = image.at(x, y);
+            writeLittleEndianFloat(output, color.x());
+            writeLittleEndianFloat(output, color.y());
+            writeLittleEndianFloat(output, color.z());
+        }
+    }
+
+    output.close();
+    if (!output) {
+        throw std::runtime_error("Failed while writing PFM output '" +
+                                 path_.string() + "'");
+    }
 }

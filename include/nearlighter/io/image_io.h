@@ -7,6 +7,10 @@
 #include <filesystem>
 #include <fstream>
 
+// ==================================================
+// Image Loading
+// ==================================================
+
 /** Describes how encoded source pixels must be converted to linear RGB. */
 enum class SourceColorSpace {
     Srgb,
@@ -17,6 +21,18 @@ enum class SourceColorSpace {
 struct ImageLoadOptions {
     SourceColorSpace source_color_space = SourceColorSpace::Srgb;
 };
+
+/**
+ * Loads an image file into linear floating-point RGB storage.
+ *
+ * @throws std::runtime_error when the file cannot be decoded.
+ */
+Image loadImage(const std::filesystem::path& path,
+                const ImageLoadOptions& options = {});
+
+// ==================================================
+// Image Writing
+// ==================================================
 
 /** PPM encoding and streaming options */
 struct PPMWriteOptions {
@@ -69,12 +85,23 @@ private:
     bool finished_ = false;
 };
 
-/**
- * Loads an image file into linear floating-point RGB storage.
- *
- * @throws std::runtime_error when the file cannot be decoded.
- */
-Image loadImage(const std::filesystem::path& path,
-                const ImageLoadOptions& options = {});
+
+/** Binary PFM writer for unclamped linear RGB images. */
+class PFMWriter {
+public:
+    /** Stores the destination used by the next write operation. */
+    explicit PFMWriter(const std::filesystem::path& path);
+
+    /**
+     * Writes a complete Image using little-endian 32-bit float channels.
+     *
+     * @throws std::invalid_argument when the image is empty.
+     * @throws std::runtime_error when the output cannot be written.
+     */
+    void write(const Image& image) const;
+
+private:
+    std::filesystem::path path_;
+};
 
 #endif  // NEARLIGHTER_IO_IMAGE_IO_H

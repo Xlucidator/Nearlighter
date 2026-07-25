@@ -51,7 +51,7 @@
 - Explain intent, rationale, assumptions, constraints, and invariants rather than restating the code.
 - Update or remove stale comments when the implementation changes.
 
-### Comment Styles
+### C++ Comment Styles
 
 - Level 1 — file or class sections: line-comment banners (`// =====`)
   + Scope: groups of related declarations or definitions, such as public APIs, utility functions, and loading stages
@@ -59,7 +59,7 @@
   + Requirement: use when a class or file contains multiple recognizable responsibility groups
   + Constraint: omit for isolated declarations and small single-purpose files; Doxygen retained on public declarations
 
-  ```
+  ```c++
   // ==================================================
   // Section Title
   //   Optional relationship or structure
@@ -74,6 +74,30 @@
 - Level 4 — local details: line comments (`//`)
   + Scope: subordinate steps or specific implementation details
   + End-of-line form: short clarification only
+
+### Python Comment Styles
+
+- Module sections: line-comment banners
+  + Scope: groups of related classes or functions
+  + Spacing: two blank lines above except at file start; one blank line below
+
+  ```python
+  # ==================================================
+  # Section Title
+  # ==================================================
+  ```
+- Functions: docstrings (`'''...'''`)
+  + Position: first statement in the function body
+  + Content: concise noun phrase; non-obvious contract, unit, failure, or side effect only when useful
+  + Constraint: do not repeat type annotations or implementation details
+- Function level 1: major phase groups (`# ===== Title =====`)
+  + Scope: upper-level grouping for multiple subordinate stages in a long function
+  + Constraint: omit when the function has no nested phase structure
+- Function level 2: stage comments (`# ----- Title -----`)
+  + Scope: common logical or processing stages in a long function
+- Local details: ordinary line comments (`# Explanation`)
+  + Scope: non-obvious local intent, invariant, or implementation detail
+  + Constraint: avoid restating the following code
 
 ## Skill Proposals
 

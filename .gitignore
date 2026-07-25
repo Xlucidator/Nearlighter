@@ -1,6 +1,11 @@
 build*/
 *.o
 *.pdf
+__pycache__/
+*.py[cod]
+
+benchmark/**
+!benchmark/.gitkeep
 
 .vscode/
 .lingma/
