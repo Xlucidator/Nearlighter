@@ -5,7 +5,7 @@
 - Nearlighter is a learning-oriented CPU path tracer based on the Ray Tracing in One Weekend series.
 - Current priority is project cleanup and optimization before adding larger rendering features.
 - Public headers live in `include/nearlighter/`, implementations live in `src/`, and third-party submodules live in `thirdparty/`.
-- Important docs: `README.md`, `doc/note.md`, `doc/hit-calculation.md`, and `doc/tests-note.md`.
+- Important docs: `README.md`, `scripts/README.md`, `tests/README.md`, `docs/note.md`, and `docs/hit-calculation.md`.
 
 ## Collaboration
 
@@ -41,7 +41,7 @@
 
 - Add tests for core behavior whose regressions can remain silent during normal use. Do not test trivial behavior or failures that normal execution already exposes clearly.
 - Keep tests small, deterministic, focused, and proportionate to the regression risk. Add coverage before changing performance-sensitive code such as BVH, sampling, or intersection routines.
-- Document every test topic in `doc/tests-note.md`, including its purpose, coverage, and implementation logic. Update the document in the same change that adds or materially changes a test.
+- Document every test topic in `tests/README.md`, including its purpose, coverage, and implementation logic. Update the document in the same change that adds or materially changes a test.
 
 ## Commenting Conventions
 

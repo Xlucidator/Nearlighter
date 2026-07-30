@@ -46,7 +46,7 @@ git submodule update --init --recursive
 cmake --version
 ```
 
-如需使用 Ninja、Visual Studio 等其他 generator，可在不提交的 `CMakeUserPresets.json` 中定义本地 preset。
+如需使用 Ninja、Visual Studio 等其他 generator，可在不提交的 `CMakeUserPresets.json` 中定义本地 preset。VS Code 的 preset 配置见 [docs/vscode-cmake.md](docs/vscode-cmake.md)。
 
 ### 构建
 
@@ -125,6 +125,8 @@ ctest --preset release
 make -C build/debug test
 ```
 
+各测试的目的、覆盖内容和实现逻辑见 [tests/README.md](tests/README.md)。
+
 ### 集成评估
 
 集成评估用于一次增量开发后的正确性与性能检查。脚本默认配置并构建 Release、运行 CTest、执行 suite 中的固定 cases，并将渲染结果与固定线性 PFM reference 比较：
@@ -150,11 +152,11 @@ Cornell Box
 
 - WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 64, depth = 25, 400x400, Rendering Time: 1m43s
 
-![Cornell Box](./doc/figs/optim/cb_spp64_md25_400-3_mix_sampling.png)
+![Cornell Box](./docs/figs/optim/cb_spp64_md25_400-3_mix_sampling.png)
 
 MultiBalls
 
-![MultiBalls](./doc/figs/blur-bouncingballs.png)
+![MultiBalls](./docs/figs/blur-bouncingballs.png)
 
 ### 项目结构
 
@@ -174,8 +176,16 @@ MultiBalls
 ├── cmake/                # 项目 CMake 辅助模块
 ├── scripts/              # 构建、reference 生成与集成评估脚本
 ├── tests/                # 确定性 C++ 测试
-└── doc/                  # 实现笔记与渲染结果
+└── docs/                 # 实现笔记与渲染结果
 ```
+
+### 项目文档
+
+- [脚本与 evaluation 说明](scripts/README.md)
+- [单元测试说明](tests/README.md)
+- [VS Code CMake Preset 配置](docs/vscode-cmake.md)
+- [渲染实现笔记](docs/note.md)
+- [几何求交笔记](docs/hit-calculation.md)
 
 ### 参考资料
 

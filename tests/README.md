@@ -11,19 +11,20 @@
 
 ## 使用方式
 
-构建并运行全部测试：
-
 ```bash
+# 配置并构建 Debug
 cmake --preset debug
 cmake --build --preset debug
+
+# 运行全部 Debug 测试
 ctest --preset debug
 ```
 
-CTest 负责启动测试可执行文件并汇总退出状态。每个测试程序使用 `tests/test_support.h` 中的轻量 expectation 工具收集失败信息，不依赖 GoogleTest。
+CTest 负责启动测试可执行文件并汇总退出状态。每个测试程序使用 [`test_support.h`](test_support.h) 中的轻量 expectation 工具收集失败信息，不依赖 GoogleTest。
 
 ## `nearlighter.geometry`
 
-对应文件：`tests/geometry_tests.cpp`
+对应文件：[`geometry_tests.cpp`](geometry_tests.cpp)
 
 ### 测试目的
 
@@ -42,7 +43,7 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 
 ## `nearlighter.bvh`
 
-对应文件：`tests/bvh_tests.cpp`
+对应文件：[`bvh_tests.cpp`](bvh_tests.cpp)
 
 ### 测试目的
 
@@ -60,7 +61,7 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 
 ## `nearlighter.sampler`
 
-对应文件：`tests/sampler_tests.cpp`
+对应文件：[`sampler_tests.cpp`](sampler_tests.cpp)
 
 ### 测试目的
 
@@ -79,7 +80,7 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 
 ## `nearlighter.renderer_smoke`
 
-对应文件：`tests/renderer_smoke_tests.cpp`
+对应文件：[`renderer_smoke_tests.cpp`](renderer_smoke_tests.cpp)
 
 ### 测试目的
 
