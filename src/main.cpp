@@ -23,15 +23,20 @@ namespace {
 
 /** CLI-only application options */
 struct CliOptions {
+    // Scene selection.
     std::filesystem::path scene_path = "cornell_box_rtow.json";
-    std::filesystem::path output_path = "out.ppm";
-    std::optional<std::filesystem::path> linear_output_path;
     std::optional<int> legacy_scene;
+
+    // Render setting overrides.
     std::optional<int> image_width;
     std::optional<int> image_height;
     std::optional<int> samples_per_pixel;
     std::optional<int> max_depth;
     std::optional<std::uint64_t> seed;
+
+    // Output and reporting behavior.
+    std::filesystem::path output_path = "out.ppm";
+    std::optional<std::filesystem::path> linear_output_path;
     bool show_progress = true;
     double flush_interval_seconds = 1.0;
 };
@@ -148,9 +153,9 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     return options;
 }
 
-/** Applies only command-line values explicitly supplied by the caller. */
-void applyRenderOverrides(RenderSettings& settings,
-                          const CliOptions& options) {
+/** Resolves final settings with explicit CLI values over scene defaults. */
+RenderSettings resolveRenderSettings(
+    RenderSettings settings, const CliOptions& options) {
     if (options.image_width) settings.image_width = *options.image_width;
     if (options.image_height) settings.image_height = *options.image_height;
     if (options.samples_per_pixel) {
@@ -158,30 +163,37 @@ void applyRenderOverrides(RenderSettings& settings,
     }
     if (options.max_depth) settings.max_depth = *options.max_depth;
     if (options.seed) settings.seed = *options.seed;
+    return settings;
 }
 
 }  // namespace
 
 int main(int argc, char* argv[]) {
     try {
+        /* ===== CLI input ===== */
         const CliOptions options = parseCommandLine(argc, argv);
-        const std::filesystem::path scene_path =
-            resolveScenePath(options.scene_path, argv[0]);
-        Scene scene = options.legacy_scene
-                          ? makeLegacyScene(*options.legacy_scene)
-                          : SceneLoader().load(scene_path);
-        RenderSettings render_settings = scene.defaultRenderSettings();
-        applyRenderOverrides(render_settings, options);
-        Renderer renderer(render_settings);
 
-        const RenderSettings& settings = renderer.settings();
+        /* ===== Runtime scene ===== */
+        Scene scene = options.legacy_scene ? 
+            makeLegacyScene(*options.legacy_scene) : 
+            SceneLoader().load(resolveScenePath(options.scene_path, argv[0]));
+
+        /* ===== Effective render configuration ===== */
+        Renderer renderer(resolveRenderSettings(
+            scene.defaultRenderSettings(), options));
+        const RenderSettings& effective_settings = renderer.settings();
+
+        /* ===== Output front ends ===== */
         PPMWriteOptions output_options;
         output_options.flush_interval_seconds = options.flush_interval_seconds;
-        PPMWriter image_output(options.output_path, settings.image_width,
-                               settings.image_height, output_options);
+        PPMWriter image_output(options.output_path,
+                               effective_settings.image_width,
+                               effective_settings.image_height,
+                               output_options);
         ConsoleOutput console_output(std::clog, options.show_progress);
         console_output.beginRender(scene.name());
 
+        /* ===== Core integration ===== */
         RenderResult result = renderer.render(
             scene,
             [&](const RenderProgress& progress, const Image& image) {
@@ -189,6 +201,7 @@ int main(int argc, char* argv[]) {
                 console_output.updateRender(progress);
             });
 
+        /* ===== Final output publication ===== */
         image_output.write(result.image);
         image_output.finish();
         if (options.linear_output_path) {
