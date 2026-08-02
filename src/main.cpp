@@ -93,7 +93,7 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
         .scan<'i', int>();
     program.add_argument("--seed")
         .help("override the deterministic render seed")
-        .scan<'u', unsigned long long>();
+        .scan<'u', std::uint64_t>();
     program.add_argument("--no-progress")
         .help("disable terminal render progress")
         .flag();
@@ -109,45 +109,28 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
             std::string(error.what()) + "\n\n" + program.help().str());
     }
 
-    if (program.is_used("--scene") &&
-        program.is_used("--legacy-scene")) {
-        throw std::invalid_argument(
-            "--scene and --legacy-scene cannot be used together\n\n" +
-            program.help().str());
-    }
-
-    std::optional<int> legacy_scene;
-    if (program.is_used("--legacy-scene")) {
-        legacy_scene = program.get<int>("--legacy-scene");
-    }
-
     CliOptions options;
     options.scene_path = program.get<std::string>("--scene");
     options.output_path = program.get<std::string>("--output");
-    options.legacy_scene = legacy_scene;
+    options.legacy_scene = program.present<int>("--legacy-scene");
+    options.image_width = program.present<int>("--width");
+    options.image_height = program.present<int>("--height");
+    options.samples_per_pixel = program.present<int>("--spp");
+    options.max_depth = program.present<int>("--max-depth");
+    options.seed = program.present<std::uint64_t>("--seed");
     options.show_progress = !program.get<bool>("--no-progress");
     options.flush_interval_seconds =
         program.get<double>("--flush-interval");
 
-    if (program.is_used("--linear-output")) {
-        options.linear_output_path =
-            program.get<std::string>("--linear-output");
+    if (const auto linear_output =
+            program.present<std::string>("--linear-output")) {
+        options.linear_output_path = *linear_output;
     }
-    if (program.is_used("--width")) {
-        options.image_width = program.get<int>("--width");
-    }
-    if (program.is_used("--height")) {
-        options.image_height = program.get<int>("--height");
-    }
-    if (program.is_used("--spp")) {
-        options.samples_per_pixel = program.get<int>("--spp");
-    }
-    if (program.is_used("--max-depth")) {
-        options.max_depth = program.get<int>("--max-depth");
-    }
-    if (program.is_used("--seed")) {
-        options.seed = static_cast<std::uint64_t>(
-            program.get<unsigned long long>("--seed"));
+
+    if (program.is_used("--scene") && options.legacy_scene) {
+        throw std::invalid_argument(
+            "--scene and --legacy-scene cannot be used together\n\n" +
+            program.help().str());
     }
 
     return options;
