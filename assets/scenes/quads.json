@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "name": "Quads",
+  "render": {
+    "resolution": { "width": 400, "height": 400 },
+    "samples_per_pixel": 30,
+    "max_depth": 25,
+    "seed": 0
+  },
+  "background": [0.7, 0.8, 1.0],
+  "camera": {
+    "type": "perspective",
+    "position": [0.0, 0.0, 9.0],
+    "look_at": [0.0, 0.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 80.0,
+    "defocus_angle": 0.0,
+    "focus_distance": 10.0
+  },
+  "materials": {
+    "left_red": { "type": "lambertian", "albedo": [1.0, 0.2, 0.2] },
+    "back_green": { "type": "lambertian", "albedo": [0.2, 1.0, 0.2] },
+    "right_blue": { "type": "lambertian", "albedo": [0.2, 0.2, 1.0] },
+    "upper_orange": { "type": "lambertian", "albedo": [1.0, 0.5, 0.0] },
+    "lower_teal": { "type": "lambertian", "albedo": [0.2, 0.8, 0.8] }
+  },
+  "objects": [
+    {
+      "id": "left",
+      "geometry": {
+        "type": "quad",
+        "origin": [-3.0, -2.0, 5.0],
+        "u": [0.0, 0.0, -4.0],
+        "v": [0.0, 4.0, 0.0]
+      },
+      "material": "left_red"
+    },
+    {
+      "id": "back",
+      "geometry": {
+        "type": "quad",
+        "origin": [-2.0, -2.0, 0.0],
+        "u": [4.0, 0.0, 0.0],
+        "v": [0.0, 4.0, 0.0]
+      },
+      "material": "back_green"
+    },
+    {
+      "id": "right",
+      "geometry": {
+        "type": "quad",
+        "origin": [3.0, -2.0, 1.0],
+        "u": [0.0, 0.0, 4.0],
+        "v": [0.0, 4.0, 0.0]
+      },
+      "material": "right_blue"
+    },
+    {
+      "id": "upper",
+      "geometry": {
+        "type": "quad",
+        "origin": [-2.0, 3.0, 1.0],
+        "u": [4.0, 0.0, 0.0],
+        "v": [0.0, 0.0, 4.0]
+      },
+      "material": "upper_orange"
+    },
+    {
+      "id": "lower",
+      "geometry": {
+        "type": "quad",
+        "origin": [-2.0, -3.0, 5.0],
+        "u": [4.0, 0.0, 0.0],
+        "v": [0.0, 0.0, -4.0]
+      },
+      "material": "lower_teal"
+    }
+  ]
+}

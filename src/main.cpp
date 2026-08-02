@@ -1,5 +1,3 @@
-#include "legacy_scenes.h"
-
 #include <nearlighter/io/console_io.h>
 #include <nearlighter/io/image_io.h>
 #include <nearlighter/io/scene_loader.h>
@@ -24,8 +22,7 @@ namespace {
 /** CLI-only application options */
 struct CliOptions {
     // Scene selection.
-    std::filesystem::path scene_path = "cornell_box_rtow.json";
-    std::optional<int> legacy_scene;
+    std::filesystem::path scene_path = "cornell_box_rtow";
 
     // Render setting overrides.
     std::optional<int> image_width;
@@ -48,7 +45,7 @@ struct CliOptions {
 /**
  * Resolves bundled scene filenames without changing explicit paths.
  *
- * Bare filename: executable/assets/scenes/<filename>.
+ * Bare name: executable/assets/scenes/<name>.json.
  * Absolute or directory-qualified path: unchanged.
  */
 std::filesystem::path resolveScenePath(
@@ -58,9 +55,14 @@ std::filesystem::path resolveScenePath(
         return scene_path;
     }
 
+    std::filesystem::path bundled_name = scene_path;
+    if (!bundled_name.has_extension()) {
+        bundled_name.replace_extension(".json");
+    }
+
     const std::filesystem::path executable_directory =
         std::filesystem::absolute(executable_path).parent_path();
-    return executable_directory / "assets" / "scenes" / scene_path;
+    return executable_directory / "assets" / "scenes" / bundled_name;
 }
 
 /** Parses command-line options and prints library-generated help on failure */
@@ -68,12 +70,8 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     argparse::ArgumentParser program("Nearlighter", "0.1.0");
     program.add_description("CPU path tracer");
     program.add_argument("-s", "--scene")
-        .help("load a bundled scene filename or an explicit JSON path")
-        .default_value(std::string("cornell_box_rtow.json"));
-    program.add_argument("--legacy-scene")
-        .help("select a temporary legacy C++ scene from 0 to 9")
-        .scan<'i', int>()
-        .choices(0, 1, 2, 3, 4, 5, 6, 7, 8, 9);
+        .help("load a bundled scene name or an explicit JSON path")
+        .default_value(std::string("cornell_box_rtow"));
     program.add_argument("-o", "--output")
         .help("write the display-ready PPM image to this path")
         .default_value(std::string("out.ppm"));
@@ -112,7 +110,6 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     CliOptions options;
     options.scene_path = program.get<std::string>("--scene");
     options.output_path = program.get<std::string>("--output");
-    options.legacy_scene = program.present<int>("--legacy-scene");
     options.image_width = program.present<int>("--width");
     options.image_height = program.present<int>("--height");
     options.samples_per_pixel = program.present<int>("--spp");
@@ -125,12 +122,6 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     if (const auto linear_output =
             program.present<std::string>("--linear-output")) {
         options.linear_output_path = *linear_output;
-    }
-
-    if (program.is_used("--scene") && options.legacy_scene) {
-        throw std::invalid_argument(
-            "--scene and --legacy-scene cannot be used together\n\n" +
-            program.help().str());
     }
 
     return options;
@@ -157,9 +148,8 @@ int main(int argc, char* argv[]) {
         const CliOptions options = parseCommandLine(argc, argv);
 
         /* ===== Runtime scene ===== */
-        Scene scene = options.legacy_scene ? 
-            makeLegacyScene(*options.legacy_scene) : 
-            SceneLoader().load(resolveScenePath(options.scene_path, argv[0]));
+        Scene scene = SceneLoader().load(
+            resolveScenePath(options.scene_path, argv[0]));
 
         /* ===== Effective render configuration ===== */
         Renderer renderer(resolveRenderSettings(

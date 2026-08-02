@@ -4,60 +4,53 @@
 
 - Nearlighter is a learning-oriented CPU path tracer based on the Ray Tracing in One Weekend series.
 - Current priority is project cleanup and optimization before adding larger rendering features.
-- Public headers live in `include/nearlighter/`, implementations live in `src/`, and third-party submodules live in `thirdparty/`.
-- Important docs: `README.md`, `scripts/README.md`, `tests/README.md`, `docs/note.md`, and `docs/hit-calculation.md`.
+- Code layout: public headers in `include/nearlighter/`, implementations in `src/`, and submodules in `thirdparty/`.
+- Key docs: `README.md`, `scripts/README.md`, `tests/README.md`, and `docs/`.
 
 ## Collaboration
 
-- Communicate with the user in Chinese.
-- User-facing documentation should be written in Chinese.
+- Communicate with the user and write user-facing documentation in Chinese.
 - Code, code comments, identifiers, commit messages, and agent-facing technical notes should use plain English.
 - Keep explanations concrete and engineering-focused. Avoid decorative wording and emojis.
 
 ## Engineering Principles
 
 - Favor semantically coherent abstractions, clear responsibility boundaries, reusable modular APIs, and simple, efficient implementations. Avoid redundant layers and generalized infrastructure without a current requirement.
-- Apply first-principles thinking. Do not assume the author always knows exactly what they want or the best way to achieve it.
-- Start from the raw requirements and the core problem.
-  + If the goal or motivation is unclear, stop and align before implementation.
-  + If the proposed path is not optimal or performant, say so and suggest a better approach before implementation.
+- Start from requirements and first principles. Clarify unclear goals; challenge inefficient proposals and suggest better alternatives before implementation.
 - Default to discussion and alignment before writing non-trivial code.
 - Preserve the current project style where practical, but improve clarity, correctness, and C++ hygiene when touching code.
 - Keep changes scoped. Do not mix broad refactors with feature work unless the refactor is necessary for that feature.
 
 ## Codebase Conventions
 
-- Prefer explicit local dependencies. A header may include the headers needed for its own value members, base classes, inline code, and public API contracts.
-- Umbrella headers are acceptable when they are intentional, stable, and convenience-oriented. Keep them thin, documented, and out of low-level module headers.
+- Headers should include dependencies required by value members, bases, inline code, and public contracts. Forward declare only when a declaration, pointer, or reference is sufficient.
+- Keep intentional umbrella headers thin and out of low-level modules.
 - Keep `nearlighter.h` as a curated core vocabulary only. Do not grow it into a cross-module include hub for shapes, materials, textures, BVH, PDFs, or scene code.
-- Forward declare types only when a pointer/reference/declaration is enough and the complete type is not required. Include concrete headers in `.cpp` files for implementation details.
 - Keep meaningful parameter names in public declarations, including parameters unused by inline default implementations. Use C++17 `[[maybe_unused]]` when necessary; do not remove names merely to silence compiler warnings. Out-of-line definitions may omit genuinely unused names when the public declaration already documents them.
 - Keep established technical acronyms uppercase in identifiers, such as `AABB`, `BVH`, `PDF`, `PPM`, and `RGB`.
-- Keep third-party code separate from project code. Prefer `thirdparty/` submodules plus CMake targets for external libraries.
+- Keep third-party code in `thirdparty/` submodules and expose it through CMake targets.
 - Prefer target-based CMake (`target_sources`, `target_include_directories`, `target_link_libraries`) over global include/link settings.
 - Avoid global mutable state in new rendering code, especially for random generators and output/gamma configuration.
 
 ## Testing Conventions
 
-- Add tests for core behavior whose regressions can remain silent during normal use. Do not test trivial behavior or failures that normal execution already exposes clearly.
+- Test core behavior whose regressions can remain silent; skip trivial behavior and failures already obvious during normal execution.
 - Keep tests small, deterministic, focused, and proportionate to the regression risk. Add coverage before changing performance-sensitive code such as BVH, sampling, or intersection routines.
-- Document every test topic in `tests/README.md`, including its purpose, coverage, and implementation logic. Update the document in the same change that adds or materially changes a test.
+- Document each test's purpose, coverage, and logic in `tests/README.md` in the same change.
 
 ## Commenting Conventions
 
-### General Principles
+### Principles
 
-- Write comments proactively and generously where they improve readability, especially for non-obvious rendering, geometry, math, ownership, numerical, coordinate-space, and error-handling logic.
-- Explain intent, rationale, assumptions, constraints, and invariants rather than restating the code.
-- Update or remove stale comments when the implementation changes.
+- Comment non-obvious rendering, geometry, math, ownership, numerical, coordinate-space, and error-handling logic generously.
+- Explain intent, rationale, assumptions, constraints, and invariants; never restate code. Keep comments current.
 
-### C++ Comment Styles
+### Comment Hierarchy
 
-- Level 1 — file or class sections: line-comment banners (`// =====`)
-  + Scope: groups of related declarations or definitions, such as public APIs, utility functions, and loading stages
-  + Content: concise title; optional relationship or structure
-  + Requirement: use when a class or file contains multiple recognizable responsibility groups
-  + Constraint: omit for isolated declarations and small single-purpose files; Doxygen retained on public declarations
+- Level 1 — file, module, or class sections
+  + Use concise banners for recognizable responsibility groups; omit them in small single-purpose files.
+  + C++: file or class sections with `//`; retain Doxygen on public declarations.
+  + Python: module sections with `#`; use two blank lines above except at file start and one below.
 
   ```c++
   // ==================================================
@@ -65,48 +58,30 @@
   //   Optional relationship or structure
   // ==================================================
   ```
-- Level 2 — classes and functions: Doxygen blocks (`/** ... */`)
-  + Position: before declarations; never `///`
-  + Content: concise purpose; contract, invariant, ownership, or Doxygen tags only when useful
-  + Constraint: no duplicate API documentation on `.cpp` definitions
-- Level 3 — function logic blocks: ordinary blocks (`/* ... */`)
-  + Scope: major stages, algorithms, or process blocks
-- Level 4 — local details: line comments (`//`)
-  + Scope: subordinate steps or specific implementation details
-  + End-of-line form: short clarification only
-
-### Python Comment Styles
-
-- Module sections: line-comment banners
-  + Scope: groups of related classes or functions
-  + Spacing: two blank lines above except at file start; one blank line below
 
   ```python
   # ==================================================
   # Section Title
   # ==================================================
   ```
-- Functions: docstrings (`'''...'''`)
-  + Position: first statement in the function body
-  + Content: concise noun phrase; non-obvious contract, unit, failure, or side effect only when useful
-  + Constraint: do not repeat type annotations or implementation details
-- Function level 1: major phase groups (`# ===== Title =====`)
-  + Scope: upper-level grouping for multiple subordinate stages in a long function
-  + Constraint: omit when the function has no nested phase structure
-- Function level 2: stage comments (`# ----- Title -----`)
-  + Scope: common logical or processing stages in a long function
-- Local details: ordinary line comments (`# Explanation`)
-  + Scope: non-obvious local intent, invariant, or implementation detail
-  + Constraint: avoid restating the following code
+- Level 2 — classes and functions
+  + C++: concise Doxygen blocks (`/** ... */`) before declarations, never `///`; document useful contracts, invariants, ownership, and tags without duplicating them on `.cpp` definitions.
+  + Python: concise `'''...'''` docstrings as the first statement; mention only useful contracts, units, failures, or side effects without repeating annotations or implementation.
+- Level 3 — function phases
+  + Upper group, optional for nested phases: C++ `/* ===== Short Title ===== */`; Python `# ===== Short Title =====`.
+  + Common stage, preferred default: C++ `/* ----- Short Title ----- */`; Python `# ----- Short Title -----`.
+  + Use short noun phrases and mark all sibling stages needed to reveal the structure. Do not use phase headings for individual objects or local operations.
+- Level 4 — block descriptions
+  + C++: ordinary `/* ... */`; Python: ordinary `# ...`.
+  + Describe an object, relationship, or non-obvious logic within one stage when a local comment is too weak.
+- Level 5 — local details
+  + C++: `//`; Python: `#`.
+  + Use for subordinate implementation notes; keep end-of-line comments short.
 
 ## Skill Proposals
 
-- Notice recurring repository-specific workflows or non-obvious knowledge that may warrant a Codex skill, but do not create or substantially update one without explicit user approval.
-- Before requesting approval, explain:
-  + the recurring problem or concrete use cases;
-  + the skill's purpose, scope, and expected benefit;
-  + trigger scope: when it should and should not trigger;
-  + the proposed name, location, instructions, references, scripts, and validation method.
+- Notice recurring repository-specific workflows that may warrant a Codex skill, but do not create or substantially update one without explicit approval.
+- Before requesting approval, explain its use cases, purpose, scope, triggers, layout, supporting files, and validation.
 - After approval, follow the official Codex skill-creation workflow and place repository-specific skills under `.agents/skills/`, and validate the result.
 - Keep one-off facts and general rules in documentation, tests, or `AGENTS.md` instead.
 

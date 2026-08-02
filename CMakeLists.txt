@@ -160,12 +160,14 @@ add_library(nearlighter_io STATIC
     src/nearlighter/io/console_io.cpp
     src/nearlighter/io/image_io.cpp
     src/nearlighter/io/scene_loader.cpp
+    src/nearlighter/scene/builtin_generator.cpp
 )
 target_set_output_directory(
     nearlighter_io ARCHIVE "${CMAKE_BINARY_DIR}/lib"
 )
 target_include_directories(nearlighter_io
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 target_link_libraries(nearlighter_io
     PUBLIC nearlighter_core
@@ -187,7 +189,6 @@ message(STATUS "Target [nearlighter_io] configured.")
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
     add_executable(Nearlighter
         src/main.cpp
-        src/legacy_scenes.cpp
     )
 
     target_link_libraries(Nearlighter PRIVATE

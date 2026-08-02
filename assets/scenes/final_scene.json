@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "name": "Final Scene",
+  "render": {
+    "resolution": { "width": 400, "height": 400 },
+    "samples_per_pixel": 250,
+    "max_depth": 25,
+    "seed": 0
+  },
+  "background": [0.0, 0.0, 0.0],
+  "camera": {
+    "type": "perspective",
+    "position": [478.0, 278.0, -600.0],
+    "look_at": [278.0, 278.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 40.0,
+    "defocus_angle": 0.0,
+    "focus_distance": 10.0
+  },
+  "textures": {
+    "earth_map": {
+      "type": "image",
+      "path": "../textures/earthmap.jpg",
+      "source_color_space": "srgb"
+    }
+  },
+  "generator": {
+    "type": "final_scene",
+    "seed": 0,
+    "earth_texture": "earth_map",
+    "parameters": {
+      "ground_grid_size": 20,
+      "cluster_sphere_count": 1000
+    }
+  }
+}

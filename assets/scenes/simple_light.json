@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "name": "Simple Light",
+  "render": {
+    "resolution": { "width": 400, "height": 225 },
+    "samples_per_pixel": 30,
+    "max_depth": 25,
+    "seed": 0
+  },
+  "background": [0.0, 0.0, 0.0],
+  "camera": {
+    "type": "perspective",
+    "position": [26.0, 3.0, 6.0],
+    "look_at": [0.0, 2.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 20.0,
+    "defocus_angle": 0.0,
+    "focus_distance": 10.0
+  },
+  "textures": {
+    "marble": { "type": "noise", "scale": 4.0, "seed": 0 }
+  },
+  "materials": {
+    "marble": { "type": "lambertian", "texture": "marble" },
+    "light": { "type": "diffuse_light", "radiance": [0.9, 0.9, 0.4] }
+  },
+  "objects": [
+    {
+      "id": "ground",
+      "geometry": {
+        "type": "sphere",
+        "center": [0.0, -1000.0, 0.0],
+        "radius": 1000.0
+      },
+      "material": "marble"
+    },
+    {
+      "id": "marble_sphere",
+      "geometry": {
+        "type": "sphere",
+        "center": [0.0, 2.0, 0.0],
+        "radius": 2.0
+      },
+      "material": "marble"
+    },
+    {
+      "id": "sphere_light",
+      "geometry": {
+        "type": "sphere",
+        "center": [0.0, 7.0, 0.0],
+        "radius": 2.0
+      },
+      "material": "light"
+    },
+    {
+      "id": "quad_light",
+      "geometry": {
+        "type": "quad",
+        "origin": [3.0, 1.0, -2.0],
+        "u": [2.0, 0.0, 0.0],
+        "v": [0.0, 2.0, 0.0]
+      },
+      "material": "light"
+    }
+  ]
+}

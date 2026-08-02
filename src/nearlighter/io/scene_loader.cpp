@@ -1,12 +1,19 @@
 #include <nearlighter/io/scene_loader.h>
 
+#include <nearlighter/scene/builtin_generator.h>
+
 #include <nearlighter/geometry/quad.h>
+#include <nearlighter/geometry/sphere.h>
 #include <nearlighter/io/image_io.h>
+#include <nearlighter/material/dielectric.h>
 #include <nearlighter/material/diffuse_light.h>
 #include <nearlighter/material/lambertian.h>
 #include <nearlighter/material/metal.h>
 #include <nearlighter/math/math.h>
+#include <nearlighter/medium/constant_medium.h>
+#include <nearlighter/texture/checker_texture.h>
 #include <nearlighter/texture/image_texture.h>
+#include <nearlighter/texture/noise_texture.h>
 #include <nearlighter/transform/rotate.h>
 #include <nearlighter/transform/translate.h>
 
@@ -109,36 +116,56 @@ void SceneLoader::loadTextures(LoadContext& context) const {
         const std::string& id = entry.key();
         const nlohmann::json& data = entry.value();
         const std::string type = data.at("type").get<std::string>();
-        if (type != "image") {
+        std::shared_ptr<Texture> texture;
+
+        if (type == "image") {
+            ImageLoadOptions options;
+            const std::string color_space =
+                data.value("source_color_space", std::string("srgb"));
+            if (color_space == "linear") {
+                options.source_color_space = SourceColorSpace::Linear;
+            } else if (color_space != "srgb") {
+                fail(context, "unsupported texture color space '" +
+                                  color_space + "'");
+            }
+
+            std::filesystem::path texture_path =
+                data.at("path").get<std::string>();
+            if (texture_path.is_relative()) {
+                texture_path =
+                    context.scene_path.parent_path() / texture_path;
+            }
+            try {
+                texture = std::make_shared<ImageTexture>(loadImage(
+                    texture_path.lexically_normal(), options));
+            } catch (const std::exception& error) {
+                fail(context, error.what());
+            }
+        } else if (type == "checker") {
+            const float scale = data.at("scale").get<float>();
+            if (scale <= 0.0f) {
+                fail(context, "checker texture '" + id +
+                                  "' requires a positive scale");
+            }
+            texture = std::make_shared<CheckerTexture>(
+                scale,
+                readVector(data.at("even").get<std::array<float, 3>>()),
+                readVector(data.at("odd").get<std::array<float, 3>>()));
+        } else if (type == "noise") {
+            texture = std::make_shared<NoiseTexture>(
+                data.at("scale").get<float>(),
+                data.value("seed", std::uint64_t{0}));
+        } else {
             fail(context, "unsupported texture type '" + type + "'");
         }
 
-        ImageLoadOptions options;
-        const std::string color_space =
-            data.value("source_color_space", std::string("srgb"));
-        if (color_space == "linear") {
-            options.source_color_space = SourceColorSpace::Linear;
-        } else if (color_space != "srgb") {
-            fail(context,
-                 "unsupported texture color space '" + color_space + "'");
-        }
-
-        std::filesystem::path texture_path = data.at("path").get<std::string>();
-        if (texture_path.is_relative()) {
-            texture_path = context.scene_path.parent_path() / texture_path;
-        }
-        try {
-            context.textures.emplace(
-                id, std::make_shared<ImageTexture>(
-                    loadImage(texture_path.lexically_normal(), options)
-                ));
-        } catch (const std::exception& error) {
-            fail(context, error.what());
-        }
+        context.textures.emplace(id, std::move(texture));
     }
 }
 
 void SceneLoader::loadMaterials(LoadContext& context) const {
+    if (!context.document.contains("materials")) return;
+
     for (const auto& entry : context.document.at("materials").items()) {
         const std::string& id = entry.key();
         const nlohmann::json& data = entry.value();
@@ -166,6 +193,9 @@ void SceneLoader::loadMaterials(LoadContext& context) const {
             material = std::make_shared<Metal>(
                 readVector(data.at("albedo").get<std::array<float, 3>>()),
                 data.value("fuzz", 0.0f));
+        } else if (type == "dielectric") {
+            material = std::make_shared<Dielectric>(
+                data.at("refractive_index").get<float>());
         } else if (type == "diffuse_light") {
             const bool has_radiance = data.contains("radiance");
             const bool has_texture = data.contains("texture");
@@ -223,6 +253,16 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
         return box(minimum, maximum, material);
     }
 
+    if (type == "sphere") {
+        const Point3f center = readVector(
+            geometry.at("center").get<std::array<float, 3>>());
+        const float radius = geometry.at("radius").get<float>();
+        if (radius <= 0.0f) {
+            fail(context, "sphere radius must be positive");
+        }
+        return std::make_shared<Sphere>(center, radius, material);
+    }
+
     fail(context, "unsupported geometry type '" + type + "'");
 }
 
@@ -251,8 +291,28 @@ std::shared_ptr<Shape> SceneLoader::loadTransforms(
     return shape;
 }
 
+std::shared_ptr<Shape> SceneLoader::loadMedium(
+    const LoadContext& context, std::size_t object_index,
+    std::shared_ptr<Shape> boundary) const {
+    const nlohmann::json& object =
+        context.document.at("objects").at(object_index);
+    if (!object.contains("medium")) return boundary;
+
+    const nlohmann::json& medium = object.at("medium");
+    const float density = medium.at("density").get<float>();
+    if (density <= 0.0f) {
+        fail(context, "constant medium density must be positive");
+    }
+
+    return std::make_shared<ConstantMedium>(
+        std::move(boundary), density,
+        readVector(medium.at("albedo").get<std::array<float, 3>>()));
+}
+
 ShapeList SceneLoader::loadObjects(LoadContext& context) const {
     ShapeList world;
+    if (!context.document.contains("objects")) return world;
+
     const nlohmann::json& objects = context.document.at("objects");
     for (std::size_t index = 0; index < objects.size(); ++index) {
         const nlohmann::json& data = objects.at(index);
@@ -271,10 +331,54 @@ ShapeList SceneLoader::loadObjects(LoadContext& context) const {
         std::shared_ptr<Shape> shape =
             loadGeometry(context, index, material->second);
         shape = loadTransforms(context, index, std::move(shape));
+        shape = loadMedium(context, index, std::move(shape));
         context.objects.emplace(id, shape);
         world.add(std::move(shape));
     }
     return world;
+}
+
+ShapeList SceneLoader::loadGeneratedObjects(
+    const LoadContext& context) const {
+    if (!context.document.contains("generator")) return {};
+
+    const nlohmann::json& generator = context.document.at("generator");
+    const nlohmann::json& parameters = generator.at("parameters");
+    const std::string type = generator.at("type").get<std::string>();
+
+    if (type == "bouncing_spheres") {
+        builtin_scenes::BouncingSpheresConfig config;
+        config.seed = generator.value("seed", std::uint64_t{0});
+        config.grid_size = parameters.value("grid_size", 8);
+        config.radius = parameters.value("radius", 0.2f);
+        config.spacing = parameters.value("spacing", 0.9f);
+        if (config.grid_size <= 0 || config.radius <= 0.0f ||
+            config.spacing <= 0.0f) {
+            fail(context,
+                 "bouncing_spheres parameters must all be positive");
+        }
+        return builtin_scenes::generateBouncingSpheres(config);
+    }
+
+    if (type == "final_scene") {
+        builtin_scenes::FinalSceneConfig config;
+        config.seed = generator.value("seed", std::uint64_t{0});
+        config.ground_grid_size =
+            parameters.value("ground_grid_size", 20);
+        config.cluster_sphere_count =
+            parameters.value("cluster_sphere_count", 1000);
+        if (config.ground_grid_size <= 0 ||
+            config.cluster_sphere_count <= 0) {
+            fail(context, "final_scene counts must be positive");
+        }
+
+        const std::string texture_id =
+            generator.at("earth_texture").get<std::string>();
+        return builtin_scenes::generateFinalScene(
+            config, findTexture(context, texture_id));
+    }
+
+    fail(context, "unsupported generator type '" + type + "'");
 }
 
 ShapeList SceneLoader::loadSamplingTargets(
@@ -323,6 +427,10 @@ Scene SceneLoader::load(const std::filesystem::path& scene_path) const {
         loadTextures(context);
         loadMaterials(context);
         ShapeList world = loadObjects(context);
+        ShapeList generated_objects = loadGeneratedObjects(context);
+        for (std::shared_ptr<Shape>& object : generated_objects.objects) {
+            world.add(std::move(object));
+        }
         ShapeList sampling_targets = loadSamplingTargets(context);
 
         return Scene(context.document.at("name").get<std::string>(),

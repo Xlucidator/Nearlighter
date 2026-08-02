@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "name": "Earth",
+  "render": {
+    "resolution": { "width": 400, "height": 225 },
+    "samples_per_pixel": 30,
+    "max_depth": 25,
+    "seed": 0
+  },
+  "background": [0.7, 0.8, 1.0],
+  "camera": {
+    "type": "perspective",
+    "position": [0.0, 0.0, 12.0],
+    "look_at": [0.0, 0.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 20.0,
+    "defocus_angle": 0.0,
+    "focus_distance": 10.0
+  },
+  "textures": {
+    "earth_map": {
+      "type": "image",
+      "path": "../textures/earthmap.png",
+      "source_color_space": "srgb"
+    }
+  },
+  "materials": {
+    "earth": { "type": "lambertian", "texture": "earth_map" }
+  },
+  "objects": [
+    {
+      "id": "earth",
+      "geometry": {
+        "type": "sphere",
+        "center": [0.0, 0.0, 0.0],
+        "radius": 2.0
+      },
+      "material": "earth"
+    }
+  ]
+}

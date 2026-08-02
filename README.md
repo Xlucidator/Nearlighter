@@ -82,7 +82,8 @@ CLI 默认加载项目提供的 Cornell Box，在终端显示渲染进度，并�
 # 使用默认场景和设置
 ./build/release/Nearlighter
 
-# 仅提供文件名：从可执行文件同级的 assets/scenes/ 加载
+# 逻辑名称：从可执行文件同级的 assets/scenes/ 加载，可省略 .json
+./build/release/Nearlighter --scene earth
 ./build/release/Nearlighter --scene cornell_box_rtow.json
 
 # 包含目录的相对路径：相对于当前工作目录加载
@@ -92,12 +93,17 @@ CLI 默认加载项目提供的 Cornell Box，在终端显示渲染进度，并�
 ./build/release/Nearlighter --scene /path/to/test.json
 ```
 
-常用输出与兼容选项：
+内置逻辑名称包括：
+
+```text
+bouncing_spheres   checker_spheres  earth          perlin_sphere
+quads              simple_light     cornell_box_rtow
+cornell_smoke      final_scene      cornell_ball
+```
+
+常用输出选项：
 
 ```bash
-# 选择尚未迁移的旧 C++ 场景
-./build/release/Nearlighter --legacy-scene <scene_num>
-
 # 关闭终端进度显示
 ./build/release/Nearlighter --no-progress
 
@@ -108,7 +114,7 @@ CLI 默认加载项目提供的 Cornell Box，在终端显示渲染进度，并�
 ./build/release/Nearlighter --help
 ```
 
-`--scene` 与 `--legacy-scene` 不能同时使用。
+JSON 只是 CLI 的场景输入方式。作为 C++ 模块使用时，也可以通过公开的 `Scene` 构造函数组织相机、渲染默认值和 `ShapeList`，再直接交给 `Renderer` 渲染，不需要依赖 `nearlighter_io` 或场景 JSON。
 
 ### 单元测试
 

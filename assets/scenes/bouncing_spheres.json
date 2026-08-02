@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "name": "Bouncing Spheres",
+  "render": {
+    "resolution": { "width": 400, "height": 225 },
+    "samples_per_pixel": 30,
+    "max_depth": 25,
+    "seed": 0
+  },
+  "background": [0.7, 0.8, 1.0],
+  "camera": {
+    "type": "perspective",
+    "position": [13.0, 2.0, 3.0],
+    "look_at": [0.0, 0.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 20.0,
+    "defocus_angle": 0.6,
+    "focus_distance": 10.0
+  },
+  "generator": {
+    "type": "bouncing_spheres",
+    "seed": 0,
+    "parameters": {
+      "grid_size": 8,
+      "radius": 0.2,
+      "spacing": 0.9
+    }
+  }
+}
