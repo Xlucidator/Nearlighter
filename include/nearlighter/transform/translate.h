@@ -3,9 +3,11 @@
 
 #include <nearlighter/geometry/shape.h>
 
+#include <memory>
+
 class Translate : public Shape {
 public:
-    Translate(shared_ptr<Shape> shape, Vec3f offset) : shape(shape), offset(offset) {
+    Translate(std::shared_ptr<Shape> shape, Vec3f offset) : shape(shape), offset(offset) {
         bbox = shape->getBoundingBox() + offset;
     }
 
@@ -28,7 +30,7 @@ public:
     const AABB& getBoundingBox() const override { return bbox; }
 
 private:
-    shared_ptr<Shape> shape;
+    std::shared_ptr<Shape> shape;
     Vec3f offset;
     AABB bbox;
 };

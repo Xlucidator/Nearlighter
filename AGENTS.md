@@ -24,8 +24,7 @@
 ## Codebase Conventions
 
 - Headers should include dependencies required by value members, bases, inline code, and public contracts. Forward declare only when a declaration, pointer, or reference is sufficient.
-- Keep intentional umbrella headers thin and out of low-level modules.
-- Keep `nearlighter.h` as a curated core vocabulary only. Do not grow it into a cross-module include hub for shapes, materials, textures, BVH, PDFs, or scene code.
+- Keep umbrella headers out of low-level module headers. `core.h` and `io.h` expose their modules; `nearlighter.h` exposes the complete SDK for external convenience.
 - Keep meaningful parameter names in public declarations, including parameters unused by inline default implementations. Use C++17 `[[maybe_unused]]` when necessary; do not remove names merely to silence compiler warnings. Out-of-line definitions may omit genuinely unused names when the public declaration already documents them.
 - Keep established technical acronyms uppercase in identifiers, such as `AABB`, `BVH`, `PDF`, `PPM`, and `RGB`.
 - Keep third-party code in `thirdparty/` submodules and expose it through CMake targets.

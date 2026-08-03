@@ -1,12 +1,13 @@
 #ifndef QUAD_H
 #define QUAD_H
 
-#include <nearlighter/nearlighter.h>
 #include <nearlighter/geometry/shape.h>
+
+#include <memory>
 
 class Quad : public Shape {
 public:
-    Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, shared_ptr<Material> material);
+    Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, std::shared_ptr<Material> material);
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record,
              Sampler& sampler) const override;
@@ -26,7 +27,7 @@ private:
     // Cached temporary variable
     Vec3f w;        // w = n / (n n) 
     // Properties
-    shared_ptr<Material> material;
+    std::shared_ptr<Material> material;
     float area;
 
     AABB    bounding_box;
@@ -36,7 +37,7 @@ private:
 };
 
 /* Create Box */
-shared_ptr<Shape> box(const Point3f& a, const Point3f& b, shared_ptr<Material> material);
+std::shared_ptr<Shape> box(const Point3f& a, const Point3f& b, std::shared_ptr<Material> material);
 
 
 #endif // QUAD_H

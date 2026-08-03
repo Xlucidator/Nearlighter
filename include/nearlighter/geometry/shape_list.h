@@ -1,18 +1,19 @@
 #ifndef SHAPELIST_H
 #define SHAPELIST_H
 
-#include <nearlighter/nearlighter.h>
-#include <nearlighter/geometry/shape.h>
 #include <nearlighter/geometry/aabb.h>
+#include <nearlighter/geometry/shape.h>
 
+#include <cstddef>
+#include <memory>
 #include <vector>
 
 class ShapeList : public Shape {
 public:
-    std::vector<shared_ptr<Shape>> objects;
+    std::vector<std::shared_ptr<Shape>> objects;
 
     ShapeList();
-    ShapeList(shared_ptr<Shape> object);
+    ShapeList(std::shared_ptr<Shape> object);
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& closest_hitrec,
              Sampler& sampler) const override;
@@ -23,8 +24,8 @@ public:
     Vec3f random(const Point3f& origin, Sampler& sampler) const override;
 
     void clear();
-    void add(shared_ptr<Shape> object);
-    size_t size() const { return objects.size(); }
+    void add(std::shared_ptr<Shape> object);
+    std::size_t size() const { return objects.size(); }
     bool emplty() const { return objects.empty(); }
 
 private:

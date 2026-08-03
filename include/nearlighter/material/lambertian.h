@@ -3,10 +3,12 @@
 
 #include <nearlighter/material/material.h>
 
+#include <memory>
+
 class Lambertian : public Material {
 public:
     Lambertian(const Color& albedo);
-    Lambertian(shared_ptr<Texture> tex);
+    Lambertian(std::shared_ptr<Texture> tex);
 
     bool scatter(const Ray& ray_in, const HitRecord& record,
                  ScatterRecord& s_record, Sampler& sampler) const override;
@@ -17,7 +19,7 @@ public:
                         const Ray& ray_scattered) const override;
 
 private:
-    shared_ptr<Texture> texture;
+    std::shared_ptr<Texture> texture;
 };
 
 #endif // LAMBERTIAN_H

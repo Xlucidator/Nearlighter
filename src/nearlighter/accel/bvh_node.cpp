@@ -4,7 +4,7 @@
 
 // Debug
 #ifdef DEBUG_BVH
-void printBboxSequence(std::vector<shared_ptr<Shape>>::iterator start, std::vector<shared_ptr<Shape>>::iterator end, int axis) {
+void printBboxSequence(std::vector<std::shared_ptr<Shape>>::iterator start, std::vector<std::shared_ptr<Shape>>::iterator end, int axis) {
     std::cout << "[Check bbox sequence] axis = " << axis << std::endl;
     std::for_each(start, end, [axis](auto& s) {
         std::cout << s->getBoundingBox().getAxisInterval(axis).min << " ";
@@ -14,7 +14,7 @@ void printBboxSequence(std::vector<shared_ptr<Shape>>::iterator start, std::vect
 #endif
 
 // Official
-BVHNode::BVHNode(std::vector<shared_ptr<Shape>>& objects, size_t start, size_t end) {
+BVHNode::BVHNode(std::vector<std::shared_ptr<Shape>>& objects, size_t start, size_t end) {
     // Build the bounding box of the span of source objects.
     bbox = AABB::empty(); 
 #ifdef DEBUG_BVH
@@ -52,19 +52,19 @@ BVHNode::BVHNode(std::vector<shared_ptr<Shape>>& objects, size_t start, size_t e
 #ifdef DEBUG_BVH
         printBboxSequence(std::begin(objects) + start, std::begin(objects) + end, div_axis);
 #endif
-        left = make_shared<BVHNode>(objects, start, mid);
-        right = make_shared<BVHNode>(objects, mid, end);
+        left = std::make_shared<BVHNode>(objects, start, mid);
+        right = std::make_shared<BVHNode>(objects, mid, end);
     }
 }
 
 // Using Iterator Argument
-BVHNode::BVHNode(std::vector<shared_ptr<Shape>>::iterator start, std::vector<shared_ptr<Shape>>::iterator end) {
+BVHNode::BVHNode(std::vector<std::shared_ptr<Shape>>::iterator start, std::vector<std::shared_ptr<Shape>>::iterator end) {
     size_t size = end - start;
     shape_size = size;
 
     /* Within Max Size: Stop Division */
     if (size <= max_size) {
-        shapes = make_unique<ShapeList>();
+        shapes = std::make_unique<ShapeList>();
         std::for_each(start, end, [this](auto& s){ shapes->add(s); });
 
         lchild = rchild = nullptr; 
@@ -82,8 +82,8 @@ BVHNode::BVHNode(std::vector<shared_ptr<Shape>>::iterator start, std::vector<sha
     // std::nth_element(start, mid, end, [this](auto& a, auto& b){ return bbox_cmp(a, b); });
     std::sort(start, end, [this](auto& a, auto& b){ return bbox_cmp(a, b); });
     // printBboxSequence(start, end, div_axis);
-    lchild = make_shared<BVHNode>(start, mid);
-    rchild = make_shared<BVHNode>( mid , end);
+    lchild = std::make_shared<BVHNode>(start, mid);
+    rchild = std::make_shared<BVHNode>( mid , end);
 }
 
 #ifndef OFFICIAL
@@ -112,7 +112,7 @@ bool BVHNode::hit(const Ray& r, Interval ray_t, HitRecord& rec,
 }
 #endif
 
-bool BVHNode::bbox_cmp(const shared_ptr<Shape>& a, const shared_ptr<Shape>& b) {
+bool BVHNode::bbox_cmp(const std::shared_ptr<Shape>& a, const std::shared_ptr<Shape>& b) {
     const Interval& a_axis_interval = a->getBoundingBox().getAxisInterval(div_axis);
     const Interval& b_axis_interval = b->getBoundingBox().getAxisInterval(div_axis);
     return a_axis_interval.min < b_axis_interval.min; // TODO: use centroid, compare effects

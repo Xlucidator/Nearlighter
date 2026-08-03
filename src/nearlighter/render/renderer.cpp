@@ -118,10 +118,10 @@ Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
     if (!scatter_record.pdf) return emitted;
 
     /* Mix explicit target sampling with the material distribution when present. */
-    shared_ptr<PDF> sample_pdf = scatter_record.pdf;
+    std::shared_ptr<PDF> sample_pdf = scatter_record.pdf;
     if (sampling_targets.hasPDF()) {
-        auto target_pdf = make_shared<ShapePDF>(sampling_targets, record.point);
-        sample_pdf = make_shared<MixturePDF>(target_pdf, scatter_record.pdf);
+        auto target_pdf = std::make_shared<ShapePDF>(sampling_targets, record.point);
+        sample_pdf = std::make_shared<MixturePDF>(target_pdf, scatter_record.pdf);
     }
 
     const Ray scattered(record.point, sample_pdf->generate(sampler), ray.time());

@@ -1,16 +1,17 @@
 #ifndef SPHERE_H
 #define SPHERE_H
 
-#include <nearlighter/nearlighter.h>
 #include <nearlighter/geometry/shape.h>
+
+#include <memory>
 
 class Sphere : public Shape {
 public:
     Sphere();
     // Stationary Object
-    Sphere(const Point3f& center, const float& radius, shared_ptr<Material> material);
+    Sphere(const Point3f& center, const float& radius, std::shared_ptr<Material> material);
     // Moving Object
-    Sphere(const Point3f& center_start, const Point3f& center_end, const float& radius, shared_ptr<Material> material);
+    Sphere(const Point3f& center_start, const Point3f& center_end, const float& radius, std::shared_ptr<Material> material);
 
     bool hit(const Ray& r, Interval ray_t, HitRecord& hit_record,
              Sampler& sampler) const override;
@@ -23,7 +24,7 @@ public:
 private:
     Point3f center;
     float   radius;
-    shared_ptr<Material> material;
+    std::shared_ptr<Material> material;
     Ray     moving_center;
 
     AABB    bounding_box;

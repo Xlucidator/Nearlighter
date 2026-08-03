@@ -4,15 +4,15 @@
 #include <nearlighter/texture/solid_texture.h>
 
 Lambertian::Lambertian(const Color& albedo)
-    : texture(make_shared<SolidTexture>(albedo)) {}
+    : texture(std::make_shared<SolidTexture>(albedo)) {}
 
-Lambertian::Lambertian(shared_ptr<Texture> tex)
+Lambertian::Lambertian(std::shared_ptr<Texture> tex)
     : texture(tex) {}
 
 bool Lambertian::scatter(const Ray&, const HitRecord& record,
                          ScatterRecord& s_record, Sampler&) const {
     s_record.attenuation = texture->value(record.u, record.v, record.point);
-    s_record.pdf = make_shared<CosineHemispherePDF>(record.normal);
+    s_record.pdf = std::make_shared<CosineHemispherePDF>(record.normal);
     s_record.should_skip = false;
     return true;
 }

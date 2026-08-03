@@ -4,7 +4,7 @@
 #include <nearlighter/geometry/shape_list.h>
 #include <nearlighter/sampling/sampler.h>
 
-Quad::Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, shared_ptr<Material> material)
+Quad::Quad(const Point3f& p0, const Vec3f& u, const Vec3f& v, std::shared_ptr<Material> material)
     : p0(p0), u(u), v(v), material(material) {
     Vec3f n = cross(u, v);
     normal = unit_vector(n);
@@ -122,8 +122,8 @@ AABB Quad::calculateAABB(const Point3f& p0, const Vec3f& u, const Vec3f& v) {
  * 
  *  a, b is two opposite vertices of the box
  */
-shared_ptr<Shape> box(const Point3f& a, const Point3f& b, shared_ptr<Material> material) {
-    auto box_sides = make_shared<ShapeList>();
+std::shared_ptr<Shape> box(const Point3f& a, const Point3f& b, std::shared_ptr<Material> material) {
+    auto box_sides = std::make_shared<ShapeList>();
     
     Point3f p_min = Point3f(std::fmin(a.x(), b.x()), std::fmin(a.y(), b.y()), std::fmin(a.z(), b.z()));
     Point3f p_max = Point3f(std::fmax(a.x(), b.x()), std::fmax(a.y(), b.y()), std::fmax(a.z(), b.z()));
@@ -131,12 +131,12 @@ shared_ptr<Shape> box(const Point3f& a, const Point3f& b, shared_ptr<Material> m
     Vec3f vec_y = Vec3f(0, p_max.y() - p_min.y(), 0);
     Vec3f vec_z = Vec3f(0, 0, p_max.z() - p_min.z());
 
-    box_sides->add(make_shared<Quad>(p_max, -vec_x, -vec_y, material)); // front
-    box_sides->add(make_shared<Quad>(p_min,  vec_y,  vec_x, material)); // back
-    box_sides->add(make_shared<Quad>(p_max, -vec_y, -vec_z, material)); // right
-    box_sides->add(make_shared<Quad>(p_min,  vec_z,  vec_y, material)); // left
-    box_sides->add(make_shared<Quad>(p_max, -vec_z, -vec_x, material)); // top
-    box_sides->add(make_shared<Quad>(p_min,  vec_x,  vec_z, material)); // bottom
+    box_sides->add(std::make_shared<Quad>(p_max, -vec_x, -vec_y, material)); // front
+    box_sides->add(std::make_shared<Quad>(p_min,  vec_y,  vec_x, material)); // back
+    box_sides->add(std::make_shared<Quad>(p_max, -vec_y, -vec_z, material)); // right
+    box_sides->add(std::make_shared<Quad>(p_min,  vec_z,  vec_y, material)); // left
+    box_sides->add(std::make_shared<Quad>(p_max, -vec_z, -vec_x, material)); // top
+    box_sides->add(std::make_shared<Quad>(p_min,  vec_x,  vec_z, material)); // bottom
 
     return box_sides;
 }

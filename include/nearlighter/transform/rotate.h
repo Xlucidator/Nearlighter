@@ -6,18 +6,20 @@
 #include <glm/glm.hpp> 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <memory>
+
 inline glm::vec3 to_glm_vec3(const Vec3f& v) { return glm::vec3(v.x(), v.y(), v.z()); }
 inline Vec3f to_vec3f(const glm::vec3& v) { return Vec3f(v.x, v.y, v.z); }  // glm::vec3 -> Vec3f
 inline Point3f to_point3f(const glm::vec4& v) { return Point3f(v.x, v.y, v.z); }  // glm::vec4 -> Point3f == Vec3f
 
 class Rotate : public Shape {
 public:
-    Rotate(shared_ptr<Shape> shape, const Vec3f& axis, float angle) : shape(shape) {
+    Rotate(std::shared_ptr<Shape> shape, const Vec3f& axis, float angle) : shape(shape) {
         rotation = glm::rotate(glm::mat4(1.0f), angle, to_glm_vec3(axis));
         inv_rotation = glm::inverse(rotation);
         calculateRotatedBoundingBox(shape->getBoundingBox(), rotation);
     }
-    Rotate(shared_ptr<Shape> shape, glm::mat4 rotation) : shape(shape), rotation(rotation) {
+    Rotate(std::shared_ptr<Shape> shape, glm::mat4 rotation) : shape(shape), rotation(rotation) {
         inv_rotation = glm::inverse(rotation);
         calculateRotatedBoundingBox(shape->getBoundingBox(), rotation);
     }
@@ -42,7 +44,7 @@ public:
     const AABB& getBoundingBox() const override { return bbox; }
 
 private:
-    shared_ptr<Shape> shape;
+    std::shared_ptr<Shape> shape;
     glm::mat4 rotation;
     glm::mat4 inv_rotation;
     AABB bbox;

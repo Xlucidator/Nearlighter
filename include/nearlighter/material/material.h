@@ -4,12 +4,14 @@
 #include <nearlighter/geometry/shape.h>
 #include <nearlighter/texture/texture.h>
 
+#include <memory>
+
 class PDF;
 class Sampler;
 
 struct ScatterRecord {
     Color attenuation;
-    shared_ptr<PDF> pdf; // pdf pointer
+    std::shared_ptr<PDF> pdf; // pdf pointer
     bool should_skip;    // skip using pdf to generate scattered ray
     Ray skip_ray;        // after skipping pdf, use targeted scattered ray
 };

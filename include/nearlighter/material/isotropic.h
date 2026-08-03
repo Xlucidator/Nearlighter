@@ -3,9 +3,11 @@
 
 #include <nearlighter/material/material.h>
 
+#include <memory>
+
 class Isotropic : public Material {
 public:
-    Isotropic(shared_ptr<Texture> tex);
+    Isotropic(std::shared_ptr<Texture> tex);
     Isotropic(const Color& albedo);
 
     bool scatter(const Ray& ray_in, const HitRecord& record,
@@ -15,7 +17,7 @@ public:
                         const Ray& ray_scattered) const override;
 
 private:
-    shared_ptr<Texture> texture;
+    std::shared_ptr<Texture> texture;
 };
 
 

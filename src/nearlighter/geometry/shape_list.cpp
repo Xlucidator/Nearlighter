@@ -4,7 +4,7 @@
 
 ShapeList::ShapeList() {}
 
-ShapeList::ShapeList(shared_ptr<Shape> object) {
+ShapeList::ShapeList(std::shared_ptr<Shape> object) {
     add(object);
 }
 
@@ -53,7 +53,7 @@ void ShapeList::clear() {
     objects.clear();
 }
 
-void ShapeList::add(shared_ptr<Shape> object) {
+void ShapeList::add(std::shared_ptr<Shape> object) {
     objects.push_back(object);
     bbox.uunion(object->getBoundingBox());
 }

@@ -4,13 +4,13 @@
 
 #include <cmath>
 
-CheckerTexture::CheckerTexture(float scale, shared_ptr<Texture> even, shared_ptr<Texture> odd)
+CheckerTexture::CheckerTexture(float scale, std::shared_ptr<Texture> even, std::shared_ptr<Texture> odd)
     : inv_scale(1.0f / scale), even(even), odd(odd) {}
 
 CheckerTexture::CheckerTexture(float scale, const Color& even, const Color& odd)
     : inv_scale(1.0f / scale),
-      even(make_shared<SolidTexture>(even)),
-      odd(make_shared<SolidTexture>(odd)) {}
+      even(std::make_shared<SolidTexture>(even)),
+      odd(std::make_shared<SolidTexture>(odd)) {}
 
 Color CheckerTexture::value(float u, float v, const Point3f& p) const {
     int x = int(std::floor(inv_scale * p.x()));

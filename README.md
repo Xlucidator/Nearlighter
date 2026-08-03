@@ -2,7 +2,9 @@
 
 Nearlighter 是一个基于物理的CPU端路径追踪渲染器，支持简单光线追踪渲染功能，基础框架参考[Ray Tracing in Oneweekend系列](https://github.com/RayTracing/raytracing.github.io)。持续开发完善中，作为个人实践试验项目。
 
-### 功能特性
+## 功能特性
+
+### 当前实现
 
 - 基本光线传播模拟计算，BVH加速结构
 - 图像输出：多采样抗锯齿(MSAA)，相机景深+散焦+动态模糊，
@@ -27,7 +29,9 @@ Nearlighter 是一个基于物理的CPU端路径追踪渲染器，支持简单�
 - [ ] GPU并行加速渲染(CUDA)
 - [ ] 实时光线追踪支持，降噪算法
 
-### 环境与依赖
+## 依赖与构建
+
+### 环境需求
 
 基础构建环境：
 
@@ -48,7 +52,7 @@ cmake --version
 
 如需使用 Ninja、Visual Studio 等其他 generator，可在不提交的 `CMakeUserPresets.json` 中定义本地 preset。VS Code 的 preset 配置见 [docs/vscode-cmake.md](docs/vscode-cmake.md)。
 
-### 构建
+### 构建方式
 
 Debug 与 Release 使用独立构建目录，分别生成到 `build/debug/` 和 `build/release/`：
 
@@ -74,7 +78,9 @@ make -C build/release -j
 
 每个构建目录的根部包含 `Nearlighter` 可执行文件，静态库位于 `lib/`，测试程序位于 `ctest/`。配置阶段会优先为 `assets/` 创建指向源码资源的符号链接；平台或权限不支持时，改为增量复制资源。
 
-### 使用方式
+## 使用方式
+
+### 直接使用
 
 CLI 默认加载项目提供的 Cornell Box，在终端显示渲染进度，并将已完成的图像行持续写入当前目录的 `out.ppm`：
 
@@ -116,6 +122,34 @@ cornell_smoke      final_scene      cornell_ball
 
 JSON 只是 CLI 的场景输入方式。作为 C++ 模块使用时，也可以通过公开的 `Scene` 构造函数组织相机、渲染默认值和 `ShapeList`，再直接交给 `Renderer` 渲染，不需要依赖 `nearlighter_io` 或场景 JSON。
 
+### 外部调用
+
+C++ 使用者可以按需要选择完整 SDK 或单个模块入口：
+
+```cpp
+// 完整 SDK：core + I/O
+#include <nearlighter/nearlighter.h>
+
+// 也可以只包含对应模块
+#include <nearlighter/core.h>
+#include <nearlighter/io.h>
+```
+
+通过 `add_subdirectory()` 集成源码时，完整 SDK 使用 facade target；精确依赖仍可直接链接底层 target：
+
+```cmake
+# 完整 SDK；INTERFACE facade 会传递链接 I/O 和 core
+target_link_libraries(my_app PRIVATE Nearlighter::Nearlighter)
+
+# 仅内存场景构造和渲染
+target_link_libraries(my_core_app PRIVATE nearlighter_core)
+
+# 场景、图片或终端 I/O；会传递链接 core
+target_link_libraries(my_io_app PRIVATE nearlighter_io)
+```
+
+## 测试评估
+
 ### 单元测试
 
 构建完成后，通过对应 preset 运行 CTest：
@@ -152,7 +186,7 @@ python3 scripts/evaluate.py --suite quick --skip-build
 
 固定 reference 位于 `benchmark/references/`，由 `scripts/generate_reference.py` 显式生成；evaluation 只读取，不会自动创建或覆盖。reference 生成方式、配置结构和完整产物说明见 [scripts/README.md](scripts/README.md)。
 
-### 渲染示例
+## 渲染示例
 
 Cornell Box
 
@@ -164,7 +198,7 @@ MultiBalls
 
 ![MultiBalls](./docs/figs/blur-bouncingballs.png)
 
-### 项目结构
+## 项目结构
 
 ```
 .
@@ -185,7 +219,7 @@ MultiBalls
 └── docs/                 # 实现笔记与渲染结果
 ```
 
-### 项目文档
+## 项目文档
 
 - [脚本与 evaluation 说明](scripts/README.md)
 - [单元测试说明](tests/README.md)
@@ -193,7 +227,7 @@ MultiBalls
 - [渲染实现笔记](docs/note.md)
 - [几何求交笔记](docs/hit-calculation.md)
 
-### 参考资料
+## 参考资料
 
 - [Ray Tracing in Oneweekend系列](https://github.com/RayTracing/raytracing.github.io)
 - [GAMES101课程](https://games-cn.org/intro-graphics/)

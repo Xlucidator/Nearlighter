@@ -5,21 +5,23 @@
 
 #include <algorithm>
 
-// ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Material> phase_function)
+// ConstantMedium::ConstantMedium(std::shared_ptr<Shape> boundary, float density, std::shared_ptr<Material> phase_function)
 //     : boundary(boundary), density(density), phase_function(phase_function) {
 //     neg_inv_density = -1 / density;
 // }
 
-ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, shared_ptr<Texture> tex) 
+ConstantMedium::ConstantMedium(std::shared_ptr<Shape> boundary, float density,
+                               std::shared_ptr<Texture> tex)
     : boundary(boundary), density(density) {
     neg_inv_density = -1 / density;
-    phase_function = make_shared<Isotropic>(tex);
+    phase_function = std::make_shared<Isotropic>(tex);
 }
 
-ConstantMedium::ConstantMedium(shared_ptr<Shape> boundary, float density, const Color& albedo) 
+ConstantMedium::ConstantMedium(std::shared_ptr<Shape> boundary, float density,
+                               const Color& albedo)
     : boundary(boundary), density(density) {
     neg_inv_density = -1 / density;
-    phase_function = make_shared<Isotropic>(albedo);
+    phase_function = std::make_shared<Isotropic>(albedo);
 }
 
 /* Ray: r = o + t \vec{d}

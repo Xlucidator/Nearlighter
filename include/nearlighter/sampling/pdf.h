@@ -1,9 +1,13 @@
 #ifndef PDF_H
 #define PDF_H 
 
-#include <nearlighter/nearlighter.h>
+#include <nearlighter/base/onb.h>
 #include <nearlighter/geometry/shape.h>
+#include <nearlighter/math/constants.h>
 #include <nearlighter/sampling/sampler.h>
+
+#include <cmath>
+#include <memory>
 
 class PDF {
 public:
@@ -57,7 +61,7 @@ private:
 
 class MixturePDF : public PDF {
 public:
-    MixturePDF(shared_ptr<PDF> p0, shared_ptr<PDF> p1) {
+    MixturePDF(std::shared_ptr<PDF> p0, std::shared_ptr<PDF> p1) {
         p[0] = p0;
         p[1] = p1;
     }
@@ -73,7 +77,7 @@ public:
     }
 
 private:
-    shared_ptr<PDF> p[2];
+    std::shared_ptr<PDF> p[2];
 };
 
 #endif // PDF_H

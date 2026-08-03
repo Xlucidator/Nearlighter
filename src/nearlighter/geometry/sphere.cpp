@@ -1,18 +1,19 @@
 #include <nearlighter/geometry/sphere.h>
 
+#include <nearlighter/base/onb.h>
 #include <nearlighter/math/math.h>
 #include <nearlighter/sampling/sampler.h>
 
 Sphere::Sphere()
     : radius(1.0f) {}
 
-Sphere::Sphere(const Point3f& center, const float& radius, shared_ptr<Material> material)
+Sphere::Sphere(const Point3f& center, const float& radius, std::shared_ptr<Material> material)
     : center(center), radius(std::fmax(0.0f, radius)), material(material),
       moving_center(center, Vec3f(0, 0, 0)) {
     bounding_box = Sphere::calculateAABB(center, radius);
 }
 
-Sphere::Sphere(const Point3f& center_start, const Point3f& center_end, const float& radius, shared_ptr<Material> material)
+Sphere::Sphere(const Point3f& center_start, const Point3f& center_end, const float& radius, std::shared_ptr<Material> material)
     : center(center_start), radius(std::fmax(0.0f, radius)), material(material),
       moving_center(center_start, center_end - center_start) {
     AABB box_start = Sphere::calculateAABB(center_start, radius);

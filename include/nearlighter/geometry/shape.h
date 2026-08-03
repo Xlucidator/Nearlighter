@@ -1,8 +1,11 @@
 #ifndef SHAPE_H
 #define SHAPE_H
 
-#include <nearlighter/nearlighter.h>
+#include <nearlighter/base/interval.h>
+#include <nearlighter/base/ray.h>
 #include <nearlighter/geometry/aabb.h>
+
+#include <memory>
 
 class Material;
 class Sampler;
@@ -10,7 +13,7 @@ class Sampler;
 struct HitRecord {
     Point3f point;
     Vec3f normal;
-    shared_ptr<Material> material;
+    std::shared_ptr<Material> material;
     float t;
     float u, v;
     bool front_face;

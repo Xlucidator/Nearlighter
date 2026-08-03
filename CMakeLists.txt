@@ -95,8 +95,10 @@ add_subdirectory(thirdparty/json)
 
 
 # =============================================================
-# 3. Nearlighter Core
+# 3. Source Code Organization
 # =============================================================
+
+## ----- 3.1 Nearligter Core -----
 
 set(CORE_SOURCES
     src/nearlighter/accel/bvh_node.cpp
@@ -152,9 +154,7 @@ target_apply_build_options(
 message(STATUS "Target [nearlighter_core] configured.")
 
 
-# =============================================================
-# 4. Nearlighter I/O
-# =============================================================
+## ----- 3.2 Nearligter I/O -----
 
 add_library(nearlighter_io STATIC
     src/nearlighter/io/console_io.cpp
@@ -181,8 +181,17 @@ target_apply_build_options(
 message(STATUS "Target [nearlighter_io] configured.")
 
 
+## ----- 3.3 Nearligter Full SDK -----
+
+# Complete SDK facade. 
+# This target carries usage requirements only
+add_library(nearlighter_sdk INTERFACE)
+target_link_libraries(nearlighter_sdk INTERFACE nearlighter_io)
+add_library(Nearlighter::Nearlighter ALIAS nearlighter_sdk)
+
+
 # =============================================================
-# 5. Application Build
+# 4. Application Build
 # =============================================================
 
 # --- CLI Version ---
@@ -193,8 +202,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp")
 
     target_link_libraries(Nearlighter PRIVATE
         argparse::argparse
-        nearlighter_core
-        nearlighter_io
+        Nearlighter::Nearlighter
     )
 
     target_set_output_directory(
@@ -208,7 +216,7 @@ endif()
 # TODO
 
 # =============================================================
-# 6. Unit Tests
+# 5. Unit Tests
 # =============================================================
 
 include(CTest)
@@ -297,7 +305,7 @@ endif()
 
 
 # =============================================================
-# 7. Runtime Assets
+# 6. Runtime Assets
 # =============================================================
 
 if(TARGET Nearlighter)

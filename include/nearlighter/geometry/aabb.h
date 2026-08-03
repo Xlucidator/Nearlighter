@@ -1,7 +1,10 @@
 #ifndef AABB_H
 #define AABB_H
 
-#include <nearlighter/nearlighter.h>
+#include <nearlighter/base/interval.h>
+#include <nearlighter/base/ray.h>
+
+#include <ostream>
 
 class AABB {
 public:
