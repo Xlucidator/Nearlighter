@@ -1,6 +1,6 @@
 # Scripts
 
-本目录提供 Nearlighter 的集成评估和固定 reference 生成脚本。所有命令均从项目根目录执行。
+本目录提供 Nearlighter 的集成评估、benchmark 数据准备和固定 reference 生成脚本。所有命令均从项目根目录执行。
 
 ## 集成评估（`evaluate.py`）
 
@@ -9,6 +9,7 @@
 - [`evaluate.py`](evaluate.py)：评估入口、case 执行和指标计算。
 - [`evaluation.json`](evaluation.json)：构建、case 和 suite 配置。
 - [`utils.py`](utils.py)：进程、构建、PFM 和报告等共享实现。
+- [`../benchmark/datasets.json`](../benchmark/datasets.json)：外部 benchmark 数据与校验配置。
 - `benchmark/references/`：固定线性 PFM reference。
 - `build/evaluation/`：每次 evaluation 的生成结果。
 
@@ -20,6 +21,9 @@ python3 scripts/evaluate.py --suite quick
 
 # 阶段性完整检查
 python3 scripts/evaluate.py --suite full
+
+# 官方 Cornell GT 与 Stanford Bunny 工作负载
+python3 scripts/evaluate.py --suite benchmark
 
 # 复用已经配置并构建的 executable
 python3 scripts/evaluate.py --suite quick --skip-build
@@ -43,8 +47,10 @@ python3 scripts/evaluate.py --help
 |---|---|---|
 | `quick` | 64×64、8 SPP、深度 8 | 快速确认构建、测试、场景加载、渲染和比较流程正常 |
 | `full` | 256×256、128 SPP、深度 25 | 检查图像回归，并提供较稳定的性能样本 |
+| `benchmark` | 官方 Cornell 512×512、64 SPP；Bunny 256×256、16 SPP × 3 | 外部 GT 质量比较与 Mesh/BVH 性能工作负载 |
 
 `quick` 渲染时间很短、采样数很低，不适合严肃的性能比较或最终画质判断。
+`benchmark` 依赖显式准备的数据，首次使用前运行 `python3 scripts/prepare_benchmark.py`；evaluation 本身不会联网或生成 reference。
 
 ### 配置语义
 
@@ -86,15 +92,17 @@ build/evaluation/
 └── runs/<run-id>/
     ├── cases/<case-name>/
     │   ├── difference.pfm
+    │   ├── difference-exposure-aligned.pfm  # 仅曝光对齐 case
     │   ├── metrics.json
     │   ├── preview.ppm
+    │   ├── reference.ppm
     │   ├── resolved-config.json
     │   └── result.pfm
     ├── logs/
     │   ├── build.log
     │   ├── configure.log
     │   ├── ctest.log
-    │   └── <case-name>.log
+    │   └── <case-name>-repeat-<n>.log
     ├── manifest.json
     └── summary.json
 ```
@@ -104,8 +112,10 @@ build/evaluation/
 - `manifest.json`：状态、Git、配置哈希、编译器、主机和 case 产物哈希。
 - `metrics.json`：单个 case 的渲染设置、指标和性能数据。
 - `preview.ppm`：显示用结果，适合直接检查构图、颜色和噪声。
+- `reference.ppm`：与结果采用相同 gamma 2.2 显示转换的 GT/reference 预览；仅供直观对照。
 - `result.pfm`：未做显示变换的线性 RGB 浮点结果。
 - `difference.pfm`：result 与 reference 的逐通道绝对差值。
+- `difference-exposure-aligned.pfm`：全局曝光缩放后的绝对差值；仅在 case 请求 `exposure_scale` 时生成。
 
 所有 evaluation 产物均位于被 Git 忽略的 build tree 中。
 
@@ -120,6 +130,9 @@ build/evaluation/
 | relative MSE | $\frac{\sum_i(I_i-R_i)^2}{\sum_iR_i^2}$ | $\downarrow$ | 误差能量相对 reference 能量的比例 |
 | PSNR | $10\log_{10}(P^2/\mathrm{MSE})$ | $\uparrow$ | 同一 reference 下更直观的对数误差比较 |
 
+Cornell 官方 case 另报告 `exposure_scale` 与 `exposure_aligned_*`。其中
+$k=\operatorname{dot}(I,R)/\operatorname{dot}(I,I)$，对齐指标使用 $kI$ 与 $R$ 比较；它只消除全局亮度比例，不能修复颜色、几何或局部光照差异。
+
 指标使用原则：
 
 - 只比较同一个 case、同一个 reference 的多次结果；MSE 和 RMSE 不具有跨场景通用阈值。
@@ -132,11 +145,13 @@ evaluation 当前没有自动通过阈值。`completed` 只表示构建、CTest�
 
 ### 性能参数
 
-- `integration_seconds`：Renderer 核心积分时间；不包括相机准备、BVH 构建、进度回调和图像文件 I/O。
+- `scene_load_seconds`：JSON、纹理和 Mesh 读取与 Scene 构造时间。
+- `preparation_seconds`：相机预计算与 Renderer 顶层 BVH 构建时间。
+- `integration_seconds`：Renderer 核心积分时间；不包括准备、进度回调和图像文件 I/O。
 - `sample_count`：`width × height × samples_per_pixel`，即 primary sample 总数。
-- `samples_per_second`：`sample_count / integration_seconds`；越高越好，是当前最适合比较渲染性能的参数。
+- `samples_per_second`：`sample_count / integration_seconds`；越高越好，是当前最适合比较积分性能的参数。
 
-性能必须在同一机器、同一 configuration、同一 case 和相近系统负载下比较。优先使用 Release 和 `full`，重复运行 3～5 次并观察中位数；不要用一次极短的 `quick` 时间判断小幅性能变化。
+case 设置 `repetitions` 后，报告会保存每次测量及 minimum、median、maximum，顶层耗时字段取 median。性能必须在同一机器、同一 configuration、同一 case 和相近系统负载下比较；不要用一次极短的 `quick` 时间判断小幅变化。
 
 ### 快速检查结果
 
@@ -166,6 +181,40 @@ python3 -m json.tool "$RUN_DIR/summary.json"
 # 查看 CTest 日志
 less "$RUN_DIR/logs/ctest.log"
 ```
+
+## Benchmark 准备（`prepare_benchmark.py`）
+
+### 涉及文件
+
+- [`prepare_benchmark.py`](prepare_benchmark.py)：显式下载、校验、转换与 reference 准备入口。
+- [`utils.py`](utils.py)：RGBE/PFM、构建、渲染和报告共享实现。
+- [`../benchmark/datasets.json`](../benchmark/datasets.json)：来源 URL、SHA-256、目标路径和生成设置。
+- [`../benchmark/README.md`](../benchmark/README.md)：数据依据、场景适配、许可和指标限制。
+
+### 使用方式
+
+```bash
+# 完整准备：Cornell 官方 GT、Stanford Bunny Mesh 和 Bunny reference
+python3 scripts/prepare_benchmark.py
+
+# 只准备官方数据，不生成自有 Bunny reference
+python3 scripts/prepare_benchmark.py --skip-bunny-reference
+
+# 复用现有 Release executable 生成 Bunny reference
+python3 scripts/prepare_benchmark.py --skip-build
+
+# 重新下载并替换已经准备的产物
+python3 scripts/prepare_benchmark.py --force
+
+# 查看完整参数
+python3 scripts/prepare_benchmark.py --help
+```
+
+### 实现逻辑
+
+脚本只在被显式调用时访问网络。Cornell RGBE 和 Stanford archive 首先下载到临时文件，SHA-256 正确后才替换缓存；Bunny 只提取指定 PLY member，并验证 PLY 的顶点数与三角形数。
+
+Cornell RGBE 被解码为线性 PFM。Bunny 使用官方 Mesh 与固定 Nearlighter fixture 生成高 SPP 回归 reference。每个 reference 目录写入独立 manifest，记录来源、哈希、设置和 reference 类型。具体适配和限制见 [benchmark/README.md](../benchmark/README.md)。
 
 ## Reference 生成（`generate_reference.py`）
 
@@ -218,7 +267,7 @@ python3 scripts/generate_reference.py --help
 
 脚本默认配置并构建 Release，但不运行 CTest。渲染首先写入临时 PFM 和 PPM；PFM 能被正常读取且尺寸与参数一致后，临时文件才替换目标文件。目标已存在时默认拒绝覆盖，避免日常 evaluation 意外改变基准。
 
-reference 和 preview 写入各自指定路径，构建与渲染日志写入 output 父目录下的 `logs/`。固定 reference 位于被 Git 忽略的 `benchmark/references/`；Git 只保留 `benchmark/.gitkeep` 作为目录骨架。
+reference 和 preview 写入各自指定路径，构建与渲染日志写入 output 父目录下的 `logs/`。固定 reference 位于被 Git 忽略的 `benchmark/references/`；Git 保留 benchmark 配置、专用场景、说明文档和目录骨架。
 
 ### Reference 使用原则
 

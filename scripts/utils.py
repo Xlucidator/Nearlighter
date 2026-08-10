@@ -173,6 +173,85 @@ def run_logged(command: Sequence[str], log_path: Path) -> str:
 # PFM Utilities
 # ==================================================
 
+def read_rgbe(path: Path) -> PFMImage:
+    '''Radiance RGBE decoding in top-to-bottom linear RGB order.'''
+
+    # ----- Header -----
+    try:
+        with path.open("rb") as source:
+            if source.readline().strip() not in (b"#?RGBE", b"#?RADIANCE"):
+                raise EvaluationError(f"'{path}' is not a Radiance RGBE file")
+            format_found = False
+            while True:
+                line = source.readline()
+                if not line:
+                    raise EvaluationError(f"Incomplete RGBE header in '{path}'")
+                stripped = line.strip()
+                if stripped == b"FORMAT=32-bit_rle_rgbe":
+                    format_found = True
+                if not stripped:
+                    break
+            resolution = source.readline().strip().split()
+            if (len(resolution) != 4 or resolution[0] != b"-Y" or
+                    resolution[2] != b"+X"):
+                raise EvaluationError(
+                    f"Unsupported RGBE orientation in '{path}'; expected -Y +X"
+                )
+            height = int(resolution[1])
+            width = int(resolution[3])
+            if not format_found or width <= 0 or height <= 0:
+                raise EvaluationError(f"Invalid RGBE header in '{path}'")
+
+            # ----- RLE scanlines -----
+            pixels: List[float] = []
+            for _ in range(height):
+                marker = source.read(4)
+                if len(marker) != 4 or marker[:2] != b"\x02\x02":
+                    raise EvaluationError(f"Unsupported RGBE scanline in '{path}'")
+                scanline_width = (marker[2] << 8) | marker[3]
+                if scanline_width != width:
+                    raise EvaluationError(f"RGBE scanline width mismatch in '{path}'")
+
+                channels = [bytearray() for _ in range(4)]
+                for channel in channels:
+                    while len(channel) < width:
+                        packet = source.read(1)
+                        if not packet:
+                            raise EvaluationError(f"Truncated RGBE payload in '{path}'")
+                        count = packet[0]
+                        if count > 128:
+                            run_length = count - 128
+                            value = source.read(1)
+                            if not value or run_length == 0:
+                                raise EvaluationError(f"Invalid RGBE run in '{path}'")
+                            channel.extend(value * run_length)
+                        else:
+                            if count == 0:
+                                raise EvaluationError(f"Invalid RGBE literal in '{path}'")
+                            values = source.read(count)
+                            if len(values) != count:
+                                raise EvaluationError(f"Truncated RGBE payload in '{path}'")
+                            channel.extend(values)
+                    if len(channel) != width:
+                        raise EvaluationError(f"RGBE run exceeds scanline in '{path}'")
+
+                for x in range(width):
+                    exponent = channels[3][x]
+                    if exponent == 0:
+                        pixels.extend((0.0, 0.0, 0.0))
+                        continue
+                    scale = math.ldexp(1.0, exponent - (128 + 8))
+                    pixels.extend(
+                        channels[channel][x] * scale for channel in range(3)
+                    )
+    except (OSError, ValueError) as error:
+        raise EvaluationError(f"Failed to read RGBE '{path}': {error}") from error
+
+    if not all(math.isfinite(value) for value in pixels):
+        raise EvaluationError(f"RGBE image '{path}' contains NaN or infinity")
+    return PFMImage(width, height, tuple(pixels))
+
+
 def read_pfm(path: Path) -> PFMImage:
     '''RGB PFM decoding in top-to-bottom row order.'''
 
@@ -238,6 +317,33 @@ def write_pfm(path: Path, image: PFMImage) -> None:
                 output.write(struct.pack(f"<{row_channels}f", *row))
     except OSError as error:
         raise EvaluationError(f"Failed to write PFM '{path}': {error}") from error
+
+
+def write_ppm_preview(path: Path, image: PFMImage) -> None:
+    '''Display PPM using Nearlighter's linear clamp and gamma 2.2 encoding.'''
+    inverse_gamma = 1.0 / 2.2
+
+    def encode(value: float) -> int:
+        '''One linear channel encoded to an unsigned PPM byte.'''
+        clamped = min(max(value, 0.0), 1.0)
+        encoded = min(max(clamped ** inverse_gamma, 0.0), 0.999)
+        return int(encoded * 256.0)
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    try:
+        with temporary.open("w", encoding="ascii") as output:
+            output.write(f"P3\n{image.width} {image.height}\n255\n")
+            for offset in range(0, len(image.pixels), 3):
+                output.write(
+                    f"{encode(image.pixels[offset])} "
+                    f"{encode(image.pixels[offset + 1])} "
+                    f"{encode(image.pixels[offset + 2])}\n"
+                )
+        temporary.replace(path)
+    except OSError as error:
+        temporary.unlink(missing_ok=True)
+        raise EvaluationError(f"Failed to write PPM '{path}': {error}") from error
 
 
 # ==================================================

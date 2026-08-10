@@ -1,5 +1,30 @@
 ## note
 
+每个像素样本的采样过程
+
+```
+  Camera 生成主光线
+      |
+  world.hit() 查找最近交点
+      |
+  读取材质发光信息 material.emitted()
+      |
+  获取材质散射信息 material.scatter()
+      |
+      +-- Metal/Dielectric： 直接生成确定或近似确定的方向
+      |
+      `-- Lambertian/Isotropic： 返回材质 PDF
+              |
+              +-- 无 sampling targets： 按材质 PDF 生成方向
+              |
+              `-- 有 sampling targets：
+                      50% Shape PDF + 50% Material PDF
+                              |
+                      生成一条次级光线
+                              |
+                      递归 trace()
+```
+
 ### 1. 向量计算
 
 #### 反射向量计算

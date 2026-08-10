@@ -23,6 +23,10 @@ void ConsoleOutput::beginRender(const std::string& scene_name) {
     output_ << "Rendering '" << scene_name << "'...\n" << std::flush;
 }
 
+void ConsoleOutput::reportSceneLoad(std::chrono::duration<double> load_time) {
+    output_ << "Scene load: " << load_time.count() << " s\n" << std::flush;
+}
+
 void ConsoleOutput::updateRender(const RenderProgress& progress) {
     if (!show_progress_) return;
 
@@ -53,7 +57,8 @@ void ConsoleOutput::updateRender(const RenderProgress& progress) {
 
 void ConsoleOutput::finishRender(const RenderStats& stats) {
     if (show_progress_) output_ << '\n';
-    output_ << "Render: " << stats.integration_time.count() << " s, "
+    output_ << "Render prepare: " << stats.preparation_time.count() << " s\n"
+            << "Render: " << stats.integration_time.count() << " s, "
             << stats.samplesPerSecond() << " samples/s\n"
             << std::flush;
 }

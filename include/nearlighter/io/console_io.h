@@ -1,6 +1,7 @@
 #ifndef NEARLIGHTER_IO_CONSOLE_IO_H
 #define NEARLIGHTER_IO_CONSOLE_IO_H
 
+#include <chrono>
 #include <iosfwd>
 #include <string>
 
@@ -15,6 +16,9 @@ public:
 
     /** Starts a render status section */
     void beginRender(const std::string& scene_name);
+
+    /** Reports JSON, external-resource, and Mesh preparation time. */
+    void reportSceneLoad(std::chrono::duration<double> load_time);
 
     /** Publishes a rate-limited progress update */
     void updateRender(const RenderProgress& progress);

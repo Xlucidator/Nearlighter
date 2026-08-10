@@ -113,9 +113,11 @@ set(CORE_SOURCES
 
     # ----- Geometry -----
     src/nearlighter/geometry/aabb.cpp
+    src/nearlighter/geometry/mesh.cpp
     src/nearlighter/geometry/quad.cpp
     src/nearlighter/geometry/shape_list.cpp
     src/nearlighter/geometry/sphere.cpp
+    src/nearlighter/geometry/triangle.cpp
 
     # ----- Material -----
     src/nearlighter/material/dielectric.cpp
@@ -159,6 +161,7 @@ message(STATUS "Target [nearlighter_core] configured.")
 add_library(nearlighter_io STATIC
     src/nearlighter/io/console_io.cpp
     src/nearlighter/io/image_io.cpp
+    src/nearlighter/io/mesh_io.cpp
     src/nearlighter/io/scene_loader.cpp
     src/nearlighter/scene/builtin_generator.cpp
 )
@@ -298,6 +301,25 @@ if(BUILD_TESTING)
     add_test(
         NAME nearlighter.renderer_smoke
         COMMAND nearlighter_renderer_smoke_tests
+    )
+
+    # --- Mesh I/O Tests ---
+    add_executable(nearlighter_mesh_io_tests
+        tests/mesh_io_tests.cpp
+    )
+    target_link_libraries(nearlighter_mesh_io_tests PRIVATE
+        nearlighter_io
+    )
+    target_apply_build_options(
+        nearlighter_mesh_io_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_mesh_io_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
+    add_test(
+        NAME nearlighter.mesh_io
+        COMMAND nearlighter_mesh_io_tests
     )
 
     message(STATUS "Nearlighter tests configured.")

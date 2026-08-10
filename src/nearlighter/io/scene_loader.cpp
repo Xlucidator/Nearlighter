@@ -2,9 +2,12 @@
 
 #include <nearlighter/scene/builtin_generator.h>
 
+#include <nearlighter/geometry/mesh.h>
 #include <nearlighter/geometry/quad.h>
 #include <nearlighter/geometry/sphere.h>
+#include <nearlighter/geometry/triangle.h>
 #include <nearlighter/io/image_io.h>
+#include <nearlighter/io/mesh_io.h>
 #include <nearlighter/material/dielectric.h>
 #include <nearlighter/material/diffuse_light.h>
 #include <nearlighter/material/lambertian.h>
@@ -15,6 +18,7 @@
 #include <nearlighter/texture/image_texture.h>
 #include <nearlighter/texture/noise_texture.h>
 #include <nearlighter/transform/rotate.h>
+#include <nearlighter/transform/scale.h>
 #include <nearlighter/transform/translate.h>
 
 #include <nlohmann/json.hpp>
@@ -263,6 +267,30 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
         return std::make_shared<Sphere>(center, radius, material);
     }
 
+    if (type == "triangle") {
+        const auto vertices = geometry.at("vertices").get<
+            std::array<std::array<float, 3>, 3>>();
+        return std::make_shared<Triangle>(
+            readVector(vertices[0]), readVector(vertices[1]),
+            readVector(vertices[2]), material);
+    }
+
+    if (type == "mesh") {
+        std::filesystem::path mesh_path =
+            geometry.at("path").get<std::string>();
+        if (mesh_path.is_relative()) {
+            mesh_path = context.scene_path.parent_path() / mesh_path;
+        }
+        MeshBuildOptions options;
+        options.generate_normals = geometry.value("generate_normals", false);
+        try {
+            return std::make_shared<Mesh>(
+                loadMeshData(mesh_path.lexically_normal()), material, options);
+        } catch (const std::exception& error) {
+            fail(context, error.what());
+        }
+    }
+
     fail(context, "unsupported geometry type '" + type + "'");
 }
 
@@ -279,6 +307,12 @@ std::shared_ptr<Shape> SceneLoader::loadTransforms(
             shape = std::make_shared<Rotate>(
                 std::move(shape), Vec3f(0.0f, 1.0f, 0.0f),
                 degrees_to_radians(transform.at("degrees").get<float>()));
+        } else if (type == "scale") {
+            const float factor = transform.at("factor").get<float>();
+            if (factor <= 0.0f) {
+                fail(context, "scale factor must be positive");
+            }
+            shape = std::make_shared<Scale>(std::move(shape), factor);
         } else if (type == "translate") {
             const Vec3f offset = readVector(
                 transform.at("offset").get<std::array<float, 3>>());

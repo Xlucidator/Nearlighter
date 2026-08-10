@@ -2,6 +2,10 @@
 # Self
 benchmark/**
 !benchmark/.gitkeep
+!benchmark/README.md
+!benchmark/datasets.json
+!benchmark/scenes/
+!benchmark/scenes/*.json
 *.pdf
 ref/
 

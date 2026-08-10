@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "datasets": {
+    "cornell_box_synthetic": {
+      "geometry_source_url": "https://web.archive.org/web/20230512133419/https://www.graphics.cornell.edu/online/box/data.html",
+      "source_url": "https://web.archive.org/web/20230512133419id_/https://www.graphics.cornell.edu/online/box/box.rgbe",
+      "download_sha256": "d94ef786f6bbc70af81ce700765a598f8aff73157234b2f50ee5a42c3f9c9f22",
+      "download_path": "benchmark/data/downloads/cornell_box.rgbe",
+      "reference_path": "benchmark/references/cornell_box_official_v1/reference.pfm",
+      "expected_width": 512,
+      "expected_height": 512,
+      "attribution": "Cornell University Program of Computer Graphics",
+      "terms": "Public-use data; no explicit open-source license is stated on the source page."
+    },
+    "stanford_bunny": {
+      "repository_url": "https://graphics.stanford.edu/data/3Dscanrep/",
+      "source_url": "https://graphics.stanford.edu/pub/3Dscanrep/bunny.tar.gz",
+      "download_sha256": "a5720bd96d158df403d153381b8411a727a1d73cff2f33dc9b212d6f75455b84",
+      "download_path": "benchmark/data/downloads/stanford_bunny.tar.gz",
+      "archive_member": "bunny/reconstruction/bun_zipper.ply",
+      "mesh_path": "benchmark/data/stanford_bunny/bun_zipper.ply",
+      "mesh_sha256": "b1acc63bece78444aa2e15bdcc72371a201279b98c6f5d4b74c993d02f0566fe",
+      "expected_vertices": 35947,
+      "expected_triangles": 69451,
+      "reference_path": "benchmark/references/stanford_bunny_v1/reference.pfm",
+      "preview_path": "benchmark/references/stanford_bunny_v1/preview.ppm",
+      "reference_render": {
+        "width": 256,
+        "height": 256,
+        "samples_per_pixel": 256,
+        "max_depth": 12,
+        "seed": 1
+      },
+      "attribution": "Stanford University Computer Graphics Laboratory",
+      "terms": "Research and free redistribution with acknowledgement; commercial use requires permission."
+    }
+  }
+}

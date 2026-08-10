@@ -62,17 +62,26 @@ bool Sphere::hitDeterministic(const Ray& r, Interval ray_t,
 }
 
 /**
- * Get PDF value from Ray(origin, direction) when sampling the sphere
- * 
- * @note: given a sampling ray, get its sampling pdf value
- * - if the ray does not hit the sphere, pdf = 0
- * - if the ray hits the sphere, pdf = 1 / solid_angle
+ * Evaluates uniform solid-angle sampling toward the Sphere.
+ *
+ * From an external origin, the Sphere occupies a cone with half-angle
+ * theta_max. Its visible solid angle is
+ *
+ *     Omega = 2 pi (1 - cos(theta_max)),
+ *     cos(theta_max) = sqrt(1 - radius^2 / distance^2).
+ *
+ * random() is uniform inside this cone, so every supported direction has
+ * density 1 / Omega and every direction missing the Sphere has density zero.
+ *
+ * @pre origin lies outside the Sphere sampled at motion time zero.
  */
 float Sphere::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
+    /* ----- Direction support ----- */
     HitRecord record;
     if (!hitDeterministic(Ray(origin, direction),
                           Interval(epsilon, infinity), record)) return 0;
 
+    /* ----- Visible solid angle ----- */
     float distance_squared = (origin - moving_center.at(0)).length_squared();
     float cos_theta_max = std::sqrt(1 - radius * radius / distance_squared);
     float solid_angle = 2 * pi * (1 - cos_theta_max);
@@ -80,16 +89,19 @@ float Sphere::getPDFValue(const Point3f& origin, const Vec3f& direction) const {
 }
 
 /**
- * Generate a random direction from origin under the distribution of the sphere
- * @param origin: origin point outside the sphere
- * @note: given an origin point outside the sphere, uniformly sample a direction 
- *        that hits the sphere. use random_to_sphere() in local coordinates and
- *        transform to world coordinates using ONB.
- *  => sample uniformly in the cone formed by the sphere viewed from the origin.
+ * Samples a direction uniformly over the Sphere's visible solid angle.
+ *
+ * randomToSphere() samples the view cone around local +z. The ONB then rotates
+ * that local direction so +z points from origin to the Sphere center.
+ *
+ * @pre origin lies outside the Sphere sampled at motion time zero.
  */
 Vec3f Sphere::random(const Point3f& origin, Sampler& sampler) const {
+    /* ----- View cone ----- */
     Vec3f direction = moving_center.at(0) - origin;  // moving_center.at(0) = center
     float distance_squared = direction.length_squared();
+
+    /* ----- World direction ----- */
     ONB uvw(direction);
     return uvw.transform(randomToSphere(radius, distance_squared, sampler));
 }
@@ -124,21 +136,14 @@ void Sphere::calculateUV(const Point3f& point, float& u, float& v) {
 }
 
 /**
- * Generate a random direction to the sphere from the origin, assume z axis to the norm
- * 
- * @param radius: radius of the sample target sphere
- * @param distance_squared: squared distance between origin and sphere center
- * @note Inversion method. Assume the view cone is aligned with the z axis. we want to 
- *  sample uniformly to the sphere, so the distribution should be uniform in the surface 
- *  area of the sphere. dS = sin(θ) dθ dφ, we need map (x, y) to (θ, φ).
- *  - θ: angle from z axis, [0, theta_max]
- *  - φ: azimuth angle surround z axis, [0, 2pi]
- * @note Randomly select (x, y) to be (r1, r2) ~ U(0, 1). we get equations
- *  - cos theta = 1 + r2 (cos theta_max - 1)
- *  - phi = 2 pi r1
+ * Samples the +z-aligned view cone by inverse-transform sampling.
+ *
+ * Uniform solid angle makes cos(theta) uniform on
+ * [cos(theta_max), 1] and phi uniform on [0, 2 pi).
  */
 Vec3f Sphere::randomToSphere(float radius, float distance_squared,
                              Sampler& sampler) {
+    /* ----- Inverse CDF ----- */
     const float r1 = sampler.next1D();
     const float r2 = sampler.next1D();
     float z = 1 + r2 * (std::sqrt(1 - radius * radius / distance_squared) - 1);

@@ -2,9 +2,11 @@
 #define NEARLIGHTER_GEOMETRY_ALL_H
 
 #include <nearlighter/geometry/aabb.h>
+#include <nearlighter/geometry/mesh.h>
+#include <nearlighter/geometry/quad.h>
 #include <nearlighter/geometry/shape.h>
 #include <nearlighter/geometry/shape_list.h>
 #include <nearlighter/geometry/sphere.h>
-#include <nearlighter/geometry/quad.h>
+#include <nearlighter/geometry/triangle.h>
 
-#endif // NEARLIGHTER_GEOMETRY_ALL_H
+#endif  // NEARLIGHTER_GEOMETRY_ALL_H

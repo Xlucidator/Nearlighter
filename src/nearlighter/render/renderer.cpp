@@ -28,6 +28,8 @@ RenderResult Renderer::render(
     const Scene& scene,
     RenderProgressCallback progress_callback
 ) const {
+    using Clock = std::chrono::steady_clock;
+    const auto preparation_start = Clock::now();
     const Camera::Prepared prepared_camera =
         scene.camera().prepare(settings_.image_width, settings_.image_height);
     Image image(settings_.image_width, settings_.image_height);
@@ -42,8 +44,7 @@ RenderResult Renderer::render(
         world = bvh.get();
     }
 
-    using Clock = std::chrono::steady_clock;
-    const auto start_time = Clock::now();
+    const auto integration_start = Clock::now();
     Clock::duration callback_time{};
     for (int y = 0; y < settings_.image_height; ++y) {
         for (int x = 0; x < settings_.image_width; ++x) {
@@ -72,7 +73,7 @@ RenderResult Renderer::render(
             const RenderProgress progress{
                 y + 1,
                 settings_.image_height,
-                callback_start - start_time - callback_time,
+                callback_start - integration_start - callback_time,
             };
             progress_callback(progress, image);
             callback_time += Clock::now() - callback_start;
@@ -81,7 +82,8 @@ RenderResult Renderer::render(
     const auto end_time = Clock::now();
 
     RenderStats stats;
-    stats.integration_time = end_time - start_time - callback_time;
+    stats.preparation_time = integration_start - preparation_start;
+    stats.integration_time = end_time - integration_start - callback_time;
     stats.sample_count =
         static_cast<std::uint64_t>(settings_.image_width) *
         static_cast<std::uint64_t>(settings_.image_height) *
@@ -93,8 +95,10 @@ RenderResult Renderer::render(
 Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
                       const Shape& sampling_targets,
                       const Color& background, Sampler& sampler) const {
+    /* ----- Path termination ----- */
     if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
 
+    /* ----- Closest interaction ----- */
     HitRecord record;
     if (!world.hit(ray, Interval(0.001f, infinity), record, sampler)) {
         return background;
@@ -103,6 +107,7 @@ Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
         throw std::runtime_error("Renderable shape has no material");
     }
 
+    /* ----- Surface response ----- */
     const Color emitted = record.material->emitted(
         ray, record, record.u, record.v, record.point);
     ScatterRecord scatter_record;
@@ -110,17 +115,21 @@ Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
         return emitted;
     }
 
+    /* ----- Explicit continuation ----- */
+    // Delta-like material events provide their next ray without a PDF mixture.
     if (scatter_record.should_skip) {
         return emitted + scatter_record.attenuation *
-                             trace(scatter_record.skip_ray, depth - 1, world,
-                                   sampling_targets, background, sampler);
+                         trace(scatter_record.skip_ray, depth - 1, world,
+                               sampling_targets, background, sampler);
     }
     if (!scatter_record.pdf) return emitted;
 
-    /* Mix explicit target sampling with the material distribution when present. */
+    /* ----- Sampling distribution ----- */
+    // Mix explicit target sampling with the material distribution when present.
     std::shared_ptr<PDF> sample_pdf = scatter_record.pdf;
     if (sampling_targets.hasPDF()) {
-        auto target_pdf = std::make_shared<ShapePDF>(sampling_targets, record.point);
+        auto target_pdf = std::make_shared<ShapePDF>(
+            sampling_targets, record.point);
         sample_pdf = std::make_shared<MixturePDF>(target_pdf, scatter_record.pdf);
     }
 
@@ -128,6 +137,7 @@ Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
     const float pdf_value = sample_pdf->value(scattered.direction());
     if (pdf_value <= 0.0f) return emitted;
 
+    /* ----- Recursive estimate ----- */
     const float scattering_pdf =
         record.material->getScatterPDF(ray, record, scattered);
     const Color incoming = trace(scattered, depth - 1, world,

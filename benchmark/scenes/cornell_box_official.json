@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "name": "Cornell Box (Official Measured Geometry, RGB Approximation)",
+  "render": {
+    "resolution": { "width": 512, "height": 512 },
+    "samples_per_pixel": 64,
+    "max_depth": 16,
+    "seed": 0
+  },
+  "background": [0.0, 0.0, 0.0],
+  "camera": {
+    "type": "perspective",
+    "position": [278.0, 273.0, -800.0],
+    "look_at": [278.0, 273.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 39.307648,
+    "defocus_angle": 0.0,
+    "focus_distance": 10.0
+  },
+  "materials": {
+    "white": { "type": "lambertian", "albedo": [0.725, 0.710, 0.680] },
+    "green": { "type": "lambertian", "albedo": [0.140, 0.450, 0.091] },
+    "red": { "type": "lambertian", "albedo": [0.630, 0.065, 0.050] },
+    "light": { "type": "diffuse_light", "radiance": [17.0, 12.0, 4.0] }
+  },
+  "objects": [
+    { "id": "floor_0", "geometry": { "type": "triangle", "vertices": [[552.8, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 559.2]] }, "material": "white" },
+    { "id": "floor_1", "geometry": { "type": "triangle", "vertices": [[552.8, 0.0, 0.0], [0.0, 0.0, 559.2], [549.6, 0.0, 559.2]] }, "material": "white" },
+
+    { "id": "ceiling_0", "geometry": { "type": "triangle", "vertices": [[556.0, 548.8, 0.0], [556.0, 548.8, 559.2], [0.0, 548.8, 559.2]] }, "material": "white" },
+    { "id": "ceiling_1", "geometry": { "type": "triangle", "vertices": [[556.0, 548.8, 0.0], [0.0, 548.8, 559.2], [0.0, 548.8, 0.0]] }, "material": "white" },
+
+    { "id": "back_0", "geometry": { "type": "triangle", "vertices": [[549.6, 0.0, 559.2], [0.0, 0.0, 559.2], [0.0, 548.8, 559.2]] }, "material": "white" },
+    { "id": "back_1", "geometry": { "type": "triangle", "vertices": [[549.6, 0.0, 559.2], [0.0, 548.8, 559.2], [556.0, 548.8, 559.2]] }, "material": "white" },
+
+    { "id": "green_wall_0", "geometry": { "type": "triangle", "vertices": [[0.0, 0.0, 559.2], [0.0, 0.0, 0.0], [0.0, 548.8, 0.0]] }, "material": "green" },
+    { "id": "green_wall_1", "geometry": { "type": "triangle", "vertices": [[0.0, 0.0, 559.2], [0.0, 548.8, 0.0], [0.0, 548.8, 559.2]] }, "material": "green" },
+
+    { "id": "red_wall_0", "geometry": { "type": "triangle", "vertices": [[552.8, 0.0, 0.0], [549.6, 0.0, 559.2], [556.0, 548.8, 559.2]] }, "material": "red" },
+    { "id": "red_wall_1", "geometry": { "type": "triangle", "vertices": [[552.8, 0.0, 0.0], [556.0, 548.8, 559.2], [556.0, 548.8, 0.0]] }, "material": "red" },
+
+    { "id": "short_top_0", "geometry": { "type": "triangle", "vertices": [[130.0, 165.0, 65.0], [82.0, 165.0, 225.0], [240.0, 165.0, 272.0]] }, "material": "white" },
+    { "id": "short_top_1", "geometry": { "type": "triangle", "vertices": [[130.0, 165.0, 65.0], [240.0, 165.0, 272.0], [290.0, 165.0, 114.0]] }, "material": "white" },
+    { "id": "short_side_0a", "geometry": { "type": "triangle", "vertices": [[290.0, 0.0, 114.0], [290.0, 165.0, 114.0], [240.0, 165.0, 272.0]] }, "material": "white" },
+    { "id": "short_side_0b", "geometry": { "type": "triangle", "vertices": [[290.0, 0.0, 114.0], [240.0, 165.0, 272.0], [240.0, 0.0, 272.0]] }, "material": "white" },
+    { "id": "short_side_1a", "geometry": { "type": "triangle", "vertices": [[130.0, 0.0, 65.0], [130.0, 165.0, 65.0], [290.0, 165.0, 114.0]] }, "material": "white" },
+    { "id": "short_side_1b", "geometry": { "type": "triangle", "vertices": [[130.0, 0.0, 65.0], [290.0, 165.0, 114.0], [290.0, 0.0, 114.0]] }, "material": "white" },
+    { "id": "short_side_2a", "geometry": { "type": "triangle", "vertices": [[82.0, 0.0, 225.0], [82.0, 165.0, 225.0], [130.0, 165.0, 65.0]] }, "material": "white" },
+    { "id": "short_side_2b", "geometry": { "type": "triangle", "vertices": [[82.0, 0.0, 225.0], [130.0, 165.0, 65.0], [130.0, 0.0, 65.0]] }, "material": "white" },
+    { "id": "short_side_3a", "geometry": { "type": "triangle", "vertices": [[240.0, 0.0, 272.0], [240.0, 165.0, 272.0], [82.0, 165.0, 225.0]] }, "material": "white" },
+    { "id": "short_side_3b", "geometry": { "type": "triangle", "vertices": [[240.0, 0.0, 272.0], [82.0, 165.0, 225.0], [82.0, 0.0, 225.0]] }, "material": "white" },
+
+    { "id": "tall_top_0", "geometry": { "type": "triangle", "vertices": [[423.0, 330.0, 247.0], [265.0, 330.0, 296.0], [314.0, 330.0, 456.0]] }, "material": "white" },
+    { "id": "tall_top_1", "geometry": { "type": "triangle", "vertices": [[423.0, 330.0, 247.0], [314.0, 330.0, 456.0], [472.0, 330.0, 406.0]] }, "material": "white" },
+    { "id": "tall_side_0a", "geometry": { "type": "triangle", "vertices": [[423.0, 0.0, 247.0], [423.0, 330.0, 247.0], [472.0, 330.0, 406.0]] }, "material": "white" },
+    { "id": "tall_side_0b", "geometry": { "type": "triangle", "vertices": [[423.0, 0.0, 247.0], [472.0, 330.0, 406.0], [472.0, 0.0, 406.0]] }, "material": "white" },
+    { "id": "tall_side_1a", "geometry": { "type": "triangle", "vertices": [[472.0, 0.0, 406.0], [472.0, 330.0, 406.0], [314.0, 330.0, 456.0]] }, "material": "white" },
+    { "id": "tall_side_1b", "geometry": { "type": "triangle", "vertices": [[472.0, 0.0, 406.0], [314.0, 330.0, 456.0], [314.0, 0.0, 456.0]] }, "material": "white" },
+    { "id": "tall_side_2a", "geometry": { "type": "triangle", "vertices": [[314.0, 0.0, 456.0], [314.0, 330.0, 456.0], [265.0, 330.0, 296.0]] }, "material": "white" },
+    { "id": "tall_side_2b", "geometry": { "type": "triangle", "vertices": [[314.0, 0.0, 456.0], [265.0, 330.0, 296.0], [265.0, 0.0, 296.0]] }, "material": "white" },
+    { "id": "tall_side_3a", "geometry": { "type": "triangle", "vertices": [[265.0, 0.0, 296.0], [265.0, 330.0, 296.0], [423.0, 330.0, 247.0]] }, "material": "white" },
+    { "id": "tall_side_3b", "geometry": { "type": "triangle", "vertices": [[265.0, 0.0, 296.0], [423.0, 330.0, 247.0], [423.0, 0.0, 247.0]] }, "material": "white" },
+
+    { "id": "light_0", "geometry": { "type": "triangle", "vertices": [[343.0, 548.8, 227.0], [343.0, 548.8, 332.0], [213.0, 548.8, 332.0]] }, "material": "light" },
+    { "id": "light_1", "geometry": { "type": "triangle", "vertices": [[343.0, 548.8, 227.0], [213.0, 548.8, 332.0], [213.0, 548.8, 227.0]] }, "material": "light" }
+  ],
+  "sampling": { "targets": ["light_0", "light_1"] }
+}

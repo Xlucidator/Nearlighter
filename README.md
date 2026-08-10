@@ -22,7 +22,6 @@ Nearlighter 是一个基于物理的CPU端路径追踪渲染器，支持简单�
 待实现特性
 
 - [ ] 接入第三方窗口管理和UI
-- [ ] 支持导入Mesh模型
 - [ ] 曲面细分
 - [ ] 更优加速结构: SAH
 - [ ] 多线程加速渲染
@@ -104,7 +103,7 @@ CLI 默认加载项目提供的 Cornell Box，在终端显示渲染进度，并�
 ```text
 bouncing_spheres   checker_spheres  earth          perlin_sphere
 quads              simple_light     cornell_box_rtow
-cornell_smoke      final_scene      cornell_ball
+cornell_smoke      final_scene      cornell_ball    cornell_bunny
 ```
 
 常用输出选项：
@@ -178,13 +177,19 @@ python3 scripts/evaluate.py --suite quick
 # 阶段性完整检查
 python3 scripts/evaluate.py --suite full
 
+# 首次显式准备官方数据和 Mesh reference
+python3 scripts/prepare_benchmark.py
+
+# Cornell 官方 GT 与 Stanford Bunny/Mesh 工作负载
+python3 scripts/evaluate.py --suite benchmark
+
 # 复用已有 Release 构建
 python3 scripts/evaluate.py --suite quick --skip-build
 ```
 
-评估输出包括 MSE、RMSE、relative MSE、PSNR、渲染时间和采样吞吐量。每次运行的图像、日志与汇总报告独立写入 `build/evaluation/runs/`。
+评估输出包括 MSE、RMSE、relative MSE、PSNR、场景加载时间、准备时间、积分时间和采样吞吐量；Cornell 官方 case 另提供全局曝光对齐指标。每次运行的图像、日志与汇总报告独立写入 `build/evaluation/runs/`。
 
-固定 reference 位于 `benchmark/references/`，由 `scripts/generate_reference.py` 显式生成；evaluation 只读取，不会自动创建或覆盖。reference 生成方式、配置结构和完整产物说明见 [scripts/README.md](scripts/README.md)。
+固定 reference 位于 `benchmark/references/`。项目自有 reference 由 `scripts/generate_reference.py` 生成，外部 benchmark 数据由 `scripts/prepare_benchmark.py` 下载、校验和转换；evaluation 只读取，不会联网、创建或覆盖 reference。脚本使用见 [scripts/README.md](scripts/README.md)，数据依据与适配限制见 [benchmark/README.md](benchmark/README.md)。
 
 ## 渲染示例
 
@@ -222,6 +227,7 @@ MultiBalls
 ## 项目文档
 
 - [脚本与 evaluation 说明](scripts/README.md)
+- [Benchmark 数据与场景说明](benchmark/README.md)
 - [单元测试说明](tests/README.md)
 - [VS Code CMake Preset 配置](docs/vscode-cmake.md)
 - [渲染实现笔记](docs/note.md)

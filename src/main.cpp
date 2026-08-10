@@ -5,6 +5,7 @@
 
 #include <argparse/argparse.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
@@ -148,8 +149,11 @@ int main(int argc, char* argv[]) {
         const CliOptions options = parseCommandLine(argc, argv);
 
         /* ===== Runtime scene ===== */
+        using Clock = std::chrono::steady_clock;
+        const auto scene_load_start = Clock::now();
         Scene scene = SceneLoader().load(
             resolveScenePath(options.scene_path, argv[0]));
+        const auto scene_load_time = Clock::now() - scene_load_start;
 
         /* ===== Effective render configuration ===== */
         Renderer renderer(resolveRenderSettings(
@@ -165,6 +169,7 @@ int main(int argc, char* argv[]) {
                                output_options);
         ConsoleOutput console_output(std::clog, options.show_progress);
         console_output.beginRender(scene.name());
+        console_output.reportSceneLoad(scene_load_time);
 
         /* ===== Core integration ===== */
         RenderResult result = renderer.render(

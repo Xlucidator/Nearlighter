@@ -9,13 +9,32 @@
 #include <cmath>
 #include <memory>
 
+/**
+ * Direction-space probability distribution for one path continuation event.
+ *
+ * The random variable is a direction on the unit sphere, a two-dimensional manifold. 
+ * 
+ * Functions:
+ *  - value()    returns probability density with respect to solid angle d_omega
+ *  - generate() returns a vector representing a sampled direction.
+ *               The vector length has no probabilistic meaning.
+ *
+ * Implementations must keep both operations consistent: every direction
+ * produced by generate() must be evaluated under the same distribution by
+ * value(). Renderer uses that density to keep Monte Carlo estimates unbiased.
+ */
 class PDF {
 public:
     virtual ~PDF() = default;
+
+    /** Evaluates directional density in inverse steradians. */
     virtual float value(const Vec3f& direction) const = 0;
+
+    /** Samples a non-zero direction from this distribution. */
     virtual Vec3f generate(Sampler& sampler) const = 0;
 };
 
+/** Uniform distribution over the complete unit sphere. */
 class SpherePDF : public PDF {
 public:
     SpherePDF() {}
@@ -28,6 +47,7 @@ public:
     }
 };
 
+/** Cosine-weighted hemisphere distribution around one surface normal. */
 class CosineHemispherePDF : public PDF {
 public:
     CosineHemispherePDF(const Vec3f& w) :uvw(w) {}
@@ -43,6 +63,7 @@ private:
     ONB uvw;
 };
 
+/** Direction distribution induced by sampling a Shape from one origin. */
 class ShapePDF : public PDF {
 public:
     ShapePDF(const Shape& objs, const Point3f& origin)
@@ -59,6 +80,7 @@ private:
     Point3f origin;
 };
 
+/** Equal-probability mixture of two direction distributions. */
 class MixturePDF : public PDF {
 public:
     MixturePDF(std::shared_ptr<PDF> p0, std::shared_ptr<PDF> p1) {

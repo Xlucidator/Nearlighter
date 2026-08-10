@@ -23,8 +23,12 @@ class Shape;
 //         `-- RenderStats
 // ==================================================
 
-/** Final integration metrics */
+/** Final preparation and integration metrics. */
 struct RenderStats {
+    /** Camera and top-level acceleration preparation time. */
+    std::chrono::duration<double> preparation_time{};
+
+    /** Core path-integration time, excluding progress callbacks. */
     std::chrono::duration<double> integration_time{};
     std::uint64_t sample_count = 0;
 

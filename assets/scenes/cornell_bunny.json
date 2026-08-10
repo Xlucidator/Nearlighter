@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "name": "Cornell Glass Bunny",
+  "render": {
+    "resolution": { "width": 400, "height": 400 },
+    "samples_per_pixel": 256,
+    "max_depth": 25,
+    "seed": 0
+  },
+  "background": [0.0, 0.0, 0.0],
+  "camera": {
+    "type": "perspective",
+    "position": [278.0, 278.0, -800.0],
+    "look_at": [278.0, 278.0, 0.0],
+    "world_up": [0.0, 1.0, 0.0],
+    "vertical_fov": 40.0,
+    "defocus_angle": 0.0,
+    "focus_distance": 10.0
+  },
+  "materials": {
+    "red": { "type": "lambertian", "albedo": [0.65, 0.05, 0.05] },
+    "white": { "type": "lambertian", "albedo": [0.73, 0.73, 0.73] },
+    "green": { "type": "lambertian", "albedo": [0.12, 0.45, 0.15] },
+    "glass": { "type": "dielectric", "refractive_index": 1.5 },
+    "light": { "type": "diffuse_light", "radiance": [15.0, 15.0, 15.0] }
+  },
+  "objects": [
+    {
+      "id": "right_wall",
+      "geometry": {
+        "type": "quad",
+        "origin": [555.0, 0.0, 0.0],
+        "u": [0.0, 0.0, 555.0],
+        "v": [0.0, 555.0, 0.0]
+      },
+      "material": "green"
+    },
+    {
+      "id": "left_wall",
+      "geometry": {
+        "type": "quad",
+        "origin": [0.0, 0.0, 0.0],
+        "u": [0.0, 555.0, 0.0],
+        "v": [0.0, 0.0, 555.0]
+      },
+      "material": "red"
+    },
+    {
+      "id": "floor",
+      "geometry": {
+        "type": "quad",
+        "origin": [0.0, 0.0, 0.0],
+        "u": [0.0, 0.0, 555.0],
+        "v": [555.0, 0.0, 0.0]
+      },
+      "material": "white"
+    },
+    {
+      "id": "ceiling",
+      "geometry": {
+        "type": "quad",
+        "origin": [555.0, 555.0, 555.0],
+        "u": [-555.0, 0.0, 0.0],
+        "v": [0.0, 0.0, -555.0]
+      },
+      "material": "white"
+    },
+    {
+      "id": "back_wall",
+      "geometry": {
+        "type": "quad",
+        "origin": [0.0, 0.0, 555.0],
+        "u": [555.0, 0.0, 0.0],
+        "v": [0.0, 555.0, 0.0]
+      },
+      "material": "white"
+    },
+    {
+      "id": "tall_box",
+      "geometry": {
+        "type": "box",
+        "min": [0.0, 0.0, 0.0],
+        "max": [165.0, 330.0, 165.0]
+      },
+      "material": "white",
+      "transform": [
+        { "type": "rotate_y", "degrees": 15.0 },
+        { "type": "translate", "offset": [265.0, 0.0, 295.0] }
+      ]
+    },
+    {
+      "id": "glass_bunny",
+      "geometry": {
+        "type": "mesh",
+        "path": "../models/bunny.obj",
+        "generate_normals": true
+      },
+      "material": "glass",
+      "transform": [
+        { "type": "scale", "factor": 1150.0 },
+        { "type": "rotate_y", "degrees": -20.0 },
+        { "type": "translate", "offset": [207.6, -38.3, 198.2] }
+      ]
+    },
+    {
+      "id": "ceiling_light",
+      "geometry": {
+        "type": "quad",
+        "origin": [343.0, 554.0, 332.0],
+        "u": [-130.0, 0.0, 0.0],
+        "v": [0.0, 0.0, -105.0]
+      },
+      "material": "light"
+    }
+  ],
+  "sampling": {
+    "targets": ["ceiling_light"]
+  }
+}

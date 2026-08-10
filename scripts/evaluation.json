@@ -42,6 +42,50 @@
         "relative_mse",
         "psnr"
       ]
+    },
+    "cornell_box_official": {
+      "scene": "benchmark/scenes/cornell_box_official.json",
+      "render": {
+        "resolution": {
+          "width": 512,
+          "height": 512
+        },
+        "samples_per_pixel": 64,
+        "max_depth": 16,
+        "seed": 0
+      },
+      "reference": "benchmark/references/cornell_box_official_v1/reference.pfm",
+      "metrics": [
+        "mse",
+        "rmse",
+        "relative_mse",
+        "psnr",
+        "exposure_scale",
+        "exposure_aligned_mse",
+        "exposure_aligned_rmse",
+        "exposure_aligned_relative_mse",
+        "exposure_aligned_psnr"
+      ]
+    },
+    "stanford_bunny": {
+      "scene": "benchmark/scenes/stanford_bunny.json",
+      "render": {
+        "resolution": {
+          "width": 256,
+          "height": 256
+        },
+        "samples_per_pixel": 16,
+        "max_depth": 12,
+        "seed": 0
+      },
+      "repetitions": 3,
+      "reference": "benchmark/references/stanford_bunny_v1/reference.pfm",
+      "metrics": [
+        "mse",
+        "rmse",
+        "relative_mse",
+        "psnr"
+      ]
     }
   },
   
@@ -54,6 +98,12 @@
     "full": {
       "cases": [
         "cornell_box_rtow_full"
+      ]
+    },
+    "benchmark": {
+      "cases": [
+        "cornell_box_official",
+        "stanford_bunny"
       ]
     }
   }
