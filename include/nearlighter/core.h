@@ -41,6 +41,6 @@
 #include <nearlighter/scene/scene.h>
 
 // Transforms
-#include <nearlighter/transform/transform.h>
+#include <nearlighter/transform/all.h>
 
 #endif  // NEARLIGHTER_CORE_H
