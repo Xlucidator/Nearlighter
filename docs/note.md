@@ -1,4 +1,4 @@
-## note
+# Self-Note
 
 每个像素样本的采样过程
 
@@ -25,19 +25,19 @@
                       递归 trace()
 ```
 
-### 1. 向量计算
+## 1. 向量计算
 
-#### 反射向量计算
+### 反射向量计算
 
 略
 
-#### 折射向量计算
+### 折射向量计算
 
 入射光线单位向量$\vec{R}$ ， 入射折射率$\eta$ ，法线$\vec{n}$ ，出射折射率 $\eta '$ ：求出射光线单位向量$\vec{R'}$
 
 <img src="./figs/note/refract_vector.jpg" alt="refract_vector" style="zoom:50%;" />
 
-### 2. Schlick's Approximation
+## 2. Schlick's Approximation
 
 对菲涅尔反射系数的近似。菲尼尔反射系数指，光从某介质进入另一介质时光被反射的比率。
 
@@ -63,7 +63,7 @@ Brewster's angle 布儒斯特角：起偏振角，反射光与折射光分为互
   - 从而有 $\theta_B = \theta_i = \arctan(\frac{\eta_2}{\eta_1})$
 - 在菲涅尔方程中，此时的平行偏振反射率为0，即$R_p = 0$，所有平行偏振光都透射进入另一介质
 
-### 3. Hollow Glass Sphere的渲染
+## 3. Hollow Glass Sphere的渲染
 
 似乎和书上不一样,难道是全反射的问题,还是之前哪里自由发挥的锅? (递归深度50, 采样500, 小电脑渲染了好久,差不多一行像素好几秒)
 
@@ -75,13 +75,13 @@ Brewster's angle 布儒斯特角：起偏振角，反射光与折射光分为互
 
 - 显然不是原则性问题，都是自以为是的优化，结果没考虑到极端浮点数运算带来的误差；具体见[hit-calculation](./hit-calculation.md)的开头
 
-### 4. BVH加速效率不佳
+## 4. BVH加速效率不佳
 
-#### bug 1: 由于 `bbox_cmp`引用悬垂导致的比较错误
+### bug 1: 由于 `bbox_cmp`引用悬垂导致的比较错误
 
 通过将 `getBoundingBox`的返回值改为 `const AABB&`来保证引用对象存在，同时也减少拷贝次数（倒是不知道编译器会不会优化）
 
-#### bug 2: 计算Node中AABB合并时莫名出现的某轴边界归零
+### bug 2: 计算Node中AABB合并时莫名出现的某轴边界归零
 
 问题出在 `AABB::empty`和 `AABB::universe`的初始化上；由于写成了多文件应用，所以在给AABB这两个静态变量赋值时，可能Interval的静态变量尚未初始化（两个.o呢），所以就被初始化为零了。
 
@@ -98,9 +98,9 @@ const AABB& AABB::universe() {
 }
 ```
 
-### 5. 纹理映射
+## 5. 纹理映射
 
-#### Sphere纹理坐标
+### Sphere纹理坐标
 
 对单位球面上的点$(x, y, z)$进行映射，最终得到$(u,v) \in [0, 1]$。
 
@@ -134,7 +134,7 @@ $$
 
 啧，那其实还不如最原始的球坐标，然后得到这个$\phi' \in [-\pi, \pi]$，然后再做个偏移后归一化呢。反正相当于 $\phi = \phi' + \pi$，而$\phi' = \arctan(-\frac{z}{x})$，则$\phi = \arctan(-\frac{z}{x}) + \pi$
 
-### 6. 插值
+## 6. 插值
 
 插值函数：多项式插值，分段插值，三角插值；证明n+1个节点确定n阶多项式插值函数：即x_i构成范德蒙德矩阵。
 
@@ -143,13 +143,13 @@ $$
 
 Hermite插值：节点的函数值和n阶导数值都需要相同。直接Hermite插值得到的多项式次数高，也存在龙格现象。实际运用中常用分段三次Hermite插值多项式PCHIP
 
-#### 三线性插值
+### 三线性插值
 
 就是两层双线性插值再插个值
 
 ![bilinear-interpolation](./figs/note/bilinear_interp.png)
 
-#### Hermitian平滑
+### Hermitian平滑
 
 只用三线性插值的话，结果还是有明显的网格特征，且存在Mach Bands马赫带。因而对u, v, w进行一个三次Hermite插值，似乎就是GLSL中smoothstep的插值。smoothstep可以用来生成0到1的平滑过渡值，称为平滑梯度函数，由分段三次Hermite插值公式推导而来
 
@@ -178,7 +178,7 @@ $$
 http://www.cnitblog.com/luckydmz/archive/2014/06/23/89615.html
 https://zhuanlan.zhihu.com/p/157758600
 
-### 7. Perlin噪声改进
+## 7. Perlin噪声改进
 
 在基本的噪声算法中，每个网格点通常会被分配一个随机浮点数值。然后，在这些网格点之间使用插值（如三次插值）进行平滑。但是，如果这些浮点数直接作为噪声值，那么它们的最小值和最大值会总是刚好出现在整数的 x/y/z 位置上。
 
@@ -187,7 +187,7 @@ https://zhuanlan.zhihu.com/p/157758600
 
 改进：不是在网格点上放置随机浮点数，而是放置随机单位向量。这样之后使用了点积运算，极值会偏移，打破了规则性；相比直接使用浮点数，这种方法能消除明显的网格结构，使噪声更加平滑、细腻；由于单位向量可以朝向任意方向，噪声图案不再表现出轴对齐的特征，避免了规则的条纹或格子状伪影
 
-### 8. 渲染时间
+## 8. 渲染时间
 
 Cornell Box (SPP = 200, depth = 50, 400px * 400px, WSL)
 
@@ -199,15 +199,15 @@ stage2-achievement
 - SPP = 100, depth = 25, 400px * 400px, WSL：431556ms = 431.556s = 7min
 - SPP = 250, depth = 25, 400px * 400px, WSL：1053010ms = 1053.010s = 17.5min = 7min * 2.5
 
-### 9. 分层采样 Stratified Sampling
+## 9. 分层采样 Stratified Sampling
 
 stratified sampling：对于指定的pixel，原采样是随机投射spp次光线；分层采样是再将这个pixel划分为spp个格子，随机投射将均匀分布于每个格子中
 
 渲染时间还稍快。对于spp = 64，depth=50的Cornell Box，原采样用时203188ms，分层采样用时191859ms
 
-### 10. 蒙特卡洛积分 Monte Carlo Integration
+## 10. 蒙特卡洛积分 Monte Carlo Integration
 
-#### 总结
+### 总结
 
 对于 $I = \int_a^b f(x) dx$ 进行Monte Carlo积分
 
@@ -215,7 +215,7 @@ stratified sampling：对于指定的pixel，原采样是随机投射spp次光�
   - $f_X(x)$ 即为随机变量X的概率密度函数pdf，离散后则为 $P\{X = x\}$ ，书中记法是 $p(x)$ ，我觉得很难看，还是希望记成 $\mathrm{pdf}(x)$ . 
 - 则积分结果为  $I = \frac{1}{N} \sum\limits_{k=1}^{n} \frac{f(x_k)}{f_X(x_k)}$ 即 $\frac{f(x)}{f_X(x)}$的均值
 
-#### 一些技巧
+### 一些技巧
 
 - 简化表示 $f_X(x) = \frac{x}{2}$ ：可知 $P\{ X \leq \sqrt{2} \} = 0.5$ 所以分两段 $[0, \sqrt{2}]$ 和 $[\sqrt{2}, 2]$ ，每段再用均匀分布简化模拟
 - 对于任意曲线pdf，求**cdf半分位点**：假设采样N个点，然后按x升序排列，之后从前向后加 $f_X(x)$ (即**前缀和**)直到超过0.5，此时的x就是所求分位点
@@ -226,7 +226,7 @@ stratified sampling：对于指定的pixel，原采样是随机投射spp次光�
   - 有 $y = F_X(x)$ ,则有 $x = F_X^{-1}(y)$ ；CDF的逆称为ICD
   - 随机均匀采样y，可得多组x = icd(y)去，这样的(x,y)即可近似真正的cdf：**怎么感觉就是在说废话** d
 
-#### 实现举例
+### 实现举例
 
 举例泛化说明，计算最开始的$I$
 
@@ -257,7 +257,7 @@ void main() {
   - the perfect importance sampling：对于最合适的pdf，则采样数仅需1，当然本身就是答案了
     - 升维后也一样，总能找到**最正确的一个点**，配合pdf进行权重操纵
 
-#### 单位球面上的MC积分
+### 单位球面上的MC积分
 
 前提：随机方向
 
@@ -294,9 +294,9 @@ e.g. 如果用MC法求 $\iint_{\Omega} \cos^2(\theta) d\vec{r}$ ，这是个曲�
 - 在3d空间中表示方向范围：方向区域，即空间角
   - 1d角度 - θ, 2d及以上角度 - sr
 
-### 11. 渲染模型更换：渲染方程
+## 11. 渲染模型更换：渲染方程
 
-#### 散射概率模型
+### 散射概率模型
 
 (1) 反照率 albedo ：重新定义为 被散射的概率，不被散射scattered即被吸收asorbed
 
@@ -360,7 +360,7 @@ BRDF的定义
 - pScatter去除了BRDF中的颜色值反照度A，又将其出射的“**不仅关于立体角还相对于投影平面**的Radiance”转换为“**绝对的只关乎立体角的**辐射亮度Radiant Intensity”
 
 
-#### 具体的散射PDF
+### 具体的散射PDF
 
 | 材质           | 散射PDF                    | BRDF            | 解释                                                         |
 | -------------- | -------------------------- | --------------- | ------------------------------------------------------------ |
@@ -384,9 +384,9 @@ BRDF的定义
 
 - 光线入射材质后，从**不同角度**观察的反射光线： **Radiant Intensity** 值（单位立体角）如图成一个圆，即 $C\cdot\cos\theta$ ，而 **Radiance** 值（单位立体角单位投影面积）则为常数。
 
-### 12. 渲染模型的计算
+## 12. 渲染模型的计算
 
-#### MC法采样PDF选择 - Importance Sampling
+### MC法采样PDF选择 - Importance Sampling
 
 已知：采样PDF与待采样函数（真实光线情况）越接近，效果越好收敛速度越快
 
@@ -400,35 +400,35 @@ BRDF的定义
 - 最终级的目标是让pdf和最终正确的颜色 $pScatter() \cdot Color_i()$ 相近
 - 对于漫反射材质，Color比较重要，即有效光线来源比较重要（pLight权重大些？）；对于镜面材质，pScatter比较重要，即要看观察方向o在不在散射对的位置（pSurface权重大些）
 
-### 优化前记录
+## 优化前记录
 
 WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 100, max_depth = 25, 600x600, Render Time = 10m13s
 
 WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 64, max_depth = 25, 400x400, Render Time = 2m54s
 WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 1000, max_depth = 25, 400x400, Render Time = 23m26s
 
-### 13. 随机方向生成
+## 13. 随机方向生成
 
-#### Rejection Method
+### Rejection Method
 
 不必提，不可定制采样概率
 
-#### Inversion Method
+### Inversion Method
 
-简化版：将z轴视为表面法线，**生成绕z轴对称的随机方向**。则只与法线的夹角 $\theta$ ，所以有球面分布 $\pdf(\omega) = f(\theta)$ .  $\omega$ 是方向随机变量，在球面坐标系中可表示为 $(\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$ ， $d\omega$ 积一个球值为 $4\pi$ 
-- **需满足** $\iint_{S^2}\pdf(\omega)d\omega = \int_0^{2\pi}\int_{0}^{\pi}f(\theta)\sin\theta d\theta d\phi = 1$ ，即有联合概率密度函数 $f_{\theta, \phi}(\theta, \phi) = f(\theta)\sin\theta$  .
+简化版：将z轴视为表面法线，**生成绕z轴对称的随机方向**。则只与法线的夹角 $\theta$ 有关，所以有球面分布 $p_\Omega(\omega) = f(\theta)$。$\omega$ 是方向随机变量，在球面坐标系中可表示为 $(\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$，$d\omega$ 在整个球面上的积分为 $4\pi$。
+- **需满足** $\iint_{S^2}p_\Omega(\omega)d\omega = \int_0^{2\pi}\int_{0}^{\pi}f(\theta)\sin\theta d\theta d\phi = 1$，即有联合概率密度函数 $p_{\Theta,\Phi}(\theta, \phi) = f(\theta)\sin\theta$。
 - 转化到两个参数的一维分布
-  -   $\phi$ ：分布**在绕z轴的方向上均匀分布**。说明 $\phi$ 在 $[0, 2\pi)$ 上有均匀分布，有 $\pdf(\phi) = \frac{1}{2\pi}$ .
-  -   $\theta$ ：分布**与z轴的夹角由函数指定**。从联合pdf求边缘pdf，即可计算得$\pdf(\theta) = \int_0^{2\pi}f_{\theta, \phi}(\theta, \phi) d\phi$ ，可积得值为 $2\pi f(\theta) \sin\theta$ ；或可因为 $\phi, \theta$ 独立，满足 $f_{\theta, \phi}(\theta, \phi) = f_\theta(\theta) \cdot f_{\phi}(\phi)$，已知 $\pdf(\phi)$ ，从而可得 $\pdf(\theta)$ 。
-- 需要分别利用 idf 将均匀分布结果求逆得到满足分布的随机变量值
-  -  $\phi$ ： $\cdf(\phi) = \int_0^{\phi}f_{\phi}(t)dt = \frac{\phi}{2\pi} = r_1$ ，所以从均匀分布的随机数 $r_1$ 逆回去，就能有满足分布的 $\phi = \idf(r_1) = 2\pi r_1$ .
-  -   $\theta$ ： $\cdf(\theta) = \int_0^{\theta}f_{\theta}(t)dt = 2\pi\int_0^{\theta}f(t)\sin\theta dt$  .
-     -  均匀采样整个球面：则有 $\pdf(\omega) = \frac{1}{4\pi}$ ，则有 $\cdf(\theta)=\frac{1-\cos\theta}{2} = r_2$，所以满足分布的 $\cos\theta = 1 - 2r_2$ .
-     -  均匀采样半球面：则有 $\pdf(\omega) = \frac{1}{2\pi}$ ，则有 $\cdf(\theta) = 1-\cos\theta = r_2$，所以满足分布的 $\cos\theta = 1-r_2$ .
-     -  余弦采样半球面：定义 $\pdf(\omega) = \frac{\cos\theta}{\pi}$ ，则有 $\cdf(\theta) = 1-\cos^2\theta = r_2$，所以满足分布的 $\cos\theta = \sqrt{1-r_2}$ .
+  - $\phi$：分布**在绕z轴的方向上均匀分布**。说明 $\phi$ 在 $[0, 2\pi)$ 上有均匀分布，概率密度为 $p_\Phi(\phi) = \frac{1}{2\pi}$。
+  - $\theta$：分布**与z轴的夹角由函数指定**。从联合概率密度求边缘概率密度，可得 $p_\Theta(\theta) = \int_0^{2\pi}p_{\Theta,\Phi}(\theta, \phi)d\phi = 2\pi f(\theta)\sin\theta$；也可利用 $\theta$ 与 $\phi$ 独立，由 $p_{\Theta,\Phi}(\theta,\phi) = p_\Theta(\theta)p_\Phi(\phi)$ 求得。
+- 分别对累积分布函数求逆，将均匀随机数变换为满足目标分布的随机变量
+  - $\phi$：$F_\Phi(\phi) = \int_0^{\phi}p_\Phi(t)dt = \frac{\phi}{2\pi} = r_1$，所以 $\phi = F_\Phi^{-1}(r_1) = 2\pi r_1$。
+  - $\theta$：$F_\Theta(\theta) = \int_0^{\theta}p_\Theta(t)dt = 2\pi\int_0^{\theta}f(t)\sin t\,dt$。
+     - 均匀采样整个球面：$p_\Omega(\omega) = \frac{1}{4\pi}$，$F_\Theta(\theta)=\frac{1-\cos\theta}{2} = r_2$，所以 $\cos\theta = 1 - 2r_2$。
+     - 均匀采样半球面：$p_\Omega(\omega) = \frac{1}{2\pi}$，$F_\Theta(\theta) = 1-\cos\theta = r_2$，所以 $\cos\theta = 1-r_2$。
+     - 余弦采样半球面：$p_\Omega(\omega) = \frac{\cos\theta}{\pi}$，$F_\Theta(\theta) = 1-\cos^2\theta = r_2$，所以 $\cos\theta = \sqrt{1-r_2}$。
   -  以球面上均匀分布为例：将值代回球坐标 $(\sin\theta\cos\phi, \sin\theta\sin\phi, \cos\theta)$ 中即为 $(\sqrt{1-(1-2r_2)^2}\cos(2\pi r_1), \sqrt{1-(1-2r_2)^2}\sin(2\pi r_1), 1-2r_2)$ ，化简下即为 $(2\sqrt{r_2(1-r_2)}\cos(2\pi r_1), 2\sqrt{r_2(1-r_2)}\sin(2\pi r_1), 1-2r_2)$ 。这样就可以用两个均匀分布随机数，生成球面上均匀分布(定制分布)的方向样本了
 
-| 采样方式       | $\pdf(\omega)$           | $\cdf(\theta)$           | x                                  | y                   | z              |
+| 采样方式       | $p_\Omega(\omega)$       | $F_\Theta(\theta)$       | x                                  | y                   | z              |
 | -------------- | ------------------------ | ------------------------ | ---------------------------------- | ------------------- | -------------- |
 | 均匀采样球面   | $\frac{1}{4\pi}$         | $\frac{1-\cos\theta}{2}$ | $2\sqrt{r_2(1-r_2)}\cos(2\pi r_1)$ | .. $\sin(2\pi r_1)$ | $1-2r_2$       |
 | 均匀采样半球面 | $\frac{1}{2\pi}$         | $1-\cos\theta$           | $\sqrt{r_2(2-r_2)}\cos(2\pi r_1)$  | .. $\sin(2\pi r_1)$ | $1-r_2$        |
@@ -440,37 +440,60 @@ WSL2 - Ubuntu 24.04 - 9955HX - Single Core : SPP = 1000, max_depth = 25, 400x400
   - 这里视 n, s, t 为 z, y, x，那么t的算法就是左手系而不是右手系了呀，我觉得要反一反
 
 
-
-### 14. 根据光源采样
+## 14. 根据光源采样
 
 对P点上散射的光线进行采样
 
-- 指向光源的立体角微分满足 $d\omega = \frac{dA}{r^2} = \frac{dS \cdot \cos\theta}{\Vert PQ \Vert^2}$ ，其中 $S$ 为光源面积， $Q$ 为其上任意一点，面积微分为 $dS$ ， $dS\cdot \cos\theta$ 即为垂直于连线的投影；光源中光线打在 Q 点上的概率为 $\pdf_Q(q) = \frac{1}{S}$ .
-- 从 P 点散射的光线打在 Q 点的情况即满足等式 $\pdf(\omega) d\omega = \pdf_{Q}(q) dS$ ，从而可解得 $\pdf(\omega) = \frac{\Vert PQ \Vert^2}{\cos\theta \cdot S}$ 
+- 指向光源的立体角微分满足 $d\omega = \frac{dA}{r^2} = \frac{dS \cdot \cos\theta}{\Vert PQ \Vert^2}$，其中 $S$ 为光源面积，$Q$ 为其上任意一点，面积微分为 $dS$，$dS\cdot \cos\theta$ 即为垂直于连线的投影；在灯面上均匀采样时，面积概率密度为 $p_Q(q) = \frac{1}{S}$。
+- 从 P 点散射的光线打在 Q 点的情况满足 $p_\Omega(\omega)d\omega = p_Q(q)dS$，从而可解得 $p_\Omega(\omega) = \frac{\Vert PQ \Vert^2}{\cos\theta \cdot S}$。
 
 直接把不被光源直接照到的地方给pass掉了，就少了间接光照，渲染出图也验证了这一点，无光处全黑
 
  ![sample_only_to_light](./figs/optim/cb_spp10_md25_400-sample_only_to_light.png) ![sample_only_to_light-2](./figs/optim/cb_spp10_md25_400-sample_only_to_light-correct.png) 
 
  
+### 渲染问题
 
-#### 渲染问题
+图中红色墙面的椭圆状明暗分布与第15节的共面求交问题不同。该场景的灯面位于 $y=554$，天花板位于 $y=555$，两者没有重合，因而不会发生 ceiling 与 light 在同一参数 $t$ 上竞争命中的问题。
 
-但这张图似乎有个明显问题：绿色墙还算正常，但是红色墙光照呈现明显的分层。这是什么原因，而且和绿色还不一样.
+- 有限矩形面光源在侧墙上的直接照明本来就随距离、入射余弦和灯面出射余弦连续变化，等照度线呈椭圆状是合理现象。
+- 图像只有 `10 SPP`，且经过显示映射和8位量化，平滑梯度中的噪声与色阶容易表现为分层。红色材质的通道分布更集中，因此视觉上比绿色墙明显。
+- 灯面低于完整天花板 `1` 个单位，虽然不会发生共面求交竞争，但改变了灯具边缘的可见关系。对于仅向下发光的灯面，顶部天花板不会直接接收其背面辐射，不能仅凭高度差把图2中的亮圈判定为正常照明。
+- 将 Lambertian 的 `scattering_pdf` 强制改为 $1/\pi$ 会丢失余弦项，不能作为正确性修复。图2的亮圈还受到错误估计器和间接光照的影响，需要在恢复正确的 BRDF、余弦项与采样 PDF 后单独验证。
 
-强制改了 `scattering_pdf = 1 / pi` 后见图2，和书中的出图像了些，但似乎光的周围还有一圈泛白，但这个可以解释，设计的发光点是 (xxx, 554, xxx)，比顶部稍矮，所以泛一圈光就是正常，在于 `light_cos` 的筛除控制上，盒子顶部平面采样到光源的 `light_cos` 值量级在 0.002 ~ 0.003 附近，所以我设置了1e-8根本不会筛去任何地方，书上的 1e-6 也一样。
+第15节的开孔方案会消除共面命中竞争，并改变灯具边缘的局部可见关系；但不会消除侧墙上由面光源几何造成的椭圆状照度分布，也不能单独证明图2的亮圈已经修复。若仍出现离散的硬色带，应恢复正确估计器、提高 SPP、使用浮点输出并检查 tone mapping，而不是继续移动灯面。
 
-> 总感觉这部书存在错误，质量不如前两部
+补充实验：仅保留红绿墙并交换颜色后，明显的分层仍跟随红色材质，进一步说明两侧差异主要来自颜色与显示过程，而不是左右墙的几何不对称。
 
-new：仅仅留下红绿墙，原写法仍然是红色有圈层，绿色墙正常；交换颜色后也一样。这种不对称的情况，似乎是因为色彩导致的，红色的albedo是 (.65, .05, .05) 蓝绿通道很少，反射后基本全灭，但通道现象有限采样数下分层现象更明显。而绿色的albedo是 (.12, .45, .15)，稍微均匀些
+## 15. Cornell Box共面灯具造成横向光带
 
-但是成圈状就是不太对的样子啊... 暂时搞不懂，开个分支 debug_sample_only_light 记录一下之后再调，也有点怀疑书中的渲染图不匹配...
+### 现象
 
+灯面和完整天花板都位于 $y=548.8$，灯具区域因而完全重合。渲染结果在后墙和天花板上出现了稳定的横向光带，而非普通的低 SPP 随机噪声。
 
+| ceiling与light共面重叠 | light临时下移到$y=548.79$ |
+| --- | --- |
+| ![共面重叠产生横向光带](./figs/note/cornell-coplanar-overlap.png) | ![光源下移后横向光带消失](./figs/note/cornell-light-offset.png) |
 
+### 原因
 
-$$
-\DeclareMathOperator{\pdf}{pdf}
-\DeclareMathOperator{\cdf}{cdf}
-\DeclareMathOperator{\idf}{idf}
-$$
+从表面采样灯具方向后，次级射线会在几乎相同的参数 $t$ 上同时命中白色 ceiling 和 emissive light。BVH 遍历顺序、严格的最近交点区间和浮点舍入共同决定最终保留哪个交点：
+
+- 命中 light 时，路径取得发光贡献并终止。
+- 命中 ceiling 时，路径被当成普通 Lambertian 表面继续递归。
+
+相邻扫描行的射线方向和浮点行为相近，因此错误形成连贯光带。两次独立 seed 的逐行高频残差相关系数约为 `0.913`，也说明它属于固定的几何/求交偏差。
+
+将灯具临时下移 `0.01` 后，条纹消失，曝光对齐 relative MSE 从约 `5.76%` 降至 `0.277%`。场景同时明显变亮，说明原设置中大量灯光路径被共面 ceiling 错误遮挡；这项位移实验只用于定位问题，不是最终建模方式。
+
+### 解决
+
+最终场景使用四个 Quad 拼接天花板并留出矩形灯具开口，再用一个发光 Quad 填充开口。ceiling 与 light 只共享边界，不再占据同一片面积：
+
+- 几何语义与 Cornell Box 灯具开口一致。
+- 避免共面交点竞争，不依赖人为高度偏移。
+- 单个灯面可直接进行均匀面积采样，无需先选择两个 Triangle。
+
+修复几何后，当前 RGB light radiance 仍会使原始结果偏亮。evaluation 同时保留原始指标和曝光对齐指标，并输出 `preview-exposure-aligned.ppm` 供直观比较；后续应根据官方辐射数据或明确的 RGB 近似重新确定绝对光强。
+
+正式开孔场景的曝光对齐 relative MSE 为约 `0.277%`，PSNR 为约 `50.91 dB`，与临时下移光源的诊断结果一致。

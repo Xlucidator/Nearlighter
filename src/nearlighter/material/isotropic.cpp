@@ -12,11 +12,12 @@ Isotropic::Isotropic(const Color& albedo)
 bool Isotropic::scatter(const Ray&, const HitRecord& record,
                         ScatterRecord& s_record, Sampler&) const {
     s_record.attenuation = texture->value(record.u, record.v, record.point);
-    s_record.pdf = std::make_shared<SpherePDF>();
+    s_record.sampling_pdf = std::make_shared<SpherePDF>();
     s_record.should_skip = false;
     return true;
 }
 
-float Isotropic::getScatterPDF(const Ray&, const HitRecord&, const Ray&) const {
+float Isotropic::getScatterPDFValue(const Ray&, const HitRecord&,
+                                    const Ray&) const {
     return 1 / (4 * pi);
 }

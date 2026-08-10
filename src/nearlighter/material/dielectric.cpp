@@ -10,7 +10,7 @@ Dielectric::Dielectric(float refractive_index)
 bool Dielectric::scatter(const Ray& ray_in, const HitRecord& record,
                          ScatterRecord& s_record, Sampler& sampler) const {
     s_record.attenuation = Color(1.0f, 1.0f, 1.0f);
-    s_record.pdf = nullptr;
+    s_record.sampling_pdf = nullptr;
     s_record.should_skip = true;
 
     float etai_over_etat = record.front_face ? (1.0f / refractive_index) : refractive_index;

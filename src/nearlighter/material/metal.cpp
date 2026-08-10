@@ -13,7 +13,7 @@ bool Metal::scatter(const Ray& ray_in, const HitRecord& record,
     Ray scattered(record.point, reflect_direction, ray_in.time());
 
     s_record.attenuation = albedo;
-    s_record.pdf = nullptr;
+    s_record.sampling_pdf = nullptr;
     s_record.should_skip = true;
     s_record.skip_ray = scattered;
     return dot(scattered.direction(), record.normal) > 0;

@@ -95,6 +95,7 @@ build/evaluation/
     │   ├── difference-exposure-aligned.pfm  # 仅曝光对齐 case
     │   ├── metrics.json
     │   ├── preview.ppm
+    │   ├── preview-exposure-aligned.ppm  # 仅曝光对齐 case
     │   ├── reference.ppm
     │   ├── resolved-config.json
     │   └── result.pfm
@@ -112,6 +113,7 @@ build/evaluation/
 - `manifest.json`：状态、Git、配置哈希、编译器、主机和 case 产物哈希。
 - `metrics.json`：单个 case 的渲染设置、指标和性能数据。
 - `preview.ppm`：显示用结果，适合直接检查构图、颜色和噪声。
+- `preview-exposure-aligned.ppm`：乘以报告中的全局曝光系数后的结果预览；仅在 case 请求 `exposure_scale` 时生成。
 - `reference.ppm`：与结果采用相同 gamma 2.2 显示转换的 GT/reference 预览；仅供直观对照。
 - `result.pfm`：未做显示变换的线性 RGB 浮点结果。
 - `difference.pfm`：result 与 reference 的逐通道绝对差值。

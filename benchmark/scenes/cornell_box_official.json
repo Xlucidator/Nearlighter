@@ -27,8 +27,10 @@
     { "id": "floor_0", "geometry": { "type": "triangle", "vertices": [[552.8, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 559.2]] }, "material": "white" },
     { "id": "floor_1", "geometry": { "type": "triangle", "vertices": [[552.8, 0.0, 0.0], [0.0, 0.0, 559.2], [549.6, 0.0, 559.2]] }, "material": "white" },
 
-    { "id": "ceiling_0", "geometry": { "type": "triangle", "vertices": [[556.0, 548.8, 0.0], [556.0, 548.8, 559.2], [0.0, 548.8, 559.2]] }, "material": "white" },
-    { "id": "ceiling_1", "geometry": { "type": "triangle", "vertices": [[556.0, 548.8, 0.0], [0.0, 548.8, 559.2], [0.0, 548.8, 0.0]] }, "material": "white" },
+    { "id": "ceiling_front", "geometry": { "type": "quad", "origin": [0.0, 548.8, 0.0], "u": [556.0, 0.0, 0.0], "v": [0.0, 0.0, 227.0] }, "material": "white" },
+    { "id": "ceiling_back", "geometry": { "type": "quad", "origin": [0.0, 548.8, 332.0], "u": [556.0, 0.0, 0.0], "v": [0.0, 0.0, 227.2] }, "material": "white" },
+    { "id": "ceiling_left", "geometry": { "type": "quad", "origin": [0.0, 548.8, 227.0], "u": [213.0, 0.0, 0.0], "v": [0.0, 0.0, 105.0] }, "material": "white" },
+    { "id": "ceiling_right", "geometry": { "type": "quad", "origin": [343.0, 548.8, 227.0], "u": [213.0, 0.0, 0.0], "v": [0.0, 0.0, 105.0] }, "material": "white" },
 
     { "id": "back_0", "geometry": { "type": "triangle", "vertices": [[549.6, 0.0, 559.2], [0.0, 0.0, 559.2], [0.0, 548.8, 559.2]] }, "material": "white" },
     { "id": "back_1", "geometry": { "type": "triangle", "vertices": [[549.6, 0.0, 559.2], [0.0, 548.8, 559.2], [556.0, 548.8, 559.2]] }, "material": "white" },
@@ -61,8 +63,7 @@
     { "id": "tall_side_3a", "geometry": { "type": "triangle", "vertices": [[265.0, 0.0, 296.0], [265.0, 330.0, 296.0], [423.0, 330.0, 247.0]] }, "material": "white" },
     { "id": "tall_side_3b", "geometry": { "type": "triangle", "vertices": [[265.0, 0.0, 296.0], [423.0, 330.0, 247.0], [423.0, 0.0, 247.0]] }, "material": "white" },
 
-    { "id": "light_0", "geometry": { "type": "triangle", "vertices": [[343.0, 548.8, 227.0], [343.0, 548.8, 332.0], [213.0, 548.8, 332.0]] }, "material": "light" },
-    { "id": "light_1", "geometry": { "type": "triangle", "vertices": [[343.0, 548.8, 227.0], [213.0, 548.8, 332.0], [213.0, 548.8, 227.0]] }, "material": "light" }
+    { "id": "ceiling_light", "geometry": { "type": "quad", "origin": [213.0, 548.8, 227.0], "u": [130.0, 0.0, 0.0], "v": [0.0, 0.0, 105.0] }, "material": "light" }
   ],
-  "sampling": { "targets": ["light_0", "light_1"] }
+  "sampling": { "targets": ["ceiling_light"] }
 }

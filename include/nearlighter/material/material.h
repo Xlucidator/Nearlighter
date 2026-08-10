@@ -9,11 +9,12 @@
 class PDF;
 class Sampler;
 
+/** Material response used to continue one path at a surface interaction. */
 struct ScatterRecord {
     Color attenuation;
-    std::shared_ptr<PDF> pdf; // pdf pointer
-    bool should_skip;    // skip using pdf to generate scattered ray
-    Ray skip_ray;        // after skipping pdf, use targeted scattered ray
+    std::shared_ptr<PDF> sampling_pdf;
+    bool should_skip;
+    Ray skip_ray;
 };
 
 class Material {
@@ -37,8 +38,8 @@ public:
         [[maybe_unused]] Sampler& sampler
     ) const { return false; }
 
-    /** Evaluates the material scattering PDF for a generated ray. */
-    virtual float getScatterPDF(
+    /** Evaluates the material sampling density for a generated ray. */
+    virtual float getScatterPDFValue(
         [[maybe_unused]] const Ray& ray_in,        // Incoming ray that reaches the interaction.
         [[maybe_unused]] const HitRecord& record,  // Geometry interaction information.
         [[maybe_unused]] const Ray& ray_scattered  // Scattered ray whose PDF is evaluated.

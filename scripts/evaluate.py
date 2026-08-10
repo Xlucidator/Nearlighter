@@ -193,6 +193,15 @@ def difference_image(
     return PFMImage(result.width, result.height, pixels)
 
 
+def scale_image(image: PFMImage, scale: float) -> PFMImage:
+    '''Uniformly scaled linear RGB image.'''
+    return PFMImage(
+        image.width,
+        image.height,
+        tuple(scale * value for value in image.pixels),
+    )
+
+
 # ==================================================
 # Evaluation Orchestration
 # ==================================================
@@ -306,6 +315,10 @@ def evaluate_case(
     if "exposure_scale" in requested_metrics:
         exposure_scale = calculated_metrics["exposure_scale"]
         if exposure_scale is not None:
+            write_ppm_preview(
+                case_directory / "preview-exposure-aligned.ppm",
+                scale_image(result, exposure_scale),
+            )
             write_pfm(
                 case_directory / "difference-exposure-aligned.pfm",
                 difference_image(result, reference, exposure_scale),
