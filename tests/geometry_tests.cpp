@@ -3,6 +3,7 @@
 #include <nearlighter/base/interval.h>
 #include <nearlighter/base/ray.h>
 #include <nearlighter/geometry/aabb.h>
+#include <nearlighter/geometry/onb.h>
 #include <nearlighter/geometry/transform.h>
 #include <nearlighter/material/lambertian.h>
 #include <nearlighter/math/constants.h>
@@ -63,6 +64,45 @@ void testVectors(nearlighter::test::Context& context) {
                 Vec3f(0.0f, 1.0f, 0.0f), 2.0f),
         Vec3f(), kTolerance,
         "refraction should report total internal reflection as zero");
+}
+
+void testONB(nearlighter::test::Context& context) {
+    const Vec3f direction(1.0f, 0.0f, 1.0f);
+    const ONB basis(direction);
+
+    context.expectVecNear(
+        basis.w(), unit_vector(direction), kTolerance,
+        "ONB w axis should follow its construction direction");
+    context.expectNear(dot(basis.u(), basis.v()), 0.0f, kTolerance,
+                       "ONB tangent axes should be orthogonal");
+    context.expectVecNear(
+        cross(basis.u(), basis.v()), basis.w(), kTolerance,
+        "ONB axes should form a right-handed basis");
+
+    const Vec3f local(0.25f, -0.5f, 2.0f);
+    context.expectVecNear(
+        basis.toParent(local),
+        ONB(1e-30f * direction).toParent(local), kTolerance,
+        "ONB orientation should not depend on direction length");
+    context.expectVecNear(
+        basis.toParent(Vec3f(0.0f, 0.0f, 1.0f)), basis.w(), kTolerance,
+        "ONB should map the local z axis to its parent-space w axis");
+
+    const ONB near_negative_z(Vec3f(1e-4f, -2e-4f, -1.0f));
+    context.expectNear(near_negative_z.u().length(), 1.0f, kTolerance,
+                       "ONB u axis should remain unit near negative z");
+    context.expectNear(near_negative_z.v().length(), 1.0f, kTolerance,
+                       "ONB v axis should remain unit near negative z");
+    context.expectNear(
+        dot(near_negative_z.u(), near_negative_z.w()), 0.0f, kTolerance,
+        "ONB u and w axes should remain orthogonal near negative z");
+    context.expectNear(
+        dot(near_negative_z.v(), near_negative_z.w()), 0.0f, kTolerance,
+        "ONB v and w axes should remain orthogonal near negative z");
+    context.expectVecNear(
+        cross(near_negative_z.u(), near_negative_z.v()),
+        near_negative_z.w(), kTolerance,
+        "ONB should remain right-handed near negative z");
 }
 
 void testSphere(nearlighter::test::Context& context) {
@@ -455,6 +495,7 @@ void testPrimitiveTransforms(nearlighter::test::Context& context) {
 int main() {
     nearlighter::test::Context context;
     testVectors(context);
+    testONB(context);
     testSphere(context);
     testQuad(context);
     testTriangle(context);

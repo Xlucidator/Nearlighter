@@ -1,6 +1,6 @@
 #include <nearlighter/shape/sphere.h>
 
-#include <nearlighter/base/onb.h>
+#include <nearlighter/geometry/onb.h>
 #include <nearlighter/math/math.h>
 #include <nearlighter/sampling/sampler.h>
 
@@ -108,7 +108,7 @@ Vec3f Sphere::random(const Point3f& origin, Sampler& sampler) const {
         return sampler.nextUnitVector();
     }
     const ONB basis(direction);
-    return basis.transform(
+    return basis.toParent(
         randomToSphere(radius_, distance_squared, sampler));
 }
 

@@ -12,7 +12,6 @@
 #include <nearlighter/base/color.h>
 #include <nearlighter/base/image.h>
 #include <nearlighter/base/interval.h>
-#include <nearlighter/base/onb.h>
 #include <nearlighter/base/ray.h>
 #include <nearlighter/base/timer.h>
 
@@ -26,6 +25,7 @@
 // Geometry and Acceleration
 #include <nearlighter/accel/bvh.h>
 #include <nearlighter/geometry/aabb.h>
+#include <nearlighter/geometry/onb.h>
 #include <nearlighter/geometry/transform.h>
 #include <nearlighter/shape/all.h>
 

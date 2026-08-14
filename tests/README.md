@@ -39,6 +39,7 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 - Box 的外部与内部命中、UV、outward normal、面积采样、方向长度无关的 PDF，以及同一方向上前后表面贡献的 PDF 累加。
 - Mesh 私有 Triangle BVH 的命中、插值 UV 与面积加权法线生成。
 - AABB 与 Box 各自 slab 求交对穿过、平行未命中和平行边界命中的处理。
+- ONB 对任意方向构造右手正交基，并保持负 z 极点附近的数值稳定性和方向长度无关的局部到父空间映射。
 - `Vec3<T>` 的 double 精度别名，`Vec4<T>` 的构造、分量、标量运算和点积，以及反射和全反射方向计算。
 - `Mat4<T>` 的 double 精度、列向量乘法、加法、Hadamard 乘积、转置、行列式、一般逆矩阵与奇异矩阵拒绝。
 - Transform 的右手旋转约定，以及对仿射 `Mat4f` 的接受和对射影矩阵的拒绝。
@@ -46,7 +47,7 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 
 ### 实现逻辑
 
-测试使用解析结果已知的固定向量、几何和射线，通过绝对误差比较向量运算、`t`、命中点、两类法线、UV 与 PDF。纯 Shape 测试只检查局部几何；Primitive 测试额外检查世界空间变换、`front_face` 和 Material 绑定。Triangle 与 Box 的固定 seed 样本必须落在各自表面；由两个 indexed Triangle 构成的 Mesh 覆盖共享数据、私有 BVH 和生成法线的组合语义。
+测试使用解析结果已知的固定向量、几何和射线，通过绝对误差比较向量运算、`t`、命中点、两类法线、UV 与 PDF。ONB 使用对角方向、极短同向向量和接近负 z 极点的方向，检查正交性、右手性、数值稳定性和方向缩放不变性。纯 Shape 测试只检查局部几何；Primitive 测试额外检查世界空间变换、`front_face` 和 Material 绑定。Triangle 与 Box 的固定 seed 样本必须落在各自表面；由两个 indexed Triangle 构成的 Mesh 覆盖共享数据、私有 BVH 和生成法线的组合语义。
 
 ## `nearlighter.mesh_io`
 

@@ -116,6 +116,7 @@ set(CORE_SOURCES
 
     # ----- Geometry -----
     src/nearlighter/geometry/aabb.cpp
+    src/nearlighter/geometry/onb.cpp
     src/nearlighter/geometry/transform.cpp
     src/nearlighter/shape/box.cpp
     src/nearlighter/shape/mesh.cpp

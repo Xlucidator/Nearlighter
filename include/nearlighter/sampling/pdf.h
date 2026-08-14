@@ -1,7 +1,7 @@
 #ifndef PDF_H
 #define PDF_H 
 
-#include <nearlighter/base/onb.h>
+#include <nearlighter/geometry/onb.h>
 #include <nearlighter/math/constants.h>
 #include <nearlighter/sampling/sampler.h>
 #include <nearlighter/scene/primitive.h>
@@ -67,17 +67,17 @@ public:
  */
 class CosineHemispherePDF : public PDF {
 public:
-    CosineHemispherePDF(const Vec3f& w) :uvw(w) {}
+    CosineHemispherePDF(const Vec3f& w) : uvw_(w) {}
 
     float value(const Vec3f& direction) const override {
-        float cosine_theta = dot(unit_vector(direction), uvw.w());
+        float cosine_theta = dot(unit_vector(direction), uvw_.w());
         return std::fmax(0, cosine_theta / pi);
     }
     Vec3f generate(Sampler& sampler) const override {
-        return uvw.transform(sampler.nextCosineHemisphere());
+        return uvw_.toParent(sampler.nextCosineHemisphere());
     }
 private:
-    ONB uvw;
+    ONB uvw_;
 };
 
 /**
