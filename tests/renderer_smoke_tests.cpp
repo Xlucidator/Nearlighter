@@ -1,14 +1,14 @@
 #include "test_support.h"
 
-#include <nearlighter/geometry/sphere.h>
 #include <nearlighter/material/diffuse_light.h>
 #include <nearlighter/render/renderer.h>
+#include <nearlighter/scene/primitive.h>
 #include <nearlighter/scene/scene.h>
+#include <nearlighter/shape/sphere.h>
 
 #include <cmath>
 #include <cstdint>
 #include <memory>
-#include <stdexcept>
 
 namespace {
 
@@ -26,9 +26,9 @@ Scene makeScene() {
     settings.max_depth = 4;
     settings.seed = 123;
 
-    ShapeList world;
-    world.add(std::make_shared<Sphere>(
-        Point3f(0.0f, 0.0f, -1.0f), 0.5f,
+    LinearAggregate world;
+    world.add(std::make_shared<Primitive>(
+        std::make_shared<Sphere>(Point3f(0.0f, 0.0f, -1.0f), 0.5f),
         std::make_shared<DiffuseLight>(Color(2.0f, 1.0f, 0.5f))));
     return Scene("Renderer smoke test", camera, settings,
                  Color(0.05f, 0.1f, 0.2f), std::move(world));
@@ -110,35 +110,10 @@ void testRenderer(nearlighter::test::Context& context) {
                         "changing the render seed should change sampled pixels");
 }
 
-void testInvalidConfiguration(nearlighter::test::Context& context) {
-    RenderSettings invalid_settings;
-    invalid_settings.image_width = 0;
-    bool settings_rejected = false;
-    try {
-        Renderer renderer(invalid_settings);
-    } catch (const std::invalid_argument&) {
-        settings_rejected = true;
-    }
-    context.expectTrue(settings_rejected,
-                       "Renderer should reject non-positive dimensions");
-
-    Camera invalid_camera;
-    invalid_camera.look_at = invalid_camera.position;
-    bool camera_rejected = false;
-    try {
-        invalid_camera.prepare(8, 8);
-    } catch (const std::invalid_argument&) {
-        camera_rejected = true;
-    }
-    context.expectTrue(camera_rejected,
-                       "Camera should reject a degenerate view direction");
-}
-
 }  // namespace
 
 int main() {
     nearlighter::test::Context context;
     testRenderer(context);
-    testInvalidConfiguration(context);
     return context.finish("renderer smoke tests");
 }

@@ -1,7 +1,7 @@
 #ifndef NEARLIGHTER_TEST_SUPPORT_H
 #define NEARLIGHTER_TEST_SUPPORT_H
 
-#include <nearlighter/math/vec3f.h>
+#include <nearlighter/math/vec3.h>
 
 #include <cmath>
 #include <cstddef>

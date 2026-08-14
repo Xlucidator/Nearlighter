@@ -18,7 +18,7 @@
               +-- 无 sampling targets： 按材质 PDF 生成方向
               |
               `-- 有 sampling targets：
-                      50% Shape PDF + 50% Material PDF
+                      50% Surface target PDF + 50% Material PDF
                               |
                       生成一条次级光线
                               |
@@ -36,6 +36,31 @@
 入射光线单位向量$\vec{R}$ ， 入射折射率$\eta$ ，法线$\vec{n}$ ，出射折射率 $\eta '$ ：求出射光线单位向量$\vec{R'}$
 
 <img src="./figs/note/refract_vector.jpg" alt="refract_vector" style="zoom:50%;" />
+
+### 法线的协变变换
+
+法线不是普通的方向向量，而是作用在切向量上的协向量。设正向线性
+变换为 $A$，切向量和法线满足：
+
+$$
+\boldsymbol{n}^{\mathsf T}\boldsymbol{v}=0
+$$
+
+切向量变换为 $\boldsymbol{v}'=A\boldsymbol{v}$。为了保持正交关系，
+变换后的法线应满足：
+
+$$
+\boldsymbol{n}'=A^{-\mathsf T}\boldsymbol{n}
+$$
+
+因此同一个正向空间变换对不同几何量的作用不同：
+
+- 点：使用完整仿射矩阵；
+- 向量：使用线性部分 $A$；
+- 法线：使用逆转置 $A^{-\mathsf T}$，再归一化。
+
+逆转置只保证法线仍垂直于变换后的切平面。若 $\det(A)<0$，表面
+定向还会反转；是否翻转法线取决于代码采用的有向表面语义。
 
 ## 2. Schlick's Approximation
 

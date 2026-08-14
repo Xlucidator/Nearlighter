@@ -4,14 +4,51 @@
 #include <cmath>
 
 #include <nearlighter/math/constants.h>
+#include <nearlighter/math/vec3.h>
 
-/*=== Calculation & Utility ===*/
+/**
+ * Reflection Direction
+ *
+ * Reflects an incident vector about a unit surface normal. The incident
+ * vector need not be normalized.
+ */
+template <typename T>
+constexpr Vec3<T> reflect(const Vec3<T>& incident, const Vec3<T>& normal) {
+    return incident - T(2) * dot(incident, normal) * normal;
+}
+
+/**
+ * Refraction Direction
+ *
+ * Refracts a unit incident vector through a surface with a unit normal.
+ * `refraction_ratio` is the incident index divided by the transmitted index.
+ * Total internal reflection returns the zero vector.
+ */
+template <typename T>
+inline Vec3<T> refract(const Vec3<T>& incident, const Vec3<T>& normal,
+                       T refraction_ratio) {
+    const T cosine = std::fmin(dot(-incident, normal), T(1));
+    const Vec3<T> perpendicular =
+        refraction_ratio * (incident + cosine * normal);
+    const T parallel_length_squared =
+        T(1) - perpendicular.length_squared();
+    if (parallel_length_squared < T(0)) return Vec3<T>();
+
+    const Vec3<T> parallel =
+        -std::sqrt(parallel_length_squared) * normal;
+    return perpendicular + parallel;
+}
+
+/* ===== Calculation & Utility ===== */
+
 inline float degrees_to_radians(float degrees) {
     return degrees * pi / 180.0f;
 }
 
-/* Solving a x^2 + b x + c = 0
+/**
+ * Solving:  a x^2 + b x + c = 0
  *   x = (-b +- \sqrt{b^2 - 4ac}) / 2a
+ *
  * Optimized: let b = -2h
  *   x = (2h +- \sqrt{4h^2 - 4ac}) / 2a
  *     = (h +- \sqrt{h^2 - ac}) / a
@@ -30,7 +67,8 @@ inline bool solveQuadratic(const float& a, const float& h, const float& c,
     return true;
 }
 
-/* Clamp x to the range [min, max]
+/**
+ * Clamp x to the range [min, max]
  *  - clamp_num(x, min, max) : fit for number, range [min, max]
  *  - clamp_idx(x, low, high): fit for index of array, range [low, high)
  */
@@ -50,22 +88,22 @@ inline T clamp_idx(T i, T low, T high) {
 
 
 
-/*=== Interpolation ===*/
+/* ===== Interpolation ===== */
 
-/* t in [t0, t1]
- */
+/* t in [t0, t1] */
 inline float smoothstep(float t0, float t1, float t) {
     t = clamp_num((t - t0) / (t1 - t0), 0.0f, 1.0f);
     return t * t * (3 - 2 * t);
 }
-/* x in [0, 1] 
- */
+
+/* x in [0, 1] */
 inline float smoothstep(float x) {
     return x * x * (3 - 2 * x);
 }
 
 
-/* Trilinear Interpolation
+/**
+ * Trilinear Interpolation
  *  simply extend from bilinear interpolation : bilinear interpolation is one layer of trilinear interpolation
  *  => x axis:
  *      linear_interpolate[0][0] = u * c[0][0][0] + (1 - u) * c[0][0][1]

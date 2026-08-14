@@ -1,6 +1,6 @@
 #include <nearlighter/render/renderer.h>
 
-#include <nearlighter/accel/bvh_node.h>
+#include <nearlighter/accel/bvh.h>
 #include <nearlighter/base/interval.h>
 #include <nearlighter/material/material.h>
 #include <nearlighter/sampling/pdf.h>
@@ -28,22 +28,23 @@ RenderResult Renderer::render(
     const Scene& scene,
     RenderProgressCallback progress_callback
 ) const {
+    /* ----- Render preparation ----- */
     using Clock = std::chrono::steady_clock;
     const auto preparation_start = Clock::now();
     const Camera::Prepared prepared_camera =
         scene.camera().prepare(settings_.image_width, settings_.image_height);
     Image image(settings_.image_width, settings_.image_height);
 
-    /* Build an acceleration root without mutating the Scene's object order. */
-    ShapeList world_copy;
-    std::unique_ptr<BVHNode> bvh;
-    const Shape* world = &scene.world();
+    /* ----- World acceleration ----- */
+    // Build a render-local root without mutating the Scene's object order.
+    std::unique_ptr<BVH> bvh;
+    const Intersectable* world = &scene.world();
     if (scene.world().size() > 1) {
-        world_copy = scene.world();
-        bvh = std::make_unique<BVHNode>(world_copy);
+        bvh = std::make_unique<BVH>(scene.world());
         world = bvh.get();
     }
 
+    /* ----- Path integration ----- */
     const auto integration_start = Clock::now();
     Clock::duration callback_time{};
     for (int y = 0; y < settings_.image_height; ++y) {
@@ -81,6 +82,7 @@ RenderResult Renderer::render(
     }
     const auto end_time = Clock::now();
 
+    /* ----- Stable timing and work statistics ----- */
     RenderStats stats;
     stats.preparation_time = integration_start - preparation_start;
     stats.integration_time = end_time - integration_start - callback_time;
@@ -92,9 +94,10 @@ RenderResult Renderer::render(
     return RenderResult{std::move(image), stats};
 }
 
-Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
-                      const Shape& sampling_targets,
-                      const Color& background, Sampler& sampler) const {
+Color Renderer::trace(
+    const Ray& ray, int depth, const Intersectable& world,
+    const std::vector<std::shared_ptr<const Primitive>>& sampling_targets,
+    const Color& background, Sampler& sampler) const {
     /* ----- Path termination ----- */
     if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
 
@@ -127,8 +130,8 @@ Color Renderer::trace(const Ray& ray, int depth, const Shape& world,
     /* ----- Sampling distribution ----- */
     // Mix explicit target sampling with the material distribution when present.
     std::shared_ptr<PDF> sample_pdf = scatter_record.sampling_pdf;
-    if (sampling_targets.hasPDF()) {
-        auto target_pdf = std::make_shared<ShapePDF>(
+    if (!sampling_targets.empty()) {
+        auto target_pdf = std::make_shared<SurfacePDF>(
             sampling_targets, record.point);
         sample_pdf = std::make_shared<MixturePDF>(
             target_pdf, scatter_record.sampling_pdf);

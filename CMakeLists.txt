@@ -76,9 +76,6 @@ set(NEARLIGHTER_BUILD_OPTIONS
 # 2. Third-party Dependencies
 # =============================================================
 
-# --- GLM (version: 1.1.0, commit: 6f14f4792a0c, describe: 1.0.0-139-g6f14f479) ---
-add_subdirectory(thirdparty/glm)
-
 # --- stb (commit: 31c1ad374564, branch snapshot: master) ---
 add_library(stb INTERFACE)
 target_include_directories(stb INTERFACE
@@ -101,23 +98,30 @@ add_subdirectory(thirdparty/json)
 ## ----- 3.1 Nearligter Core -----
 
 set(CORE_SOURCES
-    src/nearlighter/accel/bvh_node.cpp
+    src/nearlighter/accel/bvh.cpp
     src/nearlighter/base/image.cpp
     src/nearlighter/base/interval.cpp
+
+    # ----- Math -----
+    src/nearlighter/math/mat4.cpp
 
     # ----- Rendering -----
     src/nearlighter/render/camera.cpp
     src/nearlighter/render/renderer.cpp
     src/nearlighter/sampling/sampler.cpp
+    src/nearlighter/scene/instance.cpp
+    src/nearlighter/scene/linear_aggregate.cpp
+    src/nearlighter/scene/primitive.cpp
     src/nearlighter/scene/scene.cpp
 
     # ----- Geometry -----
     src/nearlighter/geometry/aabb.cpp
-    src/nearlighter/geometry/mesh.cpp
-    src/nearlighter/geometry/quad.cpp
-    src/nearlighter/geometry/shape_list.cpp
-    src/nearlighter/geometry/sphere.cpp
-    src/nearlighter/geometry/triangle.cpp
+    src/nearlighter/geometry/transform.cpp
+    src/nearlighter/shape/box.cpp
+    src/nearlighter/shape/mesh.cpp
+    src/nearlighter/shape/quad.cpp
+    src/nearlighter/shape/sphere.cpp
+    src/nearlighter/shape/triangle.cpp
 
     # ----- Material -----
     src/nearlighter/material/dielectric.cpp
@@ -146,10 +150,6 @@ target_include_directories(nearlighter_core
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
-target_link_libraries(nearlighter_core
-    PUBLIC glm::glm
-)
-
 target_apply_build_options(
     nearlighter_core ${NEARLIGHTER_BUILD_OPTIONS}
 )
@@ -320,6 +320,25 @@ if(BUILD_TESTING)
     add_test(
         NAME nearlighter.mesh_io
         COMMAND nearlighter_mesh_io_tests
+    )
+
+    # --- Constant Medium Tests ---
+    add_executable(nearlighter_medium_tests
+        tests/medium_tests.cpp
+    )
+    target_link_libraries(nearlighter_medium_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(
+        nearlighter_medium_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_medium_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
+    add_test(
+        NAME nearlighter.medium
+        COMMAND nearlighter_medium_tests
     )
 
     message(STATUS "Nearlighter tests configured.")

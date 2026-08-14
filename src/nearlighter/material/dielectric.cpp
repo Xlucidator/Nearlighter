@@ -1,5 +1,6 @@
 #include <nearlighter/material/dielectric.h>
 
+#include <nearlighter/math/math.h>
 #include <nearlighter/sampling/sampler.h>
 
 #include <cmath>

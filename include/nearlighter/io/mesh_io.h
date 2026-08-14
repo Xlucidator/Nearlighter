@@ -1,7 +1,7 @@
 #ifndef NEARLIGHTER_IO_MESH_IO_H
 #define NEARLIGHTER_IO_MESH_IO_H
 
-#include <nearlighter/geometry/mesh.h>
+#include <nearlighter/shape/mesh.h>
 
 #include <filesystem>
 

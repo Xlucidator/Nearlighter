@@ -1,5 +1,6 @@
 #include <nearlighter/material/metal.h>
 
+#include <nearlighter/math/math.h>
 #include <nearlighter/sampling/sampler.h>
 
 Metal::Metal(const Color& albedo, float fuzz)

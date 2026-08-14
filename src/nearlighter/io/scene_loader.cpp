@@ -2,10 +2,6 @@
 
 #include <nearlighter/scene/builtin_generator.h>
 
-#include <nearlighter/geometry/mesh.h>
-#include <nearlighter/geometry/quad.h>
-#include <nearlighter/geometry/sphere.h>
-#include <nearlighter/geometry/triangle.h>
 #include <nearlighter/io/image_io.h>
 #include <nearlighter/io/mesh_io.h>
 #include <nearlighter/material/dielectric.h>
@@ -14,12 +10,16 @@
 #include <nearlighter/material/metal.h>
 #include <nearlighter/math/math.h>
 #include <nearlighter/medium/constant_medium.h>
+#include <nearlighter/geometry/transform.h>
+#include <nearlighter/scene/primitive.h>
+#include <nearlighter/shape/box.h>
+#include <nearlighter/shape/mesh.h>
+#include <nearlighter/shape/quad.h>
+#include <nearlighter/shape/sphere.h>
+#include <nearlighter/shape/triangle.h>
 #include <nearlighter/texture/checker_texture.h>
 #include <nearlighter/texture/image_texture.h>
 #include <nearlighter/texture/noise_texture.h>
-#include <nearlighter/transform/rotate.h>
-#include <nearlighter/transform/scale.h>
-#include <nearlighter/transform/translate.h>
 
 #include <nlohmann/json.hpp>
 
@@ -29,8 +29,13 @@
 #include <unordered_map>
 #include <utility>
 
+/**
+ * Scene Loading Context
+ *
+ * Owns the parsed document and the named resources resolved from it. The
+ * separate sampling table contains only bare surface Primitives.
+ */
 struct SceneLoader::LoadContext {
-    /** Binds one parsed document to its resource-resolution base path. */
     LoadContext(std::filesystem::path path, nlohmann::json source)
         : scene_path(std::move(path)), document(std::move(source)) {}
 
@@ -39,12 +44,11 @@ struct SceneLoader::LoadContext {
 
     std::unordered_map<std::string, std::shared_ptr<Texture>> textures;
     std::unordered_map<std::string, std::shared_ptr<Material>> materials;
-    std::unordered_map<std::string, std::shared_ptr<Shape>> objects;
+    std::unordered_map<std::string, std::shared_ptr<const Intersectable>>
+        objects;
+    std::unordered_map<std::string, std::shared_ptr<const Primitive>>
+        sampling_primitives;
 };
-
-// ==================================================
-// Utility Functions
-// ==================================================
 
 Vec3f SceneLoader::readVector(const std::array<float, 3>& components) {
     return Vec3f(components[0], components[1], components[2]);
@@ -64,10 +68,6 @@ std::shared_ptr<Texture> SceneLoader::findTexture(
     }
     return texture->second;
 }
-
-// ==================================================
-// Loading Stages
-// ==================================================
 
 RenderSettings SceneLoader::loadRenderSettings(
     const LoadContext& context) const {
@@ -226,8 +226,7 @@ void SceneLoader::loadMaterials(LoadContext& context) const {
 }
 
 std::shared_ptr<Shape> SceneLoader::loadGeometry(
-    const LoadContext& context, std::size_t object_index,
-    const std::shared_ptr<Material>& material) const {
+    const LoadContext& context, std::size_t object_index) const {
     const nlohmann::json& geometry =
         context.document.at("objects").at(object_index).at("geometry");
     const std::string type = geometry.at("type").get<std::string>();
@@ -242,7 +241,7 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
         if (cross(u, v).near_zero()) {
             fail(context, "quad edges must define a non-zero area");
         }
-        return std::make_shared<Quad>(origin, u, v, material);
+        return std::make_shared<Quad>(origin, u, v);
     }
 
     if (type == "box") {
@@ -254,7 +253,7 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
             minimum.z() >= maximum.z()) {
             fail(context, "box max must be greater than min on every axis");
         }
-        return box(minimum, maximum, material);
+        return std::make_shared<Box>(minimum, maximum);
     }
 
     if (type == "sphere") {
@@ -264,7 +263,7 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
         if (radius <= 0.0f) {
             fail(context, "sphere radius must be positive");
         }
-        return std::make_shared<Sphere>(center, radius, material);
+        return std::make_shared<Sphere>(center, radius);
     }
 
     if (type == "triangle") {
@@ -272,7 +271,7 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
             std::array<std::array<float, 3>, 3>>();
         return std::make_shared<Triangle>(
             readVector(vertices[0]), readVector(vertices[1]),
-            readVector(vertices[2]), material);
+            readVector(vertices[2]));
     }
 
     if (type == "mesh") {
@@ -281,11 +280,11 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
         if (mesh_path.is_relative()) {
             mesh_path = context.scene_path.parent_path() / mesh_path;
         }
-        MeshBuildOptions options;
-        options.generate_normals = geometry.value("generate_normals", false);
+        const bool generate_normals =
+            geometry.value("generate_normals", false);
         try {
             return std::make_shared<Mesh>(
-                loadMeshData(mesh_path.lexically_normal()), material, options);
+                loadMeshData(mesh_path.lexically_normal()), generate_normals);
         } catch (const std::exception& error) {
             fail(context, error.what());
         }
@@ -294,40 +293,49 @@ std::shared_ptr<Shape> SceneLoader::loadGeometry(
     fail(context, "unsupported geometry type '" + type + "'");
 }
 
-std::shared_ptr<Shape> SceneLoader::loadTransforms(
-    const LoadContext& context, std::size_t object_index,
-    std::shared_ptr<Shape> shape) const {
+Transform SceneLoader::loadTransform(
+    const LoadContext& context, std::size_t object_index) const {
     const nlohmann::json& object =
         context.document.at("objects").at(object_index);
-    if (!object.contains("transform")) return shape;
+    Transform result;
+    if (!object.contains("transform")) return result;
 
-    for (const nlohmann::json& transform : object.at("transform")) {
-        const std::string type = transform.at("type").get<std::string>();
-        if (type == "rotate_y") {
-            shape = std::make_shared<Rotate>(
-                std::move(shape), Vec3f(0.0f, 1.0f, 0.0f),
-                degrees_to_radians(transform.at("degrees").get<float>()));
-        } else if (type == "scale") {
-            const float factor = transform.at("factor").get<float>();
-            if (factor <= 0.0f) {
-                fail(context, "scale factor must be positive");
+    try {
+        for (const nlohmann::json& transform : object.at("transform")) {
+            const std::string type = transform.at("type").get<std::string>();
+            Transform operation;
+            if (type == "rotate_y") {
+                operation = Transform::rotate(
+                    Vec3f(0.0f, 1.0f, 0.0f),
+                    degrees_to_radians(
+                        transform.at("degrees").get<float>()));
+            } else if (type == "scale") {
+                if (transform.contains("factors")) {
+                    operation = Transform::scale(readVector(
+                        transform.at("factors").get<
+                            std::array<float, 3>>()));
+                } else {
+                    operation = Transform::scale(
+                        transform.at("factor").get<float>());
+                }
+            } else if (type == "translate") {
+                operation = Transform::translate(readVector(
+                    transform.at("offset").get<std::array<float, 3>>()));
+            } else {
+                fail(context, "unsupported transform type '" + type + "'");
             }
-            shape = std::make_shared<Scale>(std::move(shape), factor);
-        } else if (type == "translate") {
-            const Vec3f offset = readVector(
-                transform.at("offset").get<std::array<float, 3>>());
-            shape = std::make_shared<Translate>(
-                std::move(shape), offset);
-        } else {
-            fail(context, "unsupported transform type '" + type + "'");
+            // Pre-multiplication preserves the order declared in the file.
+            result = operation * result;
         }
+    } catch (const std::invalid_argument& error) {
+        fail(context, error.what());
     }
-    return shape;
+    return result;
 }
 
-std::shared_ptr<Shape> SceneLoader::loadMedium(
+std::shared_ptr<const Intersectable> SceneLoader::loadMedium(
     const LoadContext& context, std::size_t object_index,
-    std::shared_ptr<Shape> boundary) const {
+    std::shared_ptr<const Primitive> boundary) const {
     const nlohmann::json& object =
         context.document.at("objects").at(object_index);
     if (!object.contains("medium")) return boundary;
@@ -343,8 +351,8 @@ std::shared_ptr<Shape> SceneLoader::loadMedium(
         readVector(medium.at("albedo").get<std::array<float, 3>>()));
 }
 
-ShapeList SceneLoader::loadObjects(LoadContext& context) const {
-    ShapeList world;
+LinearAggregate SceneLoader::loadObjects(LoadContext& context) const {
+    LinearAggregate world;
     if (!context.document.contains("objects")) return world;
 
     const nlohmann::json& objects = context.document.at("objects");
@@ -362,17 +370,23 @@ ShapeList SceneLoader::loadObjects(LoadContext& context) const {
             fail(context, "unknown material reference '" + material_id + "'");
         }
 
-        std::shared_ptr<Shape> shape =
-            loadGeometry(context, index, material->second);
-        shape = loadTransforms(context, index, std::move(shape));
-        shape = loadMedium(context, index, std::move(shape));
-        context.objects.emplace(id, shape);
-        world.add(std::move(shape));
+        auto primitive = std::make_shared<Primitive>(
+            loadGeometry(context, index), material->second,
+            loadTransform(context, index));
+        std::shared_ptr<const Intersectable> object =
+            loadMedium(context, index, primitive);
+        context.objects.emplace(id, object);
+
+        // A medium wrapper has no surface-direction sampling interface.
+        if (object.get() == primitive.get()) {
+            context.sampling_primitives.emplace(id, primitive);
+        }
+        world.add(std::move(object));
     }
     return world;
 }
 
-ShapeList SceneLoader::loadGeneratedObjects(
+LinearAggregate SceneLoader::loadGeneratedObjects(
     const LoadContext& context) const {
     if (!context.document.contains("generator")) return {};
 
@@ -415,9 +429,10 @@ ShapeList SceneLoader::loadGeneratedObjects(
     fail(context, "unsupported generator type '" + type + "'");
 }
 
-ShapeList SceneLoader::loadSamplingTargets(
+std::vector<std::shared_ptr<const Primitive>>
+SceneLoader::loadSamplingTargets(
     const LoadContext& context) const {
-    ShapeList sampling_targets;
+    std::vector<std::shared_ptr<const Primitive>> sampling_targets;
     if (!context.document.contains("sampling") ||
         !context.document.at("sampling").contains("targets")) {
         return sampling_targets;
@@ -426,20 +441,34 @@ ShapeList SceneLoader::loadSamplingTargets(
     for (const nlohmann::json& target :
          context.document.at("sampling").at("targets")) {
         const std::string id = target.get<std::string>();
-        const auto object = context.objects.find(id);
-        if (object == context.objects.end()) {
+        const auto object = context.sampling_primitives.find(id);
+        if (object == context.sampling_primitives.end()) {
+            if (context.objects.count(id) != 0) {
+                fail(context, "sampling target '" + id +
+                                  "' is not a surface Primitive");
+            }
             fail(context, "unknown sampling target '" + id + "'");
         }
-        sampling_targets.add(object->second);
+        if (!object->second->hasPDF()) {
+            fail(context, "sampling target '" + id +
+                              "' does not provide a sampling distribution");
+        }
+        sampling_targets.push_back(object->second);
     }
     return sampling_targets;
 }
 
-// ==================================================
-// Public Interface
-// ==================================================
-
+/**
+ * @par Implementation
+ * Loads resources in reference order:
+ * - Textures before materials
+ * - Materials before objects
+ * - Objects before sampling targets
+ *
+ * JSON exceptions are converted to errors qualified by the source path.
+ */
 Scene SceneLoader::load(const std::filesystem::path& scene_path) const {
+    /* ----- Open Scene File ----- */
     std::ifstream input(scene_path);
     if (!input) {
         throw std::runtime_error("Failed to open scene file '" +
@@ -447,26 +476,28 @@ Scene SceneLoader::load(const std::filesystem::path& scene_path) const {
     }
 
     try {
+        /* ----- Parse and Validate ----- */
         LoadContext context(scene_path, nlohmann::json::parse(input));
         if (context.document.at("schema_version").get<int>() != 1) {
             fail(context, "unsupported schema version");
         }
 
-        /* Parse independent values before resolving referenced resources. */
+        /* ----- Load Independent Values ----- */
         RenderSettings render_settings = loadRenderSettings(context);
         Camera camera = loadCamera(context);
         Color background = loadBackground(context);
 
-        /* Resource dependencies require textures -> materials -> objects. */
+        /* ----- Resolve Referenced Resources ----- */
         loadTextures(context);
         loadMaterials(context);
-        ShapeList world = loadObjects(context);
-        ShapeList generated_objects = loadGeneratedObjects(context);
-        for (std::shared_ptr<Shape>& object : generated_objects.objects) {
-            world.add(std::move(object));
+        LinearAggregate world = loadObjects(context);
+        LinearAggregate generated_objects = loadGeneratedObjects(context);
+        for (const auto& object : generated_objects.objects()) {
+            world.add(object);
         }
-        ShapeList sampling_targets = loadSamplingTargets(context);
+        auto sampling_targets = loadSamplingTargets(context);
 
+        /* ----- Assemble Scene ----- */
         return Scene(context.document.at("name").get<std::string>(),
                      std::move(camera), render_settings, background,
                      std::move(world), std::move(sampling_targets));

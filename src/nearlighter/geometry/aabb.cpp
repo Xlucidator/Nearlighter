@@ -1,21 +1,11 @@
 #include <nearlighter/geometry/aabb.h>
 
-// const AABB AABB::empty = AABB(Interval::empty, Interval::empty, Interval::empty);
-// const AABB AABB::universe = AABB(Interval::universe, Interval::universe, Interval::universe);
+#include <algorithm>
+
 AABB::AABB(const Interval& x, const Interval& y, const Interval& z)
     : x(x), y(y), z(z) {
     padding();
 }
-
-const AABB& AABB::empty() {
-    static AABB instance(Interval::empty, Interval::empty, Interval::empty);
-    return instance;
-}
-const AABB& AABB::universe() {
-    static AABB instance(Interval::universe, Interval::universe, Interval::universe);
-    return instance;
-}
-
 
 AABB::AABB(const Point3f& p0, const Point3f& p1) {
     x = (p0.x() <= p1.x()) ? Interval(p0.x(), p1.x()) : Interval(p1.x(), p0.x());
@@ -24,8 +14,6 @@ AABB::AABB(const Point3f& p0, const Point3f& p1) {
     padding();
 }
 
-/* Generator version of uunion calculation
- */
 AABB::AABB(const AABB& aabb0, const AABB& aabb1) {
     x = Interval(aabb0.x, aabb1.x);
     y = Interval(aabb0.y, aabb1.y);
@@ -37,18 +25,18 @@ int AABB::longestAxis() const {
     else return y.size() > z.size() ? 1 : 2;
 }
 
-Point3f AABB::corner(int i) const {
+Point3f AABB::corner(int index) const {
 #ifdef MORE_FLOAT_INSTRUCTIONS
     return Point3f(
-        x.min + (i & 1) * (x.max - x.min),
-        y.min + (i & 2) * (y.max - y.min),
-        z.min + (i & 4) * (z.max - z.min)
+        x.min + (index & 1) * (x.max - x.min),
+        y.min + (index & 2) * (y.max - y.min),
+        z.min + (index & 4) * (z.max - z.min)
     );
 #else  // More Jump Instructions
     return Point3f(
-        (i & 1) ? x.max : x.min,
-        (i & 2) ? y.max : y.min,
-        (i & 4) ? z.max : z.min
+        (index & 1) ? x.max : x.min,
+        (index & 2) ? y.max : y.min,
+        (index & 4) ? z.max : z.min
     );
 #endif
 }
@@ -59,21 +47,32 @@ void AABB::uunion(const AABB& other) {
     z.uunion(other.z);
 }
 
+/**
+ * @par Implementation
+ * Intersects the ray interval with one slab at a time.
+ * - Compute the entry and exit parameters on the current axis.
+ * - Order them to support either ray direction.
+ * - Clip the shared interval and reject it once empty.
+ *
+ * Zero direction components intentionally rely on IEEE-754 division:
+ * - Infinite endpoints preserve or reject parallel rays by their origin.
+ * - A boundary origin produces NaN and follows the comparison ordering.
+ */
 bool AABB::hit(const Ray& ray, Interval ray_t) const {
     const Point3f& ray_origin = ray.origin();
-    const Vec3f& ray_direction= ray.direction();
+    const Vec3f& ray_direction = ray.direction();
 
     for (int axis = 0; axis < 3; ++axis) {
         const Interval& axis_interval = getAxisInterval(axis);
         const float ray_orig_axis = ray_origin[axis];
-        const float ray_dir_axis  = ray_direction[axis]; // TODO: compare with dir_axis_inv, see the error loss
+        const float ray_dir_axis = ray_direction[axis];
 
-        float t0 = (axis_interval.min - ray_orig_axis) / ray_dir_axis;
-        float t1 = (axis_interval.max - ray_orig_axis) / ray_dir_axis;
-        
-        if (t0 > t1) std::swap(t0, t1);
-        ray_t.min = std::max(ray_t.min, t0);
-        ray_t.max = std::min(ray_t.max, t1);
+        float near_t = (axis_interval.min - ray_orig_axis) / ray_dir_axis;
+        float far_t  = (axis_interval.max - ray_orig_axis) / ray_dir_axis;
+        if (near_t > far_t) std::swap(near_t, far_t);
+
+        ray_t.min = std::max(ray_t.min, near_t);
+        ray_t.max = std::min(ray_t.max, far_t);
         if (ray_t.is_null()) return false;
     }
     return true;
@@ -83,12 +82,6 @@ std::ostream& operator<<(std::ostream& os, const AABB& a) {
     return os << "(" << a.x << "-" << a.y << "-" << a.z << ")";
 }
 
-
-/* Private */
-
-/* Make sure that no side of the AABB would be narrower than delta, padding if necessary
- *  This is to avoid the case where AABB is degenerated
- */
 void AABB::padding() {
     constexpr float delta = 0.0001f, padding = delta * 0.5f;
     if (x.size() < delta) x.pad(padding);

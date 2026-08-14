@@ -1,7 +1,8 @@
 #ifndef RAY_H
 #define RAY_H
 
-#include <nearlighter/math/vec3f.h>
+#include <nearlighter/math/constants.h>
+#include <nearlighter/math/vec3.h>
 #include <nearlighter/base/color.h>
 
 class Ray {

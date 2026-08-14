@@ -18,12 +18,16 @@
 
 // Math
 #include <nearlighter/math/constants.h>
+#include <nearlighter/math/mat4.h>
 #include <nearlighter/math/math.h>
-#include <nearlighter/math/vec3f.h>
+#include <nearlighter/math/vec3.h>
+#include <nearlighter/math/vec4.h>
 
 // Geometry and Acceleration
-#include <nearlighter/accel/bvh_node.h>
-#include <nearlighter/geometry/all.h>
+#include <nearlighter/accel/bvh.h>
+#include <nearlighter/geometry/aabb.h>
+#include <nearlighter/geometry/transform.h>
+#include <nearlighter/shape/all.h>
 
 // Materials, Textures, and Media
 #include <nearlighter/material/all.h>
@@ -38,9 +42,10 @@
 #include <nearlighter/render/camera.h>
 #include <nearlighter/render/render_settings.h>
 #include <nearlighter/render/renderer.h>
+#include <nearlighter/scene/instance.h>
+#include <nearlighter/scene/intersectable.h>
+#include <nearlighter/scene/linear_aggregate.h>
+#include <nearlighter/scene/primitive.h>
 #include <nearlighter/scene/scene.h>
-
-// Transforms
-#include <nearlighter/transform/all.h>
 
 #endif  // NEARLIGHTER_CORE_H

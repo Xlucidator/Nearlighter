@@ -11,6 +11,12 @@ namespace {
 constexpr std::uint64_t kPcgMultiplier = 6364136223846793005ULL;
 constexpr float kFloatScale = 1.0f / 16777216.0f;  // 2^-24
 
+/**
+ * 64-Bit Avalanche Mixing
+ *
+ * Spreads nearby input values across the output bits before identifiers are
+ * combined into a path seed.
+ */
 std::uint64_t mixBits(std::uint64_t value) {
     value += 0x9e3779b97f4a7c15ULL;
     value = (value ^ (value >> 30U)) * 0xbf58476d1ce4e5b9ULL;
@@ -20,14 +26,23 @@ std::uint64_t mixBits(std::uint64_t value) {
 
 }  // namespace
 
+/**
+ * @par Implementation
+ * PCG initialization advances once with the selected odd stream increment,
+ * adds the seed to the state, then advances again before exposing output.
+ */
 Sampler::Sampler(std::uint64_t seed, std::uint64_t sequence)
     : increment_((sequence << 1U) | 1U) {
-    /* PCG's two-step initialization incorporates both stream and seed. */
     nextUInt32();
     state_ += seed;
     nextUInt32();
 }
 
+/**
+ * @par Implementation
+ * Advances the linear-congruential state, then applies PCG's xorshift and
+ * state-dependent rotation to the previous state.
+ */
 std::uint32_t Sampler::nextUInt32() {
     const std::uint64_t old_state = state_;
     state_ = old_state * kPcgMultiplier + increment_;
@@ -56,6 +71,11 @@ float Sampler::next1D(float min, float max) {
     return min + (max - min) * next1D();
 }
 
+/**
+ * @par Implementation
+ * Rejection removes the incomplete leading remainder of the uint32_t range
+ * before modulo reduction, preventing bias when the span is not a power of two.
+ */
 int Sampler::nextInt(int min, int max) {
     if (max < min) {
         throw std::invalid_argument("Sampler integer maximum must not be below minimum");
@@ -87,8 +107,12 @@ Vec3f Sampler::nextVec3(float min, float max) {
     return Vec3f(next1D(min, max), next1D(min, max), next1D(min, max));
 }
 
+/**
+ * @par Implementation
+ * A uniform unit-ball sample has a rotationally invariant direction.
+ * Rejecting the center avoids the singular normalization.
+ */
 Vec3f Sampler::nextUnitVector() {
-    /* Rejection sampling avoids a singularity from normalizing zero. */
     while (true) {
         const Vec3f point = nextVec3(-1.0f, 1.0f);
         const float length_squared = point.length_squared();
@@ -106,6 +130,11 @@ Vec3f Sampler::nextInUnitDisk() {
     }
 }
 
+/**
+ * @par Implementation
+ * Uniform azimuth uses phi = 2*pi*u. Setting sin(theta)=sqrt(v)
+ * produces the projected-area density cos(theta)/pi over the hemisphere.
+ */
 Vec3f Sampler::nextCosineHemisphere() {
     const float r1 = next1D();
     const float r2 = next1D();
@@ -117,6 +146,11 @@ Vec3f Sampler::nextCosineHemisphere() {
                  std::sqrt(1.0f - r2));
 }
 
+/**
+ * @par Implementation
+ * Repeated avalanche mixing separates each logical path identifier. Packing
+ * both pixel coordinates before the second mix preserves all 32 bits of each.
+ */
 std::uint64_t derivePathSeed(std::uint64_t render_seed,
                              std::uint32_t pixel_x,
                              std::uint32_t pixel_y,

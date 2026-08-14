@@ -22,7 +22,21 @@ $$
 - 材质；
 - UV 或其他局部坐标。
 
-各基元可以采用不同的数值算法。真正适合统一的上层契约是当前 `Shape::hit()` 与 `getBoundingBox()`，而不是强制所有基元继承同一种求交公式。
+各基元可以采用不同的数值算法。`Shape::hit()` 统一局部空间几何查询，返回不含材质的 `ShapeHit`；`Intersectable::hit()` 统一当前坐标空间的遍历查询，返回带材质的 `HitRecord`。顶层查询的当前空间就是世界空间；`Primitive` 在 Shape 局部空间与其父空间之间完成 Transform、正反面和 Material 绑定。
+
+### 仿射坐标变换
+
+`Mat4f` 是项目自有的列优先四阶矩阵类型，仿射语义由 `Transform` 负责。`Transform` 缓存正逆矩阵、逆线性变换行列式的绝对值、orientation reversal 和 identity 状态。对输入 Ray 求局部几何交点时使用逆变换，但不归一化局部方向，因此同一参数 $t$ 在两个坐标系中保持不变。法线使用线性变换的逆转置，非均匀缩放后再归一化。
+
+恒等 Transform 直接传递 Ray、交点和法线，不执行矩阵乘法，也不再次归一化已有单位法线。这是普通未变换 Primitive 的主路径，同时保证重构前后的确定性数值轨迹不因无意义运算而变化。
+
+Shape 的几何采样定义在局部方向空间；Primitive 将 origin 和 direction 转入局部空间，并用方向映射 Jacobian 把局部立体角密度转换到世界空间。`SurfacePDF` 只组合这些世界空间表面目标，Material 不参与该概率分布。
+
+### 世界 BVH
+
+当前世界 BVH 是递归二叉层次。构建时先复制对象指针，在每个节点的最长包围盒轴上按 AABB centroid 使用 `nth_element` 做中位数划分，因此不会修改 Scene 暴露的插入顺序。内部节点缓存子树包围盒，单对象叶只保存一个对象引用。
+
+遍历先用节点 AABB 剪枝；第一个子树命中后，以该命中的 $t$ 收紧第二个子树的查询上界，从而返回全局最近命中。当前实现仍是标量二叉 BVH，不包含 SAH、扁平节点、宽 BVH、按实际入射距离排序子节点或 SIMD。
 
 ## 数值边界
 
@@ -74,7 +88,7 @@ x1 = c / q;
 
 ### 容差与自相交
 
-- 平行判断使用小容差，而不是只比较是否严格等于零。
+- 平面与三角形求交用小容差识别数值上的近似平行；AABB/Box 的 slab 求交保留 IEEE 除零产生的无穷区间语义，使严格平行射线可正确剪枝，同时不丢弃方向很小但在有限参数处仍有效的远距离命中。
 - 次级光线使用正的 $t_{min}$，避免立即再次命中刚离开的表面。
 - 固定世界尺度的 epsilon 并非对所有场景都稳健：过小会自相交，过大可能漏掉很近的表面。
 - 相邻三角形必须采用一致的边界规则，否则共享边可能出现裂缝或重复命中。
@@ -148,13 +162,11 @@ $$
 
 ### Box
 
-当前 `box()` 用六个 Quad 构造一个 `ShapeList`：
+当前 `Box` 是独立的局部 Shape：
 
 ![Box 的 Quad 组成](./figs/box-constitute.png)
 
-它不是 Triangle Mesh，也没有内部 BVH。世界顶层 BVH 把整个 `ShapeList` 视为一个 Shape；进入 Box 后，最多线性测试六个面。对于固定的六个面，这通常比额外建立一棵小 BVH 更简单，常数开销也更低。
-
-如果只需要轴对齐实体盒而不需要逐面材质和 UV，可以直接用 slab 算法恢复表面命中；当前 AABB 只承担加速结构的布尔剔除，不是可着色基元。
+它使用 slab 区间恢复进入或离开表面的参数和 outward normal，不建立六个堆对象，也不需要内部 BVH。Box 在局部空间保持轴对齐；旋转和缩放由外层 Primitive Transform 处理。AABB 仍只承担空间界限和加速剔除，不是可着色基元。
 
 ## Triangle
 
@@ -277,18 +289,18 @@ Triangle 只保存 `MeshData` 共享指针和一个面索引，不复制三个�
 - 校验索引、属性长度和退化三角形；
 - 可选生成顶点法线；
 - 为每个 indexed face 创建 Triangle；
-- 为这些 Triangle 建立内部 BVH；
-- 以一个 Shape 的形式向 Scene 暴露整体包围盒、材质和求交入口。
+- 为这些 Triangle index 建立私有局部 BVH；
+- 以一个 Shape 的形式向 Primitive 暴露整体局部包围盒和求交入口。
 
 #### 数据组织
 
-当前分为两层：Mesh 作为 Shape 加入世界 BVH 树，而 Mesh 本身维护一棵 Triangle 的 BVH 树。
+当前分为两层：Mesh 作为 Primitive 的 Shape 加入世界 BVH，而 Mesh 自身维护一棵只处理 `ShapeHit` 的 Triangle-index BVH。局部 BVH 不继承世界 `Intersectable`，也不携带 Material 或 Transform。
 
 不使用类似 Quad Box 的摊平结构，是为了保持更好的组织结构，以适合模型资源、整体变换、独立重建和实例复用。这也是现代 API 中 TLAS/BLAS 的基本思路。
 
 #### 高性能实现方向
 
-当前 `shared_ptr<Shape> + virtual hit()` 的逐 Triangle 表示清晰，但不是最高效的数据布局。CPU 高性能实现通常进一步采用：
+当前 Triangle 对象连续保存在 Mesh 中，私有 BVH 叶节点保存 Triangle index，已经避免逐 Triangle 的 `shared_ptr<Shape>` 堆分配。CPU 高性能实现还可进一步采用：
 
 - 连续顶点、索引和 primitive metadata 数组；
 - 扁平或宽 BVH，叶节点保存 Triangle 范围或压缩块；

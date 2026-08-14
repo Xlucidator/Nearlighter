@@ -7,11 +7,14 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <memory>
+#include <vector>
 
 class Ray;
+class Intersectable;
+class Primitive;
 class Sampler;
 class Scene;
-class Shape;
 
 // ==================================================
 // Render Lifecycle Data
@@ -84,9 +87,10 @@ public:
     ) const;
 
 private:
-    Color trace(const Ray& ray, int depth, const Shape& world,
-                const Shape& sampling_targets, const Color& background,
-                Sampler& sampler) const;
+    Color trace(
+        const Ray& ray, int depth, const Intersectable& world,
+        const std::vector<std::shared_ptr<const Primitive>>& sampling_targets,
+        const Color& background, Sampler& sampler) const;
 
     RenderSettings settings_;
 };

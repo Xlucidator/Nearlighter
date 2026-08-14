@@ -1,51 +1,66 @@
 #ifndef NEARLIGHTER_SAMPLING_SAMPLER_H
 #define NEARLIGHTER_SAMPLING_SAMPLER_H
 
-#include <nearlighter/math/vec3f.h>
+#include <nearlighter/math/vec3.h>
 
 #include <cstdint>
 
 /**
- * Owns one deterministic pseudo-random sample sequence.
+ * Deterministic Pseudo-Random Stream
  *
- * A Sampler is intentionally small and passed explicitly through stochastic
- * rendering operations. This makes random-number ownership visible and keeps
- * a path's result independent of thread scheduling or other pixels.
+ * Owns one PCG32 state and advances it whenever a sample is requested.
+ * Explicit ownership isolates rendering paths from thread scheduling and
+ * random-number consumption by other paths.
  */
 class Sampler {
 public:
-    /** Starts a deterministic PCG stream from a seed and stream selector. */
+    /**
+     * Stream Initialization
+     *
+     * Starts the stream selected by `sequence` at the state derived from
+     * `seed`. Equal argument pairs reproduce the same sample sequence.
+     */
     explicit Sampler(std::uint64_t seed, std::uint64_t sequence = 1);
 
-    /** Returns the next raw 32-bit PCG value. */
+    /**
+     * @name Raw Random Bits
+     * Advances the stream once per 32-bit result; the 64-bit result consumes
+     * two consecutive 32-bit results.
+     * @{
+     */
     std::uint32_t nextUInt32();
-
-    /** Returns the next raw 64-bit value assembled from two PCG values. */
     std::uint64_t nextUInt64();
+    /** @} */
 
-    /** Returns a uniformly distributed value in `[0, 1)`. */
+    /**
+     * @name Uniform Scalar Samples
+     * Floating-point ranges are half-open. Integer ranges include both bounds.
+     *
+     * Range overloads throw `std::invalid_argument` if a maximum is below its
+     * minimum. `nextInt()` also rejects ranges containing more than `uint32_t`
+     * distinct values.
+     * @{
+     */
     float next1D();
-
-    /** Returns a uniformly distributed value in `[min, max)`. */
     float next1D(float min, float max);
-
-    /** Returns an unbiased uniformly distributed integer in `[min, max]`. */
     int nextInt(int min, int max);
+    /** @} */
 
-    /** Returns a vector whose components are uniformly sampled in `[0, 1)`. */
+    /**
+     * @name Vector and Direction Samples
+     * Vector components use independent uniform samples. Sphere and hemisphere
+     * methods return unit directions in their documented local distributions.
+     * @{
+     */
     Vec3f nextVec3();
-
-    /** Returns a vector whose components are uniformly sampled in `[min, max)`. */
     Vec3f nextVec3(float min, float max);
-
-    /** Returns a uniformly distributed direction on the unit sphere. */
+    /** Uniform unit-sphere direction. */
     Vec3f nextUnitVector();
-
-    /** Returns a uniformly distributed point inside the unit disk. */
+    /** Uniform point in the open unit disk on the xy plane. */
     Vec3f nextInUnitDisk();
-
-    /** Returns a cosine-weighted direction around the positive z axis. */
+    /** Cosine-weighted unit-hemisphere direction around positive z. */
     Vec3f nextCosineHemisphere();
+    /** @} */
 
 private:
     std::uint64_t state_ = 0;
@@ -53,10 +68,10 @@ private:
 };
 
 /**
- * Derives the deterministic random sequence seed for one pixel sample.
+ * Path Seed Derivation
  *
- * The result depends only on the render seed, pixel coordinates, and sample
- * index, so traversal order and thread assignment do not affect the image.
+ * Hashes the render seed, pixel coordinates, and sample index into one stream
+ * seed. The result is independent of traversal order and thread assignment.
  */
 std::uint64_t derivePathSeed(std::uint64_t render_seed,
                              std::uint32_t pixel_x,

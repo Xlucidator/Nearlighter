@@ -119,7 +119,7 @@ cornell_smoke      final_scene      cornell_ball    cornell_bunny
 ./build/release/Nearlighter --help
 ```
 
-JSON 只是 CLI 的场景输入方式。作为 C++ 模块使用时，也可以通过公开的 `Scene` 构造函数组织相机、渲染默认值和 `ShapeList`，再直接交给 `Renderer` 渲染，不需要依赖 `nearlighter_io` 或场景 JSON。
+JSON 只是 CLI 的场景输入方式。作为 C++ 模块使用时，也可以用 `Shape` 构造局部几何，以 `Primitive` 绑定 Material 和 Transform，再通过 `LinearAggregate` 组织 `Scene` 并交给 `Renderer`，不需要依赖 `nearlighter_io` 或场景 JSON。复用并整体变换 BVH 或对象组时使用 `Instance`。
 
 ### 外部调用
 
@@ -213,7 +213,6 @@ MultiBalls
 │   └── nearlighter/      # 与公开头文件对应的实现文件
 ├── thirdparty/           # 第三方库 submodule
 │   ├── argparse/
-│   ├── glm/
 │   ├── json/
 │   └── stb/
 ├── assets/               # 运行时场景、纹理与模型资源
@@ -238,6 +237,5 @@ MultiBalls
 - [Ray Tracing in Oneweekend系列](https://github.com/RayTracing/raytracing.github.io)
 - [GAMES101课程](https://games-cn.org/intro-graphics/)
 - [STB图像库文档](https://github.com/nothings/stb)
-- [GLM数学库](https://glm.g-truc.net/)
 - [argparse](https://github.com/p-ranav/argparse)
 - [JSON for Modern C++](https://github.com/nlohmann/json)

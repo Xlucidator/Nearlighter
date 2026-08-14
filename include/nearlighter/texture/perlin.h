@@ -1,7 +1,7 @@
 #ifndef PERLIN_H
 #define PERLIN_H
 
-#include <nearlighter/math/vec3f.h>
+#include <nearlighter/math/vec3.h>
 
 #include <cstdint>
 

@@ -4,7 +4,8 @@
 
 Scene::Scene(std::string name, Camera camera,
              RenderSettings default_render_settings, Color background,
-             ShapeList world, ShapeList sampling_targets)
+             LinearAggregate world,
+             std::vector<std::shared_ptr<const Primitive>> sampling_targets)
     : name_(std::move(name)),
       camera_(std::move(camera)),
       default_render_settings_(default_render_settings),

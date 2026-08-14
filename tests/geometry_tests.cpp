@@ -3,109 +3,143 @@
 #include <nearlighter/base/interval.h>
 #include <nearlighter/base/ray.h>
 #include <nearlighter/geometry/aabb.h>
-#include <nearlighter/geometry/mesh.h>
-#include <nearlighter/geometry/quad.h>
-#include <nearlighter/geometry/sphere.h>
-#include <nearlighter/geometry/triangle.h>
+#include <nearlighter/geometry/transform.h>
+#include <nearlighter/material/lambertian.h>
 #include <nearlighter/math/constants.h>
+#include <nearlighter/math/mat4.h>
+#include <nearlighter/math/math.h>
+#include <nearlighter/math/vec4.h>
 #include <nearlighter/sampling/sampler.h>
-#include <nearlighter/transform/rotate.h>
-#include <nearlighter/transform/scale.h>
-#include <nearlighter/transform/translate.h>
+#include <nearlighter/scene/primitive.h>
+#include <nearlighter/shape/box.h>
+#include <nearlighter/shape/mesh.h>
+#include <nearlighter/shape/quad.h>
+#include <nearlighter/shape/sphere.h>
+#include <nearlighter/shape/triangle.h>
 
 #include <cmath>
 #include <memory>
+#include <stdexcept>
 
 namespace {
 
 constexpr float kTolerance = 1e-5f;
 
-std::shared_ptr<Material> noMaterial() {
-    return {};
+std::shared_ptr<const Material> testMaterial() {
+    return std::make_shared<Lambertian>(Color(0.5f, 0.5f, 0.5f));
+}
+
+void testVectors(nearlighter::test::Context& context) {
+    /* ----- Scalar precision aliases ----- */
+    const Vec3d precise(1.0, 2.0, 2.0);
+    context.expectTrue(
+        std::fabs(precise.length() - 3.0) <= 1e-12,
+        "Vec3d should retain double-precision vector arithmetic");
+    const Point3d point = precise + Vec3d(2.0, -2.0, 1.0);
+    context.expectTrue(
+        point.x() == 3.0 && point.y() == 0.0 && point.z() == 3.0,
+        "Point3d alias should preserve Vec3d operations");
+
+    /* ----- Four-component operations ----- */
+    const Vec4f homogeneous(Vec3f(1.0f, 2.0f, 3.0f), 1.0f);
+    const Vec4f scaled = 2 * homogeneous;
+    context.expectTrue(
+        scaled.x() == 2.0f && scaled.y() == 4.0f &&
+            scaled.z() == 6.0f && scaled.w() == 2.0f,
+        "Vec4f should support arithmetic scalar multiplication");
+    context.expectVecNear(homogeneous.xyz(), Vec3f(1.0f, 2.0f, 3.0f),
+                          kTolerance,
+                          "Vec4f xyz should recover its first components");
+    context.expectNear(dot(homogeneous, homogeneous), 15.0f, kTolerance,
+                       "Vec4f dot product should include w");
+
+    /* ----- Direction Mapping ----- */
+    context.expectVecNear(
+        reflect(Vec3f(1.0f, -1.0f, 0.0f), Vec3f(0.0f, 1.0f, 0.0f)),
+        Vec3f(1.0f, 1.0f, 0.0f), kTolerance,
+        "reflection should mirror the normal component");
+    context.expectVecNear(
+        refract(unit_vector(Vec3f(1.0f, -1.0f, 0.0f)),
+                Vec3f(0.0f, 1.0f, 0.0f), 2.0f),
+        Vec3f(), kTolerance,
+        "refraction should report total internal reflection as zero");
 }
 
 void testSphere(nearlighter::test::Context& context) {
-    Sampler sampler(0);
-    Sphere sphere(Point3f(0.0f, 0.0f, -1.0f), 0.5f, noMaterial());
-
-    HitRecord record;
+    const Sphere sphere(Point3f(0.0f, 0.0f, -1.0f), 0.5f);
+    ShapeHit hit_record;
     const bool hit = sphere.hit(
         Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), record, sampler);
+        Interval(0.001f, infinity), hit_record);
     context.expectTrue(hit, "sphere should be hit from outside");
     if (hit) {
-        context.expectNear(record.t, 0.5f, kTolerance,
+        context.expectNear(hit_record.t, 0.5f, kTolerance,
                            "outside sphere hit distance");
-        context.expectVecNear(record.point, Point3f(0.0f, 0.0f, -0.5f),
-                              kTolerance, "outside sphere hit point");
-        context.expectVecNear(record.normal, Vec3f(0.0f, 0.0f, 1.0f),
-                              kTolerance, "outside sphere normal");
-        context.expectTrue(record.front_face,
-                           "outside sphere hit should be front-facing");
+        context.expectVecNear(hit_record.point,
+                              Point3f(0.0f, 0.0f, -0.5f), kTolerance,
+                              "outside sphere local hit point");
+        context.expectVecNear(hit_record.geometric_normal,
+                              Vec3f(0.0f, 0.0f, 1.0f), kTolerance,
+                              "sphere outward geometric normal");
     }
 
-    HitRecord inside_record;
+    ShapeHit inside_record;
     const bool inside_hit = sphere.hit(
         Ray(Point3f(0.0f, 0.0f, -1.0f), Vec3f(1.0f, 0.0f, 0.0f)),
-        Interval(0.001f, infinity), inside_record, sampler);
+        Interval(0.001f, infinity), inside_record);
     context.expectTrue(inside_hit, "sphere should be hit from inside");
     if (inside_hit) {
-        context.expectNear(inside_record.t, 0.5f, kTolerance,
-                           "inside sphere hit distance");
-        context.expectVecNear(inside_record.normal, Vec3f(-1.0f, 0.0f, 0.0f),
-                              kTolerance, "inside sphere normal orientation");
-        context.expectFalse(inside_record.front_face,
-                            "inside sphere hit should be back-facing");
+        context.expectVecNear(inside_record.geometric_normal,
+                              Vec3f(1.0f, 0.0f, 0.0f), kTolerance,
+                              "Shape preserves outward normal from inside");
     }
 
-    HitRecord miss_record;
-    context.expectFalse(
-        sphere.hit(
-            Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 1.0f, 0.0f)),
-            Interval(0.001f, infinity), miss_record, sampler),
-        "sphere miss ray should not hit");
+    const Point3f offset_inside_origin(0.25f, 0.0f, -1.0f);
+    context.expectNear(
+        sphere.getPDFValue(offset_inside_origin,
+                           Vec3f(0.0f, 1.0f, 0.0f)),
+        1.0f / (4.0f * pi), kTolerance,
+        "sphere inside-origin PDF should be uniform over all directions");
 }
 
 void testQuad(nearlighter::test::Context& context) {
-    Sampler sampler(0);
-    Quad quad(Point3f(-1.0f, -1.0f, -1.0f),
-              Vec3f(2.0f, 0.0f, 0.0f),
-              Vec3f(0.0f, 2.0f, 0.0f), noMaterial());
-
-    HitRecord record;
+    const Quad quad(Point3f(-1.0f, -1.0f, -1.0f),
+                    Vec3f(2.0f, 0.0f, 0.0f),
+                    Vec3f(0.0f, 2.0f, 0.0f));
+    ShapeHit record;
     const bool hit = quad.hit(
         Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), record, sampler);
+        Interval(0.001f, infinity), record);
     context.expectTrue(hit, "quad center ray should hit");
     if (hit) {
         context.expectNear(record.t, 1.0f, kTolerance,
                            "quad hit distance");
-        context.expectVecNear(record.point, Point3f(0.0f, 0.0f, -1.0f),
-                              kTolerance, "quad hit point");
-        context.expectVecNear(record.normal, Vec3f(0.0f, 0.0f, 1.0f),
-                              kTolerance, "quad normal");
-        context.expectNear(record.u, 0.5f, kTolerance, "quad u coordinate");
-        context.expectNear(record.v, 0.5f, kTolerance, "quad v coordinate");
+        context.expectVecNear(record.geometric_normal,
+                              Vec3f(0.0f, 0.0f, 1.0f), kTolerance,
+                              "quad geometric normal");
+        context.expectNear(record.u, 0.5f, kTolerance,
+                           "quad u coordinate");
+        context.expectNear(record.v, 0.5f, kTolerance,
+                           "quad v coordinate");
     }
 
-    HitRecord miss_record;
+    ShapeHit miss_record;
     context.expectFalse(
-        quad.hit(
-            Ray(Point3f(2.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-            Interval(0.001f, infinity), miss_record, sampler),
+        quad.hit(Ray(Point3f(2.0f, 0.0f, 0.0f),
+                     Vec3f(0.0f, 0.0f, -1.0f)),
+                 Interval(0.001f, infinity), miss_record),
         "ray outside quad boundary should miss");
 }
 
 void testTriangle(nearlighter::test::Context& context) {
     Sampler sampler(0);
-    Triangle triangle(Point3f(0.0f, 0.0f, -1.0f),
-                      Point3f(2.0f, 0.0f, -1.0f),
-                      Point3f(0.0f, 2.0f, -1.0f), noMaterial());
-
-    HitRecord record;
+    const Triangle triangle(Point3f(0.0f, 0.0f, -1.0f),
+                            Point3f(2.0f, 0.0f, -1.0f),
+                            Point3f(0.0f, 2.0f, -1.0f));
+    ShapeHit record;
     const bool hit = triangle.hit(
         Ray(Point3f(0.5f, 0.5f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), record, sampler);
+        Interval(0.001f, infinity), record);
     context.expectTrue(hit, "triangle interior ray should hit");
     if (hit) {
         context.expectNear(record.t, 1.0f, kTolerance,
@@ -114,29 +148,26 @@ void testTriangle(nearlighter::test::Context& context) {
                            "triangle first barycentric coordinate");
         context.expectNear(record.v, 0.25f, kTolerance,
                            "triangle second barycentric coordinate");
-        context.expectVecNear(record.normal, Vec3f(0.0f, 0.0f, 1.0f),
-                              kTolerance, "triangle front normal");
-        context.expectTrue(record.front_face,
-                           "triangle front ray should be front-facing");
     }
 
-    HitRecord back_record;
+    ShapeHit back_record;
     const bool back_hit = triangle.hit(
-        Ray(Point3f(0.5f, 0.5f, -2.0f), Vec3f(0.0f, 0.0f, 1.0f)),
-        Interval(0.001f, infinity), back_record, sampler);
+        Ray(Point3f(0.5f, 0.5f, -2.0f),
+            Vec3f(0.0f, 0.0f, 1.0f)),
+        Interval(0.001f, infinity), back_record);
     context.expectTrue(back_hit, "triangle should intersect from both sides");
     if (back_hit) {
-        context.expectVecNear(back_record.normal, Vec3f(0.0f, 0.0f, -1.0f),
-                              kTolerance, "triangle back normal orientation");
-        context.expectFalse(back_record.front_face,
-                            "triangle back ray should be back-facing");
+        context.expectVecNear(
+            back_record.geometric_normal, Vec3f(0.0f, 0.0f, 1.0f),
+            kTolerance,
+            "Shape should preserve triangle winding orientation");
     }
 
-    HitRecord miss_record;
+    ShapeHit miss_record;
     context.expectFalse(
-        triangle.hit(
-            Ray(Point3f(1.5f, 1.5f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-            Interval(0.001f, infinity), miss_record, sampler),
+        triangle.hit(Ray(Point3f(1.5f, 1.5f, 0.0f),
+                         Vec3f(0.0f, 0.0f, -1.0f)),
+                     Interval(0.001f, infinity), miss_record),
         "ray outside triangle boundary should miss");
 
     context.expectNear(
@@ -149,7 +180,64 @@ void testTriangle(nearlighter::test::Context& context) {
         sampled_direction.x() >= 0.0f && sampled_direction.y() >= 0.0f &&
             sampled_direction.x() + sampled_direction.y() <= 2.0f &&
             std::fabs(sampled_direction.z() + 1.0f) <= kTolerance,
-        "triangle random direction should reach its surface");
+        "triangle sample should reach its surface");
+}
+
+void testBox(nearlighter::test::Context& context) {
+    Sampler sampler(7);
+    const Box box(Point3f(-1.0f, -2.0f, -3.0f),
+                  Point3f(1.0f, 2.0f, 3.0f));
+    ShapeHit record;
+    const bool hit = box.hit(
+        Ray(Point3f(0.0f, 0.0f, 5.0f), Vec3f(0.0f, 0.0f, -1.0f)),
+        Interval(0.001f, infinity), record);
+    context.expectTrue(hit, "box front ray should hit");
+    if (hit) {
+        context.expectNear(record.t, 2.0f, kTolerance,
+                           "box front hit distance");
+        context.expectVecNear(record.geometric_normal,
+                              Vec3f(0.0f, 0.0f, 1.0f), kTolerance,
+                              "box front outward normal");
+        context.expectNear(record.u, 0.5f, kTolerance,
+                           "box front u coordinate");
+        context.expectNear(record.v, 0.5f, kTolerance,
+                           "box front v coordinate");
+    }
+
+    ShapeHit inside_record;
+    context.expectTrue(
+        box.hit(Ray(Point3f(0.0f, 0.0f, 0.0f),
+                    Vec3f(1.0f, 0.0f, 0.0f)),
+                Interval(0.001f, infinity), inside_record),
+        "box ray from inside should hit the exit face");
+    context.expectVecNear(inside_record.geometric_normal,
+                          Vec3f(1.0f, 0.0f, 0.0f), kTolerance,
+                          "box inside hit outward normal");
+
+    ShapeHit edge_record;
+    context.expectTrue(
+        box.hit(Ray(Point3f(1.0f, 0.0f, 5.0f),
+                    Vec3f(0.0f, 0.0f, -1.0f)),
+                Interval(0.001f, infinity), edge_record),
+        "box should accept a parallel ray on a slab boundary");
+
+    const Point3f sampling_origin(0.0f, 0.0f, 5.0f);
+    const Vec3f sampling_direction(0.0f, 0.0f, -1.0f);
+    const float box_pdf =
+        box.getPDFValue(sampling_origin, sampling_direction);
+    context.expectNear(box_pdf, 68.0f / 88.0f, kTolerance,
+        "box PDF sums near and far surface preimages");
+    context.expectNear(
+        box.getPDFValue(sampling_origin, 1e-9f * sampling_direction),
+        box_pdf, kTolerance,
+        "box PDF should not depend on direction length");
+
+    const Vec3f sampled = box.random(sampling_origin, sampler);
+    ShapeHit sampled_hit;
+    context.expectTrue(
+        box.hit(Ray(sampling_origin, sampled),
+                Interval(0.001f, infinity), sampled_hit),
+        "box sampled direction should reach the surface");
 }
 
 void testMesh(nearlighter::test::Context& context) {
@@ -164,19 +252,17 @@ void testMesh(nearlighter::test::Context& context) {
         {0.0f, 0.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f},
     };
     data.triangles = {{0, 1, 2}, {0, 2, 3}};
-    Mesh mesh(std::move(data), noMaterial(), MeshBuildOptions{true});
+    const Mesh mesh(std::move(data), true);
 
-    Sampler sampler(0);
-    HitRecord record;
+    ShapeHit record;
     const bool hit = mesh.hit(
         Ray(Point3f(0.25f, -0.25f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), record, sampler);
-    context.expectTrue(hit, "mesh BVH should hit an indexed triangle");
+        Interval(0.001f, infinity), record);
+    context.expectTrue(hit, "mesh local BVH should hit an indexed triangle");
     if (hit) {
-        context.expectVecNear(record.point, Point3f(0.25f, -0.25f, -1.0f),
-                              kTolerance, "mesh hit point");
-        context.expectVecNear(record.normal, Vec3f(0.0f, 0.0f, 1.0f),
-                              kTolerance, "generated mesh normal");
+        context.expectVecNear(record.shading_normal,
+                              Vec3f(0.0f, 0.0f, 1.0f), kTolerance,
+                              "generated mesh shading normal");
         context.expectNear(record.u, 0.625f, kTolerance,
                            "interpolated mesh u coordinate");
         context.expectNear(record.v, 0.375f, kTolerance,
@@ -184,95 +270,198 @@ void testMesh(nearlighter::test::Context& context) {
     }
 }
 
-void testAabb(nearlighter::test::Context& context) {
-    const AABB box(Point3f(-1.0f, -1.0f, -1.0f),
-                   Point3f(1.0f, 1.0f, 1.0f));
-
+void testAABB(nearlighter::test::Context& context) {
+    const AABB bounds(Point3f(-1.0f, -1.0f, -1.0f),
+                      Point3f(1.0f, 1.0f, 1.0f));
     context.expectTrue(
-        box.hit(Ray(Point3f(0.0f, 0.0f, -3.0f), Vec3f(0.0f, 0.0f, 1.0f)),
-                Interval(0.0f, infinity)),
+        bounds.hit(
+            Ray(Point3f(0.0f, 0.0f, -3.0f), Vec3f(0.0f, 0.0f, 1.0f)),
+            Interval(0.0f, infinity)),
         "ray through AABB should hit");
     context.expectFalse(
-        box.hit(Ray(Point3f(2.0f, 0.0f, -3.0f), Vec3f(0.0f, 0.0f, 1.0f)),
-                Interval(0.0f, infinity)),
-        "parallel ray outside AABB slab should miss");
+        bounds.hit(
+            Ray(Point3f(2.0f, 0.0f, -3.0f), Vec3f(0.0f, 0.0f, 1.0f)),
+            Interval(0.0f, infinity)),
+        "parallel ray outside AABB should miss");
+    context.expectTrue(
+        bounds.hit(
+            Ray(Point3f(1.0f, 0.0f, -3.0f),
+                Vec3f(0.0f, 0.0f, 1.0f)),
+            Interval(0.0f, infinity)),
+        "parallel ray on an AABB slab boundary should hit");
 }
 
-void testTransforms(nearlighter::test::Context& context) {
+void testMatrices(nearlighter::test::Context& context) {
+    /* ----- Algebraic Operations ----- */
+    const Mat4d matrix(
+        Vec4d(4.0, 0.0, 0.0, 0.0), Vec4d(7.0, 5.0, 0.0, 0.0),
+        Vec4d(2.0, 0.0, 3.0, 0.0), Vec4d(3.0, 1.0, 0.0, 2.0));
+    const Vec4d vector(1.0, -2.0, 0.5, 3.0);
+    const Vec4d product = matrix * vector;
+    context.expectTrue(
+        std::fabs(product.x()) <= 1e-12 &&
+            std::fabs(product.y() + 7.0) <= 1e-12 &&
+            std::fabs(product.z() - 1.5) <= 1e-12 &&
+            std::fabs(product.w() - 6.0) <= 1e-12,
+        "Mat4d should multiply a column vector");
+    context.expectTrue(std::fabs(matrix.determinant() - 120.0) <= 1e-12,
+                       "Mat4d should compute a general determinant");
+    context.expectTrue(matrix.transposed()(1, 0) == matrix(0, 1),
+                       "Mat4d transpose should exchange row and column");
+
+    const Mat4d identity = matrix * matrix.inverse();
+    bool inverse_matches = true;
+    for (std::size_t column = 0; column < 4; ++column) {
+        for (std::size_t row = 0; row < 4; ++row) {
+            const double expected = row == column ? 1.0 : 0.0;
+            inverse_matches = inverse_matches &&
+                std::fabs(identity(row, column) - expected) <= 1e-12;
+        }
+    }
+    context.expectTrue(inverse_matches,
+                       "Mat4d general inverse should restore identity");
+
+    const Mat4d doubled_identity = Mat4d() + Mat4d();
+    context.expectTrue(doubled_identity(0, 0) == 2.0 &&
+                           doubled_identity(0, 1) == 0.0,
+                       "Mat4d addition should operate element-wise");
+    const Mat4d masked = hadamard(matrix, Mat4d());
+    context.expectTrue(masked(0, 0) == 4.0 && masked(0, 1) == 0.0 &&
+                           masked(1, 1) == 5.0,
+                       "Mat4d Hadamard product should operate element-wise");
+
+    /* ----- Failure Contract ----- */
+    bool singular_rejected = false;
+    try {
+        (void)Mat4d(0.0).inverse();
+    } catch (const std::invalid_argument&) {
+        singular_rejected = true;
+    }
+    context.expectTrue(singular_rejected,
+                       "Mat4d inverse should reject a singular matrix");
+}
+
+void testPrimitiveTransforms(nearlighter::test::Context& context) {
     Sampler sampler(0);
-    // Transform wrappers intersect in object space, then restore the hit point
-    // and normal to world space. Check both values to cover that round trip.
+
+    /* ----- Matrix Input Contract ----- */
+    Mat4f translated_matrix;
+    translated_matrix(0, 3) = 2.0f;
+    context.expectVecNear(
+        Transform(translated_matrix).applyPoint(Point3f(1.0f, 0.0f, 0.0f)),
+        Point3f(3.0f, 0.0f, 0.0f), kTolerance,
+        "Transform should accept an affine Mat4f");
+
+    Mat4f projective_matrix;
+    projective_matrix(3, 0) = 0.5f;
+    bool projective_rejected = false;
+    try {
+        (void)Transform(projective_matrix);
+    } catch (const std::invalid_argument&) {
+        projective_rejected = true;
+    }
+    context.expectTrue(projective_rejected,
+                       "Transform should reject a projective Mat4f");
+
+    context.expectVecNear(
+        Transform::rotate(Vec3f(0.0f, 1.0f, 0.0f), 0.5f * pi)
+            .applyVector(Vec3f(1.0f, 0.0f, 0.0f)),
+        Vec3f(0.0f, 0.0f, -1.0f), kTolerance,
+        "Transform should use right-handed column-vector rotation");
+
+    /* ----- Primitive Mapping ----- */
     auto sphere = std::make_shared<Sphere>(
-        Point3f(0.0f, 0.0f, -1.0f), 0.5f, noMaterial());
-    Translate translated(sphere, Vec3f(2.0f, 0.0f, 0.0f));
+        Point3f(0.0f, 0.0f, -1.0f), 0.5f);
+    const Primitive translated(
+        sphere, testMaterial(),
+        Transform::translate(Vec3f(2.0f, 0.0f, 0.0f)));
 
     HitRecord translated_record;
     const bool translated_hit = translated.hit(
         Ray(Point3f(2.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
         Interval(0.001f, infinity), translated_record, sampler);
-    context.expectTrue(translated_hit, "translated sphere should be hit");
+    context.expectTrue(translated_hit, "translated Primitive should be hit");
     if (translated_hit) {
         context.expectVecNear(translated_record.point,
-                              Point3f(2.0f, 0.0f, -0.5f),
-                              kTolerance, "translated sphere hit point");
-        context.expectVecNear(translated_record.normal,
-                              Vec3f(0.0f, 0.0f, 1.0f),
-                              kTolerance, "translated sphere normal");
+                              Point3f(2.0f, 0.0f, -0.5f), kTolerance,
+                              "translated Primitive world point");
+        context.expectTrue(translated_record.front_face,
+                           "Primitive computes world front face");
+        context.expectTrue(translated_record.material == &translated.material(),
+                           "Primitive binds its Material to HitRecord");
     }
 
-    auto offset_sphere = std::make_shared<Sphere>(
-        Point3f(0.0f, 0.0f, -2.0f), 0.5f, noMaterial());
-    Rotate rotated(offset_sphere, Vec3f(0.0f, 1.0f, 0.0f), pi * 0.5f);
+    const Transform composed =
+        Transform::translate(Vec3f(0.0f, 0.0f, -2.0f)) *
+        Transform::scale(Vec3f(2.0f, 1.0f, 1.0f));
+    context.expectVecNear(composed.applyPoint(Point3f(1.0f, 0.0f, 0.0f)),
+                          Point3f(2.0f, 0.0f, -2.0f), kTolerance,
+                          "Transform composition applies right operand first");
 
-    HitRecord rotated_record;
-    const bool rotated_hit = rotated.hit(
-        Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(-1.0f, 0.0f, 0.0f)),
-        Interval(0.001f, infinity), rotated_record, sampler);
-    context.expectTrue(rotated_hit, "rotated sphere should be hit");
-    if (rotated_hit) {
-        context.expectNear(rotated_record.t, 1.5f, kTolerance,
-                           "rotated sphere hit distance");
-        context.expectVecNear(rotated_record.point,
-                              Point3f(-1.5f, 0.0f, 0.0f),
-                              kTolerance, "rotated sphere hit point");
-        context.expectVecNear(rotated_record.normal,
-                              Vec3f(1.0f, 0.0f, 0.0f),
-                              kTolerance, "rotated sphere normal");
+    const Vec3f identity_normal =
+        unit_vector(Vec3f(1.0f, 2.0f, 3.0f));
+    const Vec3f preserved_normal = Transform().applyNormal(identity_normal);
+    context.expectTrue(
+        preserved_normal.x() == identity_normal.x() &&
+            preserved_normal.y() == identity_normal.y() &&
+            preserved_normal.z() == identity_normal.z(),
+        "identity Transform preserves an existing unit normal exactly");
+
+    context.expectVecNear(
+        Transform::scale(Vec3f(2.0f, 1.0f, 1.0f))
+            .applyNormal(unit_vector(Vec3f(1.0f, 1.0f, 0.0f))),
+        unit_vector(Vec3f(0.5f, 1.0f, 0.0f)), kTolerance,
+        "non-uniform scale uses inverse-transpose normal matrix");
+
+    const Primitive stretched(
+        std::make_shared<Sphere>(Point3f(0.0f, 0.0f, 0.0f), 1.0f),
+        testMaterial(), Transform::scale(Vec3f(2.0f, 1.0f, 1.0f)));
+    const Point3f origin(0.0f, 0.0f, 3.0f);
+    const Vec3f direction(0.0f, 0.0f, -1.0f);
+    const Sphere local_sphere(Point3f(0.0f, 0.0f, 0.0f), 1.0f);
+    context.expectNear(
+        stretched.getPDFValue(origin, direction),
+        0.5f * local_sphere.getPDFValue(origin, direction), kTolerance,
+        "non-uniform scale applies solid-angle PDF Jacobian");
+
+    bool singular_rejected = false;
+    try {
+        const Transform singular = Transform::scale(Vec3f(1.0f, 0.0f, 1.0f));
+        (void)singular;
+    } catch (const std::invalid_argument&) {
+        singular_rejected = true;
     }
+    context.expectTrue(singular_rejected,
+                       "Transform rejects singular scale");
 
-    auto unit_sphere = std::make_shared<Sphere>(
-        Point3f(0.0f, 0.0f, -1.0f), 0.5f, noMaterial());
-    Scale scaled(unit_sphere, 2.0f);
-
-    HitRecord scaled_record;
-    const bool scaled_hit = scaled.hit(
-        Ray(Point3f(0.0f, 0.0f, 0.0f), Vec3f(0.0f, 0.0f, -1.0f)),
-        Interval(0.001f, infinity), scaled_record, sampler);
-    context.expectTrue(scaled_hit, "scaled sphere should be hit");
-    if (scaled_hit) {
-        context.expectNear(scaled_record.t, 1.0f, kTolerance,
-                           "scaled sphere hit distance");
-        context.expectVecNear(scaled_record.point,
-                              Point3f(0.0f, 0.0f, -1.0f),
-                              kTolerance, "scaled sphere hit point");
-        context.expectVecNear(scaled_record.normal,
-                              Vec3f(0.0f, 0.0f, 1.0f),
-                              kTolerance, "scaled sphere normal");
-    }
-    context.expectVecNear(scaled.getBoundingBox().centroid(),
-                          Point3f(0.0f, 0.0f, -2.0f), kTolerance,
-                          "scaled sphere bounding-box center");
+    const Primitive reflected(
+        std::make_shared<Quad>(Point3f(-1.0f, -1.0f, -1.0f),
+                               Vec3f(2.0f, 0.0f, 0.0f),
+                               Vec3f(0.0f, 2.0f, 0.0f)),
+        testMaterial(), Transform::scale(Vec3f(-1.0f, 1.0f, 1.0f)));
+    HitRecord reflected_record;
+    context.expectTrue(
+        reflected.hit(
+            Ray(Point3f(0.0f, 0.0f, 0.0f),
+                Vec3f(0.0f, 0.0f, -1.0f)),
+            Interval(0.001f, infinity), reflected_record, sampler),
+        "reflected Primitive should remain intersectable");
+    context.expectFalse(reflected_record.front_face,
+                        "reflection should reverse oriented surface facing");
 }
 
 }  // namespace
 
 int main() {
     nearlighter::test::Context context;
+    testVectors(context);
     testSphere(context);
     testQuad(context);
     testTriangle(context);
+    testBox(context);
     testMesh(context);
-    testAabb(context);
-    testTransforms(context);
+    testAABB(context);
+    testMatrices(context);
+    testPrimitiveTransforms(context);
     return context.finish("geometry tests");
 }

@@ -32,16 +32,21 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 
 ### 测试内容
 
-- Sphere 的外部命中、内部命中和未命中。
+- Sphere 的外部命中、内部命中、局部 outward normal，以及偏心球内原点的
+  均匀方向 PDF。
 - Quad 的中心命中、UV 坐标和边界外未命中。
 - Triangle 的双面命中、重心坐标、边界外未命中、面积 PDF 和表面均匀采样。
-- Mesh 内部 BVH 的命中、插值 UV 与面积加权法线生成。
-- AABB 的穿过命中和平行射线未命中。
-- Translate、Rotate 和 Scale 后的命中距离、世界空间命中点、法线与包围盒。
+- Box 的外部与内部命中、UV、outward normal、面积采样、方向长度无关的 PDF，以及同一方向上前后表面贡献的 PDF 累加。
+- Mesh 私有 Triangle BVH 的命中、插值 UV 与面积加权法线生成。
+- AABB 与 Box 各自 slab 求交对穿过、平行未命中和平行边界命中的处理。
+- `Vec3<T>` 的 double 精度别名，`Vec4<T>` 的构造、分量、标量运算和点积，以及反射和全反射方向计算。
+- `Mat4<T>` 的 double 精度、列向量乘法、加法、Hadamard 乘积、转置、行列式、一般逆矩阵与奇异矩阵拒绝。
+- Transform 的右手旋转约定，以及对仿射 `Mat4f` 的接受和对射影矩阵的拒绝。
+- Primitive 平移、Transform 组合、恒等法线精确保真、非均匀缩放法线、方向 PDF Jacobian 与奇异变换拒绝。
 
 ### 实现逻辑
 
-测试使用解析结果已知的固定几何和固定射线，通过绝对误差比较 `t`、命中点、法线、UV 与 PDF，并检查 `front_face`。Triangle 的固定 seed 表面样本还需落在三角形内；由两个 indexed Triangle 构成的 Mesh 用于覆盖共享数据、内部 BVH 和生成法线的组合语义。所有随机依赖均使用固定 Sampler，确保测试结果可复现。
+测试使用解析结果已知的固定向量、几何和射线，通过绝对误差比较向量运算、`t`、命中点、两类法线、UV 与 PDF。纯 Shape 测试只检查局部几何；Primitive 测试额外检查世界空间变换、`front_face` 和 Material 绑定。Triangle 与 Box 的固定 seed 样本必须落在各自表面；由两个 indexed Triangle 构成的 Mesh 覆盖共享数据、私有 BVH 和生成法线的组合语义。
 
 ## `nearlighter.mesh_io`
 
@@ -67,17 +72,26 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 
 ### 测试目的
 
-验证 BVH 只改变求交效率，不改变 Shape 集合的最近命中语义。BVH 排序、区间收缩或遍历顺序错误通常不会导致程序崩溃，但会产生错误图像，因此需要独立测试。
+验证 BVH 只改变求交效率，不改变 Intersectable 集合的最近命中语义，并验证 Instance 能够共享和整体放置同一 BVH。
 
 ### 测试内容
 
 - 多组固定射线的命中与未命中状态。
 - 最近命中的 `t`、命中点和法线。
-- 命中的 front-face 状态。
+- 命中的 front-face 与 Material 状态。
+- 同一 BVH 的两个 Instance 具有独立命中结果和世界包围盒。
 
 ### 实现逻辑
 
-同一组 Sphere 同时构造为线性 `ShapeList` 和 `BVHNode`。对每条射线分别使用相同 seed 的独立 Sampler 求交，并将线性列表结果作为参考，与 BVH 结果逐项比较。
+同一组 Sphere Primitive 同时构造为 `LinearAggregate` 和 `BVH`。BVH 在私有对象副本上按 centroid 中位数构建二叉层次，单对象叶只求交一次。对每条射线分别使用相同 seed 的独立 Sampler 求交，并将线性聚合结果作为参考。实例测试让两个 Instance 共享同一底层 BVH，只改变各自 Transform。
+
+## `nearlighter.medium`
+
+对应文件：[`medium_tests.cpp`](medium_tests.cpp)
+
+### 测试目的与逻辑
+
+验证 ConstantMedium 从 Shape 层迁移到 Intersectable 后仍保持随机自由飞行语义。测试以高密度球形边界和固定 Sampler seed 解析计算预期散射参数，检查命中距离、交点、phase Material、neutral facing 状态和复用的边界包围盒。
 
 ## `nearlighter.sampler`
 
@@ -114,7 +128,6 @@ CTest 负责启动测试可执行文件并汇总退出状态。每个测试程�
 - 修改 seed 后采样结果发生变化。
 - `sample_count` 等于宽、高和实际 SPP 的乘积。
 - 行级进度回调按顺序覆盖每一行，并报告正确的图像尺寸和单调积分时间。
-- Renderer 拒绝非正图像尺寸，Camera 拒绝退化视线方向。
 
 ### 实现逻辑
 
