@@ -7,11 +7,16 @@
 - Code layout: public headers in `include/nearlighter/`, implementations in `src/`, and submodules in `thirdparty/`.
 - Key docs: `README.md`, `scripts/README.md`, `tests/README.md`, and `docs/`.
 
-## Collaboration
+## Documentation and Output Conventions
 
 - Communicate with the user and write user-facing documentation in Chinese.
 - Code, code comments, identifiers, commit messages, and agent-facing technical notes should use plain English.
 - Keep explanations concrete and engineering-focused. Avoid decorative wording and emojis.
+- Use standard GitHub-Flavored Markdown for user-facing responses, terminal-oriented Markdown output, and generated Markdown documents so they render correctly in common editors.
+- Write inline mathematics as `$ ... $`; do not use `\( ... \)` delimiters.
+- Write display mathematics on their own lines within `$$ ... $$`; do not use `\[ ... \]` delimiters.
+- Keep each multiline display formula inside one pair of `$$` delimiters, and insert line breaks only where the mathematical structure requires them.
+- Do not prefix display formulas with meaningless Markdown headings such as `##`.
 
 ## Engineering Principles
 
