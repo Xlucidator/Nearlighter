@@ -5,6 +5,9 @@
 
 #include <memory>
 
+class Texture;
+
+/** Legacy Isotropic Volume Response; Not a Surface BxDF */
 class Isotropic : public Material {
 public:
     Isotropic(std::shared_ptr<Texture> tex);

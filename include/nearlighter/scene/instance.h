@@ -33,6 +33,10 @@ public:
 
     const AABB& getBoundingBox() const override { return bounds_; }
 
+    /** Immutable source and placement used during Scene assembly. */
+    const std::shared_ptr<const Intersectable>& source() const { return source_; }
+    const Transform& localToParent() const { return local_to_parent_; }
+
 private:
     std::shared_ptr<const Intersectable> source_;
     Transform local_to_parent_;

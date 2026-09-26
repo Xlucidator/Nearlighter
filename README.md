@@ -6,12 +6,16 @@ Nearlighter 是一个基于物理的CPU端路径追踪渲染器，支持简单�
 
 ### 当前实现
 
+- 可切换积分器：保留历史 `legacy` 路径，并提供显式 BSDF、NEE 与 MIS 的
+  迭代 `path` 路径
 - 基本光线传播模拟计算，BVH加速结构
 - 图像输出：多采样抗锯齿(MSAA)，相机景深+散焦+动态模糊，
 - 基础图元：球体(Sphere)、四边形(Quad)、实例化对象组合，变换矩阵支持的几何体
-- 材质系统：漫反射表面(Lambertian)、镜面反射表面(Metal)、折射电介质(Dielectric)、自发光表面(DiffuseLight)、体积各向同性散射(Isotropic)
+- 材质系统：漫反射表面(Lambertian)、镜面反射表面(Metal)、折射电介质(Dielectric)、自发光表面(Emissive)、体积各向同性散射(Isotropic)
 - 贴图系统：简单空间纹理(SolidTexture)、图片纹理(ImageTexture)、噪声纹理(NoiseTexture)与生成(Perlin Noise)
 - 体渲染：恒定介质(ConstantMedium)
+- 实验诊断：typed Film、emission/direct/indirect AOV、逐像素样本数与方差、
+  分阶段准备时间和 ray/path 计数
 
 ### 待实现
 
@@ -119,7 +123,38 @@ cornell_smoke      final_scene      cornell_ball    cornell_bunny
 ./build/release/Nearlighter --help
 ```
 
-JSON 只是 CLI 的场景输入方式。作为 C++ 模块使用时，也可以用 `Shape` 构造局部几何，以 `Primitive` 绑定 Material 和 Transform，再通过 `LinearAggregate` 组织 `Scene` 并交给 `Renderer`，不需要依赖 `nearlighter_io` 或场景 JSON。复用并整体变换 BVH 或对象组时使用 `Instance`。
+积分器选择：
+
+```bash
+# 默认模式；保持 v0.1.0-rtow-baseline 的历史估计量和 sampling.targets 语义
+./build/release/Nearlighter --integrator legacy
+
+# 新的迭代 path integrator；默认使用 next-event estimation + power MIS
+./build/release/Nearlighter --integrator path --direct-lighting mis
+
+# 分别隔离 BSDF sampling 与 light sampling，便于估计量对照实验
+./build/release/Nearlighter --integrator path --direct-lighting bsdf
+./build/release/Nearlighter --integrator path --direct-lighting light
+
+# 从第 5 个散射事件开始启用 Russian roulette；0 表示关闭
+./build/release/Nearlighter --integrator path --rr-start-depth 5
+```
+
+当前 `path` 首个里程碑支持 Lambertian、`fuzz == 0` 的理想 Metal、理想
+Dielectric、单面 Emissive 和常量环境。Scene 会递归检查 LinearAggregate、BVH
+和 Instance，并为每次发光放置建立独立 Primitive 和 AreaLight。fuzzy Metal、
+ConstantMedium、不可采样的发光 Mesh，以及无法检查内容的自定义 Intersectable，
+仍会在新路径像素循环前给出兼容性错误；可继续使用默认 `legacy` 模式。
+JSON v1 的 `sampling.targets` 只由 legacy 使用，新模式自动发现发光表面。
+JSON v1 的材质类型 `diffuse_light` 对应 C++ 中的 `Emissive`，表示单面纯发光材质，不包含表面散射。
+
+Scene 构造完成后已拥有 world 的加速结构、光源集合和表面到光源的关联。
+Renderer 重用这些资源，只准备本次相机、光源选择器和 Film。独立 `light/`
+模块提供 `AreaLight`、`ConstantEnvironmentLight` 与 `LightSampler`；
+`sampleLi/PDFLi` 负责单灯方向分布，`select/PMF` 负责选择哪盏灯。
+构造流程、实例处理和代码阅读顺序见 [Scene、Light 与 Render 运行逻辑](docs/scene-light-render.md)。
+
+JSON 只是 CLI 的场景输入方式。作为 C++ 模块使用时，也可以用 `Shape` 构造局部几何，以 `Primitive` 绑定 Material 和 Transform，再通过 `LinearAggregate` 组织 `Scene` 并交给 `Renderer`，不需要依赖 `nearlighter_io` 或场景 JSON。复用并整体变换 BVH 或对象组时使用 `Instance`。`RenderOptions` 显式选择积分器和 AOV；`RenderResult::film` 保存各内存图层，`RenderResult::image()` 提供 beauty 只读视图。
 
 ### 外部调用
 
@@ -146,6 +181,15 @@ target_link_libraries(my_core_app PRIVATE nearlighter_core)
 # 场景、图片或终端 I/O；会传递链接 core
 target_link_libraries(my_io_app PRIVATE nearlighter_io)
 ```
+
+### 材质与散射接口
+
+- `material/material.h` 同时提供 Material、BSDF 和世界空间 BSDFSample。Material 持有纹理与配置，在交点处生成独立的 BSDF；BSDF 负责方向转换、多分量求值和采样。
+- `material/bxdf.h` 只定义局部散射抽象接口与公共类型。具体 BxDF 与对应材质一起放在 `lambertian.h`、`metal.h` 和 `dielectric.h`，不依赖中央类型列表。
+- BSDF 独占最多四个 BxDF 分量，使用 `add(std::make_unique<...>(...))` 添加；不可复制，可移动。自定义 Material 可以直接组合公开 BxDF，不需要修改积分器分派。
+- 恒定 RGB 镜面模型名为 `SpecularReflectionBxDF`，不表示完整的导体 Fresnel。精确介质 Fresnel 是介质 BxDF 的私有实现，不再提供单独的 `bsdf.h` 或 `fresnel.h` 入口。
+
+新路径中，`computeBSDF()` 返回空值只表示合法的无散射表面（例如纯发光面）；未支持的材质明确报错。旧积分器接口及 Isotropic 的体积响应暂时保留。
 
 ## 测试评估
 

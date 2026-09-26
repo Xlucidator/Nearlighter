@@ -33,6 +33,9 @@ public:
      */
     Vec3f toParent(const Vec3f& local) const;
 
+    /** Projects a parent-space direction into this orthonormal basis. */
+    Vec3f toLocal(const Vec3f& parent) const;
+
 private:
     Vec3f u_;
     Vec3f v_;

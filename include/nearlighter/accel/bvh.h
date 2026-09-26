@@ -47,6 +47,16 @@ public:
     /** Returns the cached union of every leaf's bounds. */
     const AABB& getBoundingBox() const override { return bounds_; }
 
+    /**
+     * Leaf Object Collection
+     *
+     * Allocates an object-reference array for scene inspection.
+     * - Includes one entry per leaf, preserving repeated object references.
+     * - Uses left-to-right tree order, not the original input order.
+     * - Keeps nested aggregates and instances intact.
+     */
+    std::vector<std::shared_ptr<const Intersectable>> collectObjects() const;
+
 private:
     struct Node;
 

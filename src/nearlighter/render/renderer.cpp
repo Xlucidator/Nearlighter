@@ -1,151 +1,80 @@
 #include <nearlighter/render/renderer.h>
 
-#include <nearlighter/accel/bvh.h>
-#include <nearlighter/base/interval.h>
-#include <nearlighter/material/material.h>
-#include <nearlighter/sampling/pdf.h>
-#include <nearlighter/sampling/sampler.h>
+#include <nearlighter/render/render_context.h>
 #include <nearlighter/scene/scene.h>
 
-#include <memory>
 #include <stdexcept>
 #include <utility>
 
-
-Renderer::Renderer(RenderSettings settings) : settings_(settings) {
-    if (settings.image_width <= 0 || settings.image_height <= 0) {
+Renderer::Renderer(RenderSettings settings, RenderOptions options)
+    : settings_(settings), options_(options) {
+    if (settings_.image_width <= 0 || settings_.image_height <= 0) {
         throw std::invalid_argument("Render image dimensions must be positive");
     }
-    if (settings.samples_per_pixel <= 0) {
+    if (settings_.samples_per_pixel <= 0) {
         throw std::invalid_argument("Render samples per pixel must be positive");
     }
-    if (settings.max_depth <= 0) {
-        throw std::invalid_argument("Render maximum path depth must be positive");
+    if (settings_.max_depth <= 0) {
+        throw std::invalid_argument(
+            "Render maximum path depth must be positive");
+    }
+    if (options_.path.max_depth < 0 ||
+        options_.path.russian_roulette_start_depth < 0) {
+        throw std::invalid_argument(
+            "Path integrator depth settings must not be negative");
     }
 }
 
 RenderResult Renderer::render(
     const Scene& scene,
-    RenderProgressCallback progress_callback
-) const {
-    /* ----- Render preparation ----- */
+    RenderProgressCallback progress_callback) const {
     using Clock = std::chrono::steady_clock;
     const auto preparation_start = Clock::now();
-    const Camera::Prepared prepared_camera =
-        scene.camera().prepare(settings_.image_width, settings_.image_height);
-    Image image(settings_.image_width, settings_.image_height);
 
-    /* ----- World acceleration ----- */
-    // Build a render-local root without mutating the Scene's object order.
-    std::unique_ptr<BVH> bvh;
-    const Intersectable* world = &scene.world();
-    if (scene.world().size() > 1) {
-        bvh = std::make_unique<BVH>(scene.world());
-        world = bvh.get();
+    if (options_.integrator == IntegratorKind::Path) {
+        PathIntegrator::validateScene(scene);
     }
 
-    /* ----- Path integration ----- */
+    const auto camera_start = Clock::now();
+    const auto camera = scene.camera().prepare(settings_.image_width,
+                                               settings_.image_height);
+    const auto camera_end = Clock::now();
+    const LightSampler light_sampler(scene.lights());
+    const auto light_sampler_end = Clock::now();
+
+    const auto film_start = Clock::now();
+    Film film(settings_.image_width, settings_.image_height, options_.aovs);
+    const auto film_end = Clock::now();
+    std::unique_ptr<Integrator> integrator =
+        createIntegrator(settings_, options_);
+    const RenderContext context(scene, settings_, camera, light_sampler);
     const auto integration_start = Clock::now();
-    Clock::duration callback_time{};
-    for (int y = 0; y < settings_.image_height; ++y) {
-        for (int x = 0; x < settings_.image_width; ++x) {
-            Color pixel(0.0f, 0.0f, 0.0f);
 
-            // Each primary sample owns an independent deterministic sequence.
-            for (int sample_index = 0;
-                 sample_index < settings_.samples_per_pixel; ++sample_index) {
-                Sampler sampler(derivePathSeed(
-                    settings_.seed, static_cast<std::uint32_t>(x),
-                    static_cast<std::uint32_t>(y),
-                    static_cast<std::uint32_t>(sample_index)));
-                const Ray ray = prepared_camera.generateRay(x, y, sampler);
-                pixel += trace(ray, settings_.max_depth, *world,
-                               scene.samplingTargets(), scene.background(),
-                               sampler);
-            }
-
-            image.at(x, y) =
-                pixel / static_cast<float>(settings_.samples_per_pixel);
-        }
-
-        if (progress_callback) {
-            /* Keep front-end reporting and checkpoint I/O out of core timing. */
-            const auto callback_start = Clock::now();
-            const RenderProgress progress{
-                y + 1,
-                settings_.image_height,
-                callback_start - integration_start - callback_time,
-            };
-            progress_callback(progress, image);
-            callback_time += Clock::now() - callback_start;
-        }
-    }
+    const IntegrationResult integration = integrator->render(
+        context, film, std::move(progress_callback));
     const auto end_time = Clock::now();
 
-    /* ----- Stable timing and work statistics ----- */
     RenderStats stats;
+    stats.camera_preparation_time = camera_end - camera_start;
+    stats.light_sampler_preparation_time = light_sampler_end - camera_end;
+    stats.film_allocation_time = film_end - film_start;
     stats.preparation_time = integration_start - preparation_start;
-    stats.integration_time = end_time - integration_start - callback_time;
-    stats.sample_count =
-        static_cast<std::uint64_t>(settings_.image_width) *
-        static_cast<std::uint64_t>(settings_.image_height) *
-        static_cast<std::uint64_t>(settings_.samples_per_pixel);
+    stats.integration_time =
+        end_time - integration_start - integration.callback_time;
 
-    return RenderResult{std::move(image), stats};
-}
+    const IntegratorCounters& counters = integration.counters;
+    stats.sample_count = counters.sample_count;
+    stats.camera_rays = counters.camera_rays;
+    stats.continuation_rays = counters.continuation_rays;
+    stats.shadow_rays = counters.shadow_rays;
+    stats.surface_interactions = counters.surface_interactions;
+    stats.medium_interactions = counters.medium_interactions;
+    stats.path_length_sum = counters.path_length_sum;
+    stats.max_depth_terminations = counters.max_depth_terminations;
+    stats.russian_roulette_terminations =
+        counters.russian_roulette_terminations;
+    stats.invalid_pdf_terminations = counters.invalid_pdf_terminations;
+    stats.invalid_contributions = counters.invalid_contributions;
 
-Color Renderer::trace(
-    const Ray& ray, int depth, const Intersectable& world,
-    const std::vector<std::shared_ptr<const Primitive>>& sampling_targets,
-    const Color& background, Sampler& sampler) const {
-    /* ----- Path termination ----- */
-    if (depth <= 0) return Color(0.0f, 0.0f, 0.0f);
-
-    /* ----- Closest interaction ----- */
-    HitRecord record;
-    if (!world.hit(ray, Interval(0.001f, infinity), record, sampler)) {
-        return background;
-    }
-    if (!record.material) {
-        throw std::runtime_error("Renderable shape has no material");
-    }
-
-    /* ----- Surface response ----- */
-    const Color emitted = record.material->emitted(
-        ray, record, record.u, record.v, record.point);
-    ScatterRecord scatter_record;
-    if (!record.material->scatter(ray, record, scatter_record, sampler)) {
-        return emitted;
-    }
-
-    /* ----- Explicit continuation ----- */
-    // Delta-like material events provide their next ray without a PDF mixture.
-    if (scatter_record.should_skip) {
-        return emitted + scatter_record.attenuation *
-                         trace(scatter_record.skip_ray, depth - 1, world,
-                               sampling_targets, background, sampler);
-    }
-    if (!scatter_record.sampling_pdf) return emitted;
-
-    /* ----- Sampling distribution ----- */
-    // Mix explicit target sampling with the material distribution when present.
-    std::shared_ptr<PDF> sample_pdf = scatter_record.sampling_pdf;
-    if (!sampling_targets.empty()) {
-        auto target_pdf = std::make_shared<SurfacePDF>(
-            sampling_targets, record.point);
-        sample_pdf = std::make_shared<MixturePDF>(
-            target_pdf, scatter_record.sampling_pdf);
-    }
-
-    const Ray scattered(record.point, sample_pdf->generate(sampler), ray.time());
-    const float pdf_value = sample_pdf->value(scattered.direction());
-    if (pdf_value <= 0.0f) return emitted;
-
-    /* ----- Recursive estimate ----- */
-    const float scattering_pdf =
-        record.material->getScatterPDFValue(ray, record, scattered);
-    const Color incoming = trace(scattered, depth - 1, world,
-                                 sampling_targets, background, sampler);
-    return emitted + scatter_record.attenuation * scattering_pdf * incoming /
-                         pdf_value;
+    return RenderResult{std::move(film), stats};
 }

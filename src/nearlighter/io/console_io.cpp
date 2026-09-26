@@ -1,6 +1,7 @@
 #include <nearlighter/io/console_io.h>
 
 #include <nearlighter/render/renderer.h>
+#include <nearlighter/scene/scene.h>
 
 #include <iomanip>
 #include <ostream>
@@ -23,8 +24,14 @@ void ConsoleOutput::beginRender(const std::string& scene_name) {
     output_ << "Rendering '" << scene_name << "'...\n" << std::flush;
 }
 
-void ConsoleOutput::reportSceneLoad(std::chrono::duration<double> load_time) {
-    output_ << "Scene load: " << load_time.count() << " s\n" << std::flush;
+void ConsoleOutput::reportSceneLoad(std::chrono::duration<double> load_time,
+                                    const SceneBuildStats& build_stats) {
+    output_ << "Timing schema: 2\n"
+            << "Scene load: " << load_time.count() << " s\n"
+            << "  Scene assembly: " << build_stats.assembly_time.count() << " s\n"
+            << "  Acceleration build: " << build_stats.acceleration_build_time.count() << " s\n"
+            << "  Light build: " << build_stats.light_build_time.count() << " s\n"
+            << std::flush;
 }
 
 void ConsoleOutput::updateRender(const RenderProgress& progress) {
@@ -58,7 +65,25 @@ void ConsoleOutput::updateRender(const RenderProgress& progress) {
 void ConsoleOutput::finishRender(const RenderStats& stats) {
     if (show_progress_) output_ << '\n';
     output_ << "Render prepare: " << stats.preparation_time.count() << " s\n"
+            << "  Camera prepare: "
+            << stats.camera_preparation_time.count() << " s\n"
+            << "  Light sampler prepare: "
+            << stats.light_sampler_preparation_time.count() << " s\n"
+            << "  Film allocation: "
+            << stats.film_allocation_time.count() << " s\n"
             << "Render: " << stats.integration_time.count() << " s, "
             << stats.samplesPerSecond() << " samples/s\n"
+            << "Rays: camera=" << stats.camera_rays
+            << ", continuation=" << stats.continuation_rays
+            << ", shadow=" << stats.shadow_rays << '\n'
+            << "Interactions: surface=" << stats.surface_interactions
+            << ", medium=" << stats.medium_interactions
+            << ", mean path length=" << stats.meanPathLength() << '\n'
+            << "Terminations: max-depth="
+            << stats.max_depth_terminations
+            << ", roulette=" << stats.russian_roulette_terminations
+            << ", invalid-pdf=" << stats.invalid_pdf_terminations
+            << ", invalid-contribution=" << stats.invalid_contributions
+            << '\n'
             << std::flush;
 }

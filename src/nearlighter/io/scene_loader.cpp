@@ -5,7 +5,7 @@
 #include <nearlighter/io/image_io.h>
 #include <nearlighter/io/mesh_io.h>
 #include <nearlighter/material/dielectric.h>
-#include <nearlighter/material/diffuse_light.h>
+#include <nearlighter/material/emissive.h>
 #include <nearlighter/material/lambertian.h>
 #include <nearlighter/material/metal.h>
 #include <nearlighter/math/math.h>
@@ -211,10 +211,10 @@ void SceneLoader::loadMaterials(LoadContext& context) const {
             if (has_texture) {
                 const std::string texture_id =
                     data.at("texture").get<std::string>();
-                material = std::make_shared<DiffuseLight>(
+                material = std::make_shared<Emissive>(
                     findTexture(context, texture_id));
             } else {
-                material = std::make_shared<DiffuseLight>(readVector(
+                material = std::make_shared<Emissive>(readVector(
                     data.at("radiance").get<std::array<float, 3>>()));
             }
         } else {

@@ -1,6 +1,7 @@
 #ifndef NEARLIGHTER_SAMPLING_SAMPLER_H
 #define NEARLIGHTER_SAMPLING_SAMPLER_H
 
+#include <nearlighter/math/vec2.h>
 #include <nearlighter/math/vec3.h>
 
 #include <cstdint>
@@ -43,6 +44,8 @@ public:
      */
     float next1D();
     float next1D(float min, float max);
+    /** Returns two consecutive independent samples in `[0, 1)`. */
+    Vec2f next2D();
     int nextInt(int min, int max);
     /** @} */
 

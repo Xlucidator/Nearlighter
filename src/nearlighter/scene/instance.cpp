@@ -41,6 +41,11 @@ bool Instance::hit(const Ray& ray, Interval ray_t, HitRecord& record,
     HitRecord local_record;
     if (!source_->hit(local_ray, ray_t, local_record, sampler)) return false;
 
+    /* ----- Parent-Space Position ----- */
+    record = local_record;
+    record.point = local_to_parent_.applyPoint(local_record.point);
+    if (local_record.kind == InteractionKind::Medium) return true;
+
     /* ----- Source Orientation Recovery ----- */
     const Vec3f local_outward_geometric =
         local_record.front_face ? local_record.geometric_normal
@@ -61,8 +66,6 @@ bool Instance::hit(const Ray& ray, Interval ray_t, HitRecord& record,
         outward_shading = -outward_shading;
     }
 
-    record = local_record;
-    record.point = local_to_parent_.applyPoint(local_record.point);
     record.setFaceNormals(ray, outward_geometric, outward_shading);
     return true;
 }

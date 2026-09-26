@@ -1,5 +1,7 @@
 #include <nearlighter/material/isotropic.h>
 
+#include <nearlighter/scene/intersectable.h>
+
 #include <nearlighter/sampling/pdf.h>
 #include <nearlighter/texture/solid_texture.h>
 

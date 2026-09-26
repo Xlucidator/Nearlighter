@@ -107,12 +107,20 @@ set(CORE_SOURCES
 
     # ----- Rendering -----
     src/nearlighter/render/camera.cpp
+    src/nearlighter/render/film.cpp
+    src/nearlighter/render/integrator.cpp
+    src/nearlighter/render/legacy_path_integrator.cpp
+    src/nearlighter/light/area_light.cpp
+    src/nearlighter/light/environment_light.cpp
+    src/nearlighter/light/light_sampler.cpp
+    src/nearlighter/render/path_integrator.cpp
     src/nearlighter/render/renderer.cpp
     src/nearlighter/sampling/sampler.cpp
     src/nearlighter/scene/instance.cpp
     src/nearlighter/scene/linear_aggregate.cpp
     src/nearlighter/scene/primitive.cpp
     src/nearlighter/scene/scene.cpp
+    src/nearlighter/scene/surface_interaction.cpp
 
     # ----- Geometry -----
     src/nearlighter/geometry/aabb.cpp
@@ -125,8 +133,9 @@ set(CORE_SOURCES
     src/nearlighter/shape/triangle.cpp
 
     # ----- Material -----
+    src/nearlighter/material/material.cpp
     src/nearlighter/material/dielectric.cpp
-    src/nearlighter/material/diffuse_light.cpp
+    src/nearlighter/material/emissive.cpp
     src/nearlighter/material/isotropic.cpp
     src/nearlighter/material/lambertian.cpp
     src/nearlighter/material/metal.cpp
@@ -246,6 +255,71 @@ if(BUILD_TESTING)
         NAME nearlighter.geometry
         COMMAND nearlighter_geometry_tests
     )
+
+    # --- Surface Interaction Tests ---
+    add_executable(nearlighter_interaction_tests
+        tests/interaction_tests.cpp
+    )
+    target_link_libraries(nearlighter_interaction_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(
+        nearlighter_interaction_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_interaction_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
+    add_test(
+        NAME nearlighter.interaction
+        COMMAND nearlighter_interaction_tests
+    )
+
+    # --- BSDF Tests ---
+    add_executable(nearlighter_bsdf_tests
+        tests/bsdf_tests.cpp
+    )
+    target_link_libraries(nearlighter_bsdf_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(
+        nearlighter_bsdf_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_bsdf_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
+    add_test(
+        NAME nearlighter.bsdf
+        COMMAND nearlighter_bsdf_tests
+    )
+
+    # --- Render Core Tests ---
+    add_executable(nearlighter_render_core_tests
+        tests/render_core_tests.cpp
+    )
+    target_link_libraries(nearlighter_render_core_tests PRIVATE
+        nearlighter_core
+    )
+    target_apply_build_options(
+        nearlighter_render_core_tests ${NEARLIGHTER_BUILD_OPTIONS}
+    )
+    target_set_output_directory(
+        nearlighter_render_core_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
+    )
+    add_test(
+        NAME nearlighter.render_core
+        COMMAND nearlighter_render_core_tests
+    )
+
+    # --- Assembled Scene Tests ---
+    add_executable(nearlighter_scene_tests tests/scene_tests.cpp)
+    target_link_libraries(nearlighter_scene_tests PRIVATE nearlighter_core)
+    target_apply_build_options(nearlighter_scene_tests ${NEARLIGHTER_BUILD_OPTIONS})
+    target_set_output_directory(nearlighter_scene_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}")
+    add_test(NAME nearlighter.scene COMMAND nearlighter_scene_tests)
 
     # --- Accel BVH Tests ---
     add_executable(nearlighter_bvh_tests

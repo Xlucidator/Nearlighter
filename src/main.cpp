@@ -31,6 +31,9 @@ struct CliOptions {
     std::optional<int> samples_per_pixel;
     std::optional<int> max_depth;
     std::optional<std::uint64_t> seed;
+    IntegratorKind integrator = IntegratorKind::Legacy;
+    DirectLightingMode direct_lighting = DirectLightingMode::MIS;
+    int russian_roulette_start_depth = 0;
 
     // Output and reporting behavior.
     std::filesystem::path output_path = "out.ppm";
@@ -93,6 +96,16 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     program.add_argument("--seed")
         .help("override the deterministic render seed")
         .scan<'u', std::uint64_t>();
+    program.add_argument("--integrator")
+        .help("select legacy or path integration")
+        .default_value(std::string("legacy"));
+    program.add_argument("--direct-lighting")
+        .help("select bsdf, light, or mis direct-light strategy for path mode")
+        .default_value(std::string("mis"));
+    program.add_argument("--rr-start-depth")
+        .help("enable Russian roulette at this scattering depth; zero disables it")
+        .default_value(0)
+        .scan<'i', int>();
     program.add_argument("--no-progress")
         .help("disable terminal render progress")
         .flag();
@@ -116,6 +129,30 @@ CliOptions parseCommandLine(int argc, char* argv[]) {
     options.samples_per_pixel = program.present<int>("--spp");
     options.max_depth = program.present<int>("--max-depth");
     options.seed = program.present<std::uint64_t>("--seed");
+    const std::string integrator = program.get<std::string>("--integrator");
+    if (integrator == "legacy") {
+        options.integrator = IntegratorKind::Legacy;
+    } else if (integrator == "path") {
+        options.integrator = IntegratorKind::Path;
+    } else {
+        throw std::invalid_argument(
+            "--integrator must be either 'legacy' or 'path'");
+    }
+
+    const std::string direct_lighting =
+        program.get<std::string>("--direct-lighting");
+    if (direct_lighting == "bsdf") {
+        options.direct_lighting = DirectLightingMode::BSDFOnly;
+    } else if (direct_lighting == "light") {
+        options.direct_lighting = DirectLightingMode::LightOnly;
+    } else if (direct_lighting == "mis") {
+        options.direct_lighting = DirectLightingMode::MIS;
+    } else {
+        throw std::invalid_argument(
+            "--direct-lighting must be 'bsdf', 'light', or 'mis'");
+    }
+    options.russian_roulette_start_depth =
+        program.get<int>("--rr-start-depth");
     options.show_progress = !program.get<bool>("--no-progress");
     options.flush_interval_seconds =
         program.get<double>("--flush-interval");
@@ -141,6 +178,18 @@ RenderSettings resolveRenderSettings(
     return settings;
 }
 
+/** Builds explicit integrator configuration from command-line policy. */
+RenderOptions resolveRenderOptions(const RenderSettings& settings,
+                                   const CliOptions& options) {
+    RenderOptions render_options;
+    render_options.integrator = options.integrator;
+    render_options.path.max_depth = settings.max_depth;
+    render_options.path.russian_roulette_start_depth =
+        options.russian_roulette_start_depth;
+    render_options.path.direct_lighting = options.direct_lighting;
+    return render_options;
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -156,8 +205,10 @@ int main(int argc, char* argv[]) {
         const auto scene_load_time = Clock::now() - scene_load_start;
 
         /* ===== Effective render configuration ===== */
-        Renderer renderer(resolveRenderSettings(
-            scene.defaultRenderSettings(), options));
+        const RenderSettings render_settings = resolveRenderSettings(
+            scene.defaultRenderSettings(), options);
+        Renderer renderer(render_settings,
+                          resolveRenderOptions(render_settings, options));
         const RenderSettings& effective_settings = renderer.settings();
 
         /* ===== Output front ends ===== */
@@ -169,21 +220,22 @@ int main(int argc, char* argv[]) {
                                output_options);
         ConsoleOutput console_output(std::clog, options.show_progress);
         console_output.beginRender(scene.name());
-        console_output.reportSceneLoad(scene_load_time);
+        console_output.reportSceneLoad(scene_load_time, scene.buildStats());
 
         /* ===== Core integration ===== */
         RenderResult result = renderer.render(
             scene,
-            [&](const RenderProgress& progress, const Image& image) {
-                image_output.writeRow(image, progress.completed_rows - 1);
+            [&](const RenderProgress& progress, const Film& film) {
+                image_output.writeRow(film.beauty(),
+                                      progress.completed_rows - 1);
                 console_output.updateRender(progress);
             });
 
         /* ===== Final output publication ===== */
-        image_output.write(result.image);
+        image_output.write(result.image());
         image_output.finish();
         if (options.linear_output_path) {
-            PFMWriter(*options.linear_output_path).write(result.image);
+            PFMWriter(*options.linear_output_path).write(result.image());
         }
         console_output.finishRender(result.stats);
         return 0;

@@ -19,6 +19,7 @@
 #include <nearlighter/math/constants.h>
 #include <nearlighter/math/mat4.h>
 #include <nearlighter/math/math.h>
+#include <nearlighter/math/vec2.h>
 #include <nearlighter/math/vec3.h>
 #include <nearlighter/math/vec4.h>
 
@@ -26,6 +27,7 @@
 #include <nearlighter/accel/bvh.h>
 #include <nearlighter/geometry/aabb.h>
 #include <nearlighter/geometry/onb.h>
+#include <nearlighter/geometry/shading_frame.h>
 #include <nearlighter/geometry/transform.h>
 #include <nearlighter/shape/all.h>
 
@@ -40,6 +42,13 @@
 
 // Scene and Rendering
 #include <nearlighter/render/camera.h>
+#include <nearlighter/render/film.h>
+#include <nearlighter/render/integrator.h>
+#include <nearlighter/light/light.h>
+#include <nearlighter/light/area_light.h>
+#include <nearlighter/light/environment_light.h>
+#include <nearlighter/light/light_sampler.h>
+#include <nearlighter/render/render_context.h>
 #include <nearlighter/render/render_settings.h>
 #include <nearlighter/render/renderer.h>
 #include <nearlighter/scene/instance.h>
@@ -47,5 +56,6 @@
 #include <nearlighter/scene/linear_aggregate.h>
 #include <nearlighter/scene/primitive.h>
 #include <nearlighter/scene/scene.h>
+#include <nearlighter/scene/surface_interaction.h>
 
 #endif  // NEARLIGHTER_CORE_H

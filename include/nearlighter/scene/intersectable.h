@@ -6,7 +6,14 @@
 #include <nearlighter/geometry/aabb.h>
 
 class Material;
+class Primitive;
 class Sampler;
+
+/** Distinguishes physical surface hits from stochastic medium events. */
+enum class InteractionKind {
+    Surface,
+    Medium,
+};
 
 /**
  * Render Interaction
@@ -25,10 +32,12 @@ struct HitRecord {
     Vec3f geometric_normal;
     Vec3f normal;
     const Material* material = nullptr;
+    const Primitive* primitive = nullptr;
     float t = 0.0f;
     float u = 0.0f;
     float v = 0.0f;
     bool front_face = false;
+    InteractionKind kind = InteractionKind::Surface;
 
     /**
      * Surface Normal Orientation

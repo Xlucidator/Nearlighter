@@ -18,6 +18,10 @@ Primitive::Primitive(std::shared_ptr<const Shape> shape,
     bounds_ = local_to_parent_.applyBounds(shape_->getBoundingBox());
 }
 
+Primitive Primitive::transformed(const Transform& parent_to_world) const {
+    return Primitive(shape_, material_, parent_to_world * local_to_parent_);
+}
+
 /**
  * @par Implementation
  * Performs the coordinate-space round trip required by `Shape::hit()`:
@@ -71,6 +75,8 @@ bool Primitive::hit(const Ray& ray, Interval ray_t, HitRecord& record,
     record.u = local_hit.u;
     record.v = local_hit.v;
     record.material = material_.get();
+    record.primitive = this;
+    record.kind = InteractionKind::Surface;
     record.setFaceNormals(ray, outward_geometric, outward_shading);
     return true;
 }

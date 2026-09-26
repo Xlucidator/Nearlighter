@@ -96,6 +96,8 @@ bool ConstantMedium::hit(const Ray& ray, Interval ray_t, HitRecord& record,
     record.u = 0.0f;
     record.v = 0.0f;
     record.material = phase_function_.get();
+    record.primitive = nullptr;
+    record.kind = InteractionKind::Medium;
     return true;
 }
 

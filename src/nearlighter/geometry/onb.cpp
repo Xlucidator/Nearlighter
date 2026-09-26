@@ -68,3 +68,7 @@ ONB::ONB(const Vec3f& w_direction) {
 Vec3f ONB::toParent(const Vec3f& local) const {
     return local.x() * u_ + local.y() * v_ + local.z() * w_;
 }
+
+Vec3f ONB::toLocal(const Vec3f& parent) const {
+    return Vec3f(dot(parent, u_), dot(parent, v_), dot(parent, w_));
+}

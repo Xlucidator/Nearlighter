@@ -44,6 +44,7 @@ STATS_PATTERN = re.compile(
 )
 SCENE_LOAD_PATTERN = re.compile(r"Scene load:\s+([0-9.eE+-]+)\s+s")
 PREPARATION_PATTERN = re.compile(r"Render prepare:\s+([0-9.eE+-]+)\s+s")
+TIMING_SCHEMA_PATTERN = re.compile(r"Timing schema:\s+(\d+)")
 
 
 # ==================================================
@@ -92,6 +93,7 @@ def parse_render_stats(output: str, settings: Dict[str, int]) -> Dict[str, Any]:
     matches = STATS_PATTERN.findall(output)
     scene_load_matches = SCENE_LOAD_PATTERN.findall(output)
     preparation_matches = PREPARATION_PATTERN.findall(output)
+    timing_schema_matches = TIMING_SCHEMA_PATTERN.findall(output)
     if not matches or not scene_load_matches or not preparation_matches:
         raise EvaluationError("Nearlighter did not report parseable render statistics")
     scene_load_seconds = float(scene_load_matches[-1])
@@ -108,6 +110,7 @@ def parse_render_stats(output: str, settings: Dict[str, int]) -> Dict[str, Any]:
         * settings["samples_per_pixel"]
     )
     return {
+        "timing_schema_version": int(timing_schema_matches[-1]) if timing_schema_matches else 1,
         "scene_load_seconds": scene_load_seconds,
         "preparation_seconds": preparation_seconds,
         "integration_seconds": integration_seconds,
@@ -338,6 +341,7 @@ def evaluate_case(
             "maximum": max(values),
         }
     stats = {
+        "timing_schema_version": measurements[0]["timing_schema_version"],
         "repetitions": repetitions,
         "scene_load_seconds": aggregates["scene_load_seconds"]["median"],
         "preparation_seconds": aggregates["preparation_seconds"]["median"],

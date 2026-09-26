@@ -12,7 +12,7 @@ struct RenderSettings {
     // Exact number of independent primary paths evaluated for every pixel.
     int samples_per_pixel = 16;
 
-    // Maximum number of interactions followed along one path.
+    // Transitional scene default used by legacy and unresolved path options.
     int max_depth = 8;
 
     // Root value used to derive every deterministic per-path sequence.

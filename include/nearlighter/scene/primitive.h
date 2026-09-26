@@ -54,6 +54,9 @@ public:
     const Transform& localToParent() const { return local_to_parent_; }
     /** @} */
 
+    /** New placement sharing Shape/Material, with parent_to_world applied last. */
+    Primitive transformed(const Transform& parent_to_world) const;
+
 private:
     std::shared_ptr<const Shape> shape_;
     std::shared_ptr<const Material> material_;

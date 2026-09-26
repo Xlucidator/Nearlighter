@@ -7,6 +7,7 @@
 
 struct RenderProgress;
 struct RenderStats;
+struct SceneBuildStats;
 
 /** Render status output for a text console */
 class ConsoleOutput {
@@ -17,8 +18,9 @@ public:
     /** Starts a render status section */
     void beginRender(const std::string& scene_name);
 
-    /** Reports JSON, external-resource, and Mesh preparation time. */
-    void reportSceneLoad(std::chrono::duration<double> load_time);
+    /** Reports load time and its Scene assembly/build components. */
+    void reportSceneLoad(std::chrono::duration<double> load_time,
+                         const SceneBuildStats& build_stats);
 
     /** Publishes a rate-limited progress update */
     void updateRender(const RenderProgress& progress);

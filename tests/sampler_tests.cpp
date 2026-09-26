@@ -54,6 +54,18 @@ void testSampleRanges(nearlighter::test::Context& context) {
                        "single-value integer range should return its bound");
 }
 
+void testTwoDimensionalSamples(nearlighter::test::Context& context) {
+    Sampler paired(73);
+    Sampler scalar(73);
+    const Vec2f sample = paired.next2D();
+    const float expected_x = scalar.next1D();
+    const float expected_y = scalar.next1D();
+    context.expectNear(sample.x(), expected_x, 0.0f,
+                       "2D sample x should consume the first scalar");
+    context.expectNear(sample.y(), expected_y, 0.0f,
+                       "2D sample y should consume the second scalar");
+}
+
 }  // namespace
 
 int main() {
@@ -61,5 +73,6 @@ int main() {
     testSequenceReproducibility(context);
     testPathSeedDerivation(context);
     testSampleRanges(context);
+    testTwoDimensionalSamples(context);
     return context.finish("sampler tests");
 }

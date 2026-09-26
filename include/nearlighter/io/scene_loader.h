@@ -21,8 +21,8 @@ class Transform;
  * JSON Scene Loader
  *
  * Loads schema-versioned scene descriptions into runtime Scene objects.
- * Named references are resolved within one file; relative resource paths use
- * the scene file's directory.
+ * - named references are resolved within one file.
+ * - relative resource paths use the scene file's directory.
  */
 class SceneLoader {
 public:
@@ -34,8 +34,7 @@ public:
      *
      * @param scene_path Source file used as the base for relative paths.
      * @return A complete scene ready for rendering.
-     * @throws std::runtime_error if the file, schema, data, or a reference is
-     * invalid.
+     * @throws std::runtime_error if the file, schema, data, or a reference is invalid.
      */
     Scene load(const std::filesystem::path& scene_path) const;
 

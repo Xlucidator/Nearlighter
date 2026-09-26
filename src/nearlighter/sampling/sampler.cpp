@@ -71,6 +71,12 @@ float Sampler::next1D(float min, float max) {
     return min + (max - min) * next1D();
 }
 
+Vec2f Sampler::next2D() {
+    const float x = next1D();
+    const float y = next1D();
+    return Vec2f(x, y);
+}
+
 /**
  * @par Implementation
  * Rejection removes the incomplete leading remainder of the uint32_t range

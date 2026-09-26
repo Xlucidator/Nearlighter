@@ -26,12 +26,20 @@
 - Preserve the current project style where practical, but improve clarity, correctness, and C++ hygiene when touching code.
 - Keep changes scoped. Do not mix broad refactors with feature work unless the refactor is necessary for that feature.
 
+## Planning Conventions
+
+- Keep `ref/plans/` for agreed stage-level static plans. Once implementation begins, do not rewrite them merely to record progress.
+- Include the stage background, objectives, scope and non-goals, current gaps, architecture and naming decisions, rationale and tradeoffs, phased work, dependencies, risks, tests, and acceptance criteria.
+- Before implementation, read the static plan completely and use Plan mode for the fine-grained dynamic plan. Do not copy execution status back into the static plan.
+- Store durable implementation status, deviations, and verification records under `ref/plans/status/`. Material design changes require user alignment and an explicit revision or addendum.
+
 ## Codebase Conventions
 
 - Headers should include dependencies required by value members, bases, inline code, and public contracts. Forward declare only when a declaration, pointer, or reference is sufficient.
 - Keep umbrella headers out of low-level module headers. `core.h` and `io.h` expose their modules; `nearlighter.h` exposes the complete SDK for external convenience.
 - Keep meaningful parameter names in public declarations, including parameters unused by inline default implementations. Use C++17 `[[maybe_unused]]` when necessary; do not remove names merely to silence compiler warnings. Out-of-line definitions may omit genuinely unused names when the public declaration already documents them.
 - Keep established technical acronyms uppercase in identifiers, such as `AABB`, `BVH`, `PDF`, `PPM`, and `RGB`.
+- Prefer names that express a map's domain role. Use `<key>_to_<value>` when the lookup relationship needs clarification; keep natural registry or index names when context already makes the key clear.
 - Keep third-party code in `thirdparty/` submodules and expose it through CMake targets.
 - Prefer target-based CMake (`target_sources`, `target_include_directories`, `target_link_libraries`) over global include/link settings.
 - Avoid global mutable state in new rendering code, especially for random generators and output/gamma configuration.
@@ -48,6 +56,7 @@
 
 - Comment non-obvious rendering, geometry, math, ownership, numerical, coordinate-space, and error-handling logic generously.
 - Explain intent, rationale, assumptions, constraints, and invariants; never restate code. Keep comments current.
+- Read `ref/comment_style.md` for detailed guidance and examples when dealing comments.
 
 ### Comment Hierarchy
 

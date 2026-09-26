@@ -1,98 +1,78 @@
 #ifndef NEARLIGHTER_RENDER_RENDERER_H
 #define NEARLIGHTER_RENDER_RENDERER_H
 
-#include <nearlighter/base/image.h>
-#include <nearlighter/render/render_settings.h>
+#include <nearlighter/render/integrator.h>
 
 #include <chrono>
 #include <cstdint>
-#include <functional>
-#include <memory>
-#include <vector>
 
-class Ray;
-class Intersectable;
-class Primitive;
-class Sampler;
 class Scene;
 
-// ==================================================
-// Render Lifecycle Data
-//
-// Renderer::render()
-//   +-- emits RenderProgress while integrating
-//   `-- returns RenderResult
-//         +-- Image
-//         `-- RenderStats
-// ==================================================
-
-/** Final preparation and integration metrics. */
+/** Preparation, integration, and aggregate ray-work metrics. */
 struct RenderStats {
-    /** Camera and top-level acceleration preparation time. */
+    std::chrono::duration<double> camera_preparation_time{};
+    std::chrono::duration<double> light_sampler_preparation_time{};
+    std::chrono::duration<double> film_allocation_time{};
+
+    /** Per-render setup only; Scene construction is measured separately. */
     std::chrono::duration<double> preparation_time{};
-
-    /** Core path-integration time, excluding progress callbacks. */
     std::chrono::duration<double> integration_time{};
-    std::uint64_t sample_count = 0;
 
-    /** Primary sample throughput */
+    std::uint64_t sample_count = 0;
+    std::uint64_t camera_rays = 0;
+    std::uint64_t continuation_rays = 0;
+    std::uint64_t shadow_rays = 0;
+    std::uint64_t surface_interactions = 0;
+    std::uint64_t medium_interactions = 0;
+    std::uint64_t path_length_sum = 0;
+    std::uint64_t max_depth_terminations = 0;
+    std::uint64_t russian_roulette_terminations = 0;
+    std::uint64_t invalid_pdf_terminations = 0;
+    std::uint64_t invalid_contributions = 0;
+
     double samplesPerSecond() const {
         if (integration_time.count() <= 0.0) return 0.0;
         return static_cast<double>(sample_count) / integration_time.count();
     }
+
+    double meanPathLength() const {
+        if (sample_count == 0) return 0.0;
+        return static_cast<double>(path_length_sum) /
+               static_cast<double>(sample_count);
+    }
 };
 
-/** Completed image and integration metrics */
+/** Completed in-memory Film and render metrics. */
 struct RenderResult {
-    Image image;
+    Film film;
     RenderStats stats;
-};
 
-/** Row-level integration state */
-struct RenderProgress {
-    int completed_rows = 0;
-    int total_rows = 0;
-    std::chrono::duration<double> integration_time{};
+    /** Convenience view of the Film beauty layer. */
+    const Image& image() const { return film.beauty(); }
 };
 
 /**
- * Receives row-level progress and a read-only view of the partial image.
+ * Prepares one render job, allocates Film, and dispatches an Integrator.
  *
- * Rows before completed_rows contain final values for this render. The Image
- * reference is valid only for the duration of the callback invocation.
+ * Renderer owns job configuration but contains no light-transport estimator.
+ * Reuses the assembled Scene world and lights across render jobs.
  */
-using RenderProgressCallback =
-    std::function<void(const RenderProgress&, const Image&)>;
-
-/** Integrates a Scene into a linear RGB Image without performing file I/O. */
 class Renderer {
 public:
-    explicit Renderer(RenderSettings settings = {});
+    explicit Renderer(RenderSettings settings = {},
+                      RenderOptions options = {});
 
-    /** Returns the effective settings owned by this Renderer. */
     const RenderSettings& settings() const { return settings_; }
+    const RenderOptions& options() const { return options_; }
 
-    /**
-     * Renders a Scene using deterministic per-pixel sample sequences.
-     *
-     * BVH construction and camera preparation occur before the reported core
-     * integration time, matching the previous command-line timing boundary.
-     * When supplied, progress_callback runs once after every completed row.
-     * Its execution time is excluded from the returned render statistics.
-     * Exceptions raised by the callback propagate to the caller.
-     */
+    /** Renders deterministic primary samples into a typed Film. */
     RenderResult render(
         const Scene& scene,
-        RenderProgressCallback progress_callback = {}
-    ) const;
+        RenderProgressCallback progress_callback = {}) const;
 
 private:
-    Color trace(
-        const Ray& ray, int depth, const Intersectable& world,
-        const std::vector<std::shared_ptr<const Primitive>>& sampling_targets,
-        const Color& background, Sampler& sampler) const;
-
     RenderSettings settings_;
+    RenderOptions options_;
 };
 
 #endif  // NEARLIGHTER_RENDER_RENDERER_H

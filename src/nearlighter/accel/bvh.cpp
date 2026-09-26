@@ -12,6 +12,16 @@ struct BVH::Node {
     std::unique_ptr<Node> left;
     std::unique_ptr<Node> right;
 
+    void collectLeafObjects(
+        std::vector<std::shared_ptr<const Intersectable>>& objects) const {
+        if (object) {
+            objects.push_back(object);
+            return;
+        }
+        left->collectLeafObjects(objects);
+        right->collectLeafObjects(objects);
+    }
+
     /** Builds one binary subtree over the non-empty half-open object span. */
     Node(std::vector<std::shared_ptr<const Intersectable>>& objects,
          std::size_t begin, std::size_t end) {
@@ -82,6 +92,12 @@ BVH::BVH(std::vector<std::shared_ptr<const Intersectable>> objects) {
 }
 
 BVH::~BVH() = default;
+
+std::vector<std::shared_ptr<const Intersectable>> BVH::collectObjects() const {
+    std::vector<std::shared_ptr<const Intersectable>> result;
+    root_->collectLeafObjects(result);
+    return result;
+}
 BVH::BVH(BVH&&) noexcept = default;
 BVH& BVH::operator=(BVH&&) noexcept = default;
 

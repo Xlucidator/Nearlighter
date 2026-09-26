@@ -147,11 +147,20 @@ evaluation 当前没有自动通过阈值。`completed` 只表示构建、CTest�
 
 ### 性能参数
 
-- `scene_load_seconds`：JSON、纹理和 Mesh 读取与 Scene 构造时间。
-- `preparation_seconds`：相机预计算与 Renderer 顶层 BVH 构建时间。
+- `timing_schema_version`：当前为 `2`，表示场景加速结构和灯光已在 Scene 构造时准备。
+  旧日志未声明版本时记为 `1`；比较历史分阶段耗时前必须核对这个字段。
+- `scene_load_seconds`：JSON、纹理和 Mesh 读取，加上 Scene 的递归检查、灯面放置、
+  最终 BVH 和光源集合构建时间。CLI 另列 Scene assembly、Acceleration build、Light build；
+  混合子树移出发光面后重组局部 BVH 的时间计入 Scene assembly。
+- `preparation_seconds`：本次兼容性检查、相机像素几何、光源选择器、Film 和积分器
+  对象的总准备时间。复用同一 Scene 不会再次构建 world 或发现光源。
 - `integration_seconds`：Renderer 核心积分时间；不包括准备、进度回调和图像文件 I/O。
 - `sample_count`：`width × height × samples_per_pixel`，即 primary sample 总数。
 - `samples_per_second`：`sample_count / integration_seconds`；越高越好，是当前最适合比较积分性能的参数。
+- CLI 另报告 camera/continuation/shadow rays、surface/medium interactions、
+  mean path length，以及 max-depth、RR、invalid-PDF 和 non-finite contribution
+  终止计数。场景构建移入 load 后，不能单独把 preparation 的下降解释为总耗时改善；
+  完整准备成本需要合看 scene_load 与 preparation。
 
 case 设置 `repetitions` 后，报告会保存每次测量及 minimum、median、maximum，顶层耗时字段取 median。性能必须在同一机器、同一 configuration、同一 case 和相近系统负载下比较；不要用一次极短的 `quick` 时间判断小幅变化。
 

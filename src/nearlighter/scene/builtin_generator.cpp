@@ -2,7 +2,7 @@
 
 #include <nearlighter/accel/bvh.h>
 #include <nearlighter/material/dielectric.h>
-#include <nearlighter/material/diffuse_light.h>
+#include <nearlighter/material/emissive.h>
 #include <nearlighter/material/lambertian.h>
 #include <nearlighter/material/metal.h>
 #include <nearlighter/math/math.h>
@@ -113,7 +113,8 @@ LinearAggregate generateFinalScene(
     LinearAggregate world;
     Sampler sampler(config.seed);
 
-    /* ----- Ground ----- */
+    /* ----- Ground Box Grid ----- */
+    // Uneven green floor: a 20-by-20 grid at the default configuration.
     auto ground_material =
         std::make_shared<Lambertian>(Color(0.48f, 0.83f, 0.53f));
     LinearAggregate ground_boxes;
@@ -132,28 +133,35 @@ LinearAggregate generateFinalScene(
     }
     world.add(std::make_shared<BVH>(ground_boxes));
 
-    /* ----- Main Objects ----- */
+    /* ----- Lighting and Surface Objects ----- */
+    // Quad ceiling light: +X and +Z edges give a downward-facing emitting side
     world.add(makePrimitive(
         std::make_shared<Quad>(
             Point3f(123.0f, 554.0f, 147.0f),
             Vec3f(300.0f, 0.0f, 0.0f),
             Vec3f(0.0f, 0.0f, 265.0f)),
-        std::make_shared<DiffuseLight>(Color(7.0f, 7.0f, 7.0f))));
+        std::make_shared<Emissive>(Color(7.0f, 7.0f, 7.0f))));
 
+    // Upper-left brown sphere: motion along +X produces shutter blur.
     const Point3f moving_start(400.0f, 400.0f, 200.0f);
     world.add(makePrimitive(
         std::make_shared<Sphere>(
             moving_start, moving_start + Vec3f(30.0f, 0.0f, 0.0f),
             50.0f),
         std::make_shared<Lambertian>(Color(0.7f, 0.3f, 0.1f))));
+
+    // Small dielectric sphere near the bottom center.
     world.add(makePrimitive(
         std::make_shared<Sphere>(Point3f(260.0f, 150.0f, 45.0f), 50.0f),
         std::make_shared<Dielectric>(1.5f)));
+
+    // Gray sphere at the lower right: rough metal with a broad reflection.
     world.add(makePrimitive(
         std::make_shared<Sphere>(Point3f(0.0f, 150.0f, 145.0f), 50.0f),
         std::make_shared<Metal>(Color(0.8f, 0.8f, 0.9f), 1.0f)));
 
-    /* ----- Participating Media ----- */
+    /* ----- Bounded Media ----- */
+    // Dielectric sphere in the lower-left forground with dark blue medium inside.
     auto glass = std::make_shared<Dielectric>(1.5f);
     auto medium_boundary = makePrimitive(
         std::make_shared<Sphere>(Point3f(360.0f, 160.0f, 45.0f), 70.0f),
@@ -162,6 +170,7 @@ LinearAggregate generateFinalScene(
     world.add(std::make_shared<ConstantMedium>(
         medium_boundary, 0.2f, Color(0.2f, 0.4f, 0.9f)));
 
+    // Sparse white haze surrounds the camera and the entire visible scene.
     medium_boundary = makePrimitive(
         std::make_shared<Sphere>(Point3f(0.0f, 0.0f, 0.0f), 5000.0f),
         glass);
@@ -169,15 +178,19 @@ LinearAggregate generateFinalScene(
         medium_boundary, 0.0001f, Color(1.0f, 1.0f, 1.0f)));
 
     /* ----- Textured Spheres ----- */
+    // Earth sphere at the left: opaque diffuse surface with an image texture.
     world.add(makePrimitive(
         std::make_shared<Sphere>(Point3f(400.0f, 200.0f, 400.0f), 100.0f),
         std::make_shared<Lambertian>(earth_texture)));
+
+    // Large sphere near the image center: procedural marble on a diffuse surface.
     world.add(makePrimitive(
         std::make_shared<Sphere>(Point3f(220.0f, 280.0f, 300.0f), 80.0f),
         std::make_shared<Lambertian>(
             std::make_shared<NoiseTexture>(0.2f))));
 
-    /* ----- Sphere Cluster ----- */
+    /* ----- Instanced Sphere Cluster ----- */
+    // White spher cluster at the upper right filling in a cubic shape
     LinearAggregate cluster;
     auto cluster_material =
         std::make_shared<Lambertian>(Color(0.73f, 0.73f, 0.73f));
@@ -189,6 +202,7 @@ LinearAggregate generateFinalScene(
     }
 
     auto cluster_bvh = std::make_shared<BVH>(cluster);
+    // Rotate the whole cluster 15 degrees around Y, then translate it.
     const Transform cluster_to_parent =
         Transform::translate(Vec3f(-100.0f, 270.0f, 395.0f)) *
         Transform::rotate(Vec3f(0.0f, 1.0f, 0.0f),
