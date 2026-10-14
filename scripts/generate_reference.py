@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import sys
-from typing import Dict
+from typing import Any, Dict
 
 from utils import (
     display_project_path,
@@ -23,7 +23,7 @@ from utils import (
 # Configuration
 # ==================================================
 
-def render_settings(arguments: argparse.Namespace) -> Dict[str, int]:
+def render_settings(arguments: argparse.Namespace) -> Dict[str, Any]:
     '''Validated reference render settings.'''
     settings = {
         "width": arguments.width,
@@ -31,6 +31,7 @@ def render_settings(arguments: argparse.Namespace) -> Dict[str, int]:
         "samples_per_pixel": arguments.samples_per_pixel,
         "max_depth": arguments.max_depth,
         "seed": arguments.seed,
+        "sampling": arguments.sampling,
     }
     return validate_render_settings(settings)
 
@@ -51,6 +52,8 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--spp", dest="samples_per_pixel", required=True, type=int)
     parser.add_argument("--max-depth", required=True, type=int)
     parser.add_argument("--seed", required=True, type=int)
+    parser.add_argument("--sampling", choices=("scattering", "mixture", "light", "mis"),
+                        default="mixture", help="path sampling strategy")
     parser.add_argument(
         "--build-directory",
         default="build/release",

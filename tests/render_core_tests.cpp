@@ -1,19 +1,17 @@
 #include "test_support.h"
 
 #include <nearlighter/base/interval.h>
-#include <nearlighter/material/emissive.h>
-#include <nearlighter/material/lambertian.h>
-#include <nearlighter/material/metal.h>
+#include <nearlighter/material/surface/emissive.h>
+#include <nearlighter/material/surface/lambertian.h>
 #include <nearlighter/render/film.h>
-#include <nearlighter/light/area_light.h>
-#include <nearlighter/light/environment_light.h>
-#include <nearlighter/light/light_sampler.h>
-#include <nearlighter/render/integrator.h>
+#include <nearlighter/scene/light/area_light.h>
+#include <nearlighter/scene/light/environment_light.h>
+#include <nearlighter/render/light_sampler.h>
 #include <nearlighter/math/constants.h>
 #include <nearlighter/sampling/sampler.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/primitive.h>
 #include <nearlighter/scene/scene.h>
-#include <nearlighter/scene/surface_interaction.h>
+#include <nearlighter/render/hit/hit_record.h>
 #include <nearlighter/shape/quad.h>
 #include <nearlighter/shape/sphere.h>
 
@@ -60,7 +58,7 @@ void testFilmAccumulation(nearlighter::test::Context& context) {
     film.addBeautySample(1, 0, Color(0.25f, 0.5f, 0.75f));
     context.expectVecNear(film.beauty().at(1, 0),
                           Color(0.25f, 0.5f, 0.75f), kTolerance,
-                          "beauty-only accumulation should support legacy output");
+                          "beauty-only accumulation should support beauty-only output");
 
     Film beauty_only(1, 1, FilmAOV::Beauty);
     bool disabled_layer_rejected = false;
@@ -74,14 +72,14 @@ void testFilmAccumulation(nearlighter::test::Context& context) {
         "Film should reject access to an unallocated optional AOV");
 }
 
-SurfaceInteraction makeReferenceInteraction(
+SurfaceRecord makeReferenceRecord(
     const Primitive& primitive, Sampler& sampler) {
     const Ray ray(Point3f(0.0f, 0.0f, 3.0f), Vec3f(0.0f, 0.0f, -1.0f));
     HitRecord record;
     if (!primitive.hit(ray, Interval(0.0f, infinity), record, sampler)) {
         throw std::runtime_error("failed to create light-test interaction");
     }
-    return SurfaceInteraction(ray, record);
+    return record.surface();
 }
 
 void testLightSampling(nearlighter::test::Context& context) {
@@ -98,8 +96,8 @@ void testLightSampling(nearlighter::test::Context& context) {
         std::make_shared<Emissive>(radiance));
 
     Sampler sampler(27);
-    const SurfaceInteraction interaction =
-        makeReferenceInteraction(*reference, sampler);
+    const SurfaceRecord interaction =
+        makeReferenceRecord(*reference, sampler);
     const Scene scene("area", Camera(), RenderSettings(), Color(), LinearAggregate(emitter));
     const LightSampler lights(scene.lights());
     const auto selected = lights.select(sampler.next1D());
@@ -119,6 +117,16 @@ void testLightSampling(nearlighter::test::Context& context) {
             lights.PMF(*selected->light) * selected->light->PDFLi(interaction, sample->incoming),
             sample->pdf, kTolerance,
             "area-light PDF query should match its one-light sampling strategy");
+    }
+
+    MediumRecord volume;
+    volume.point = Point3f();
+    volume.outgoing = Vec3f(0, 0, 1);
+    const auto from_volume = selected->light->sampleLi(HitRecord(volume), 0.25f, sampler);
+    context.expectTrue(from_volume.has_value(), "the same area light accepts a volume receiver");
+    if (from_volume) {
+        context.expectNear(from_volume->pdf, selected->light->PDFLi(HitRecord(volume), from_volume->incoming),
+                           1e-5f, "volume receiver uses the same light direction density");
     }
 
     const Scene sky("sky", Camera(), RenderSettings(), Color(0.1f, 0.2f, 0.3f), {});
@@ -163,54 +171,11 @@ void testLightSampling(nearlighter::test::Context& context) {
         1.0f / (8.0f * pi), kTolerance,
         "environment PDF should include the same uniform selection PMF");
 }
-
-Camera makeCamera() {
-    Camera camera;
-    camera.position = Point3f(0.0f, 0.0f, 4.0f);
-    camera.look_at = Point3f(0.0f, 0.0f, 0.0f);
-    return camera;
-}
-
-void testPathSceneCompatibility(nearlighter::test::Context& context) {
-    RenderSettings settings;
-    settings.image_width = 4;
-    settings.image_height = 4;
-
-    LinearAggregate supported_world;
-    supported_world.add(std::make_shared<Primitive>(
-        std::make_shared<Sphere>(Point3f(), 1.0f),
-        std::make_shared<Lambertian>(Color(0.5f, 0.5f, 0.5f))));
-    supported_world.add(std::make_shared<Primitive>(
-        std::make_shared<Quad>(Point3f(-1.0f, 1.0f, 2.0f),
-                               Vec3f(2.0f, 0.0f, 0.0f),
-                               Vec3f(0.0f, -2.0f, 0.0f)),
-        std::make_shared<Emissive>(Color(2.0f, 2.0f, 2.0f))));
-    const Scene supported("supported", makeCamera(), settings, Color(),
-                          std::move(supported_world));
-    PathIntegrator::validateScene(supported);
-    context.expectTrue(supported.lights().size() == 1,
-                       "Scene should already own its discovered light");
-
-    LinearAggregate unsupported_world;
-    unsupported_world.add(std::make_shared<Primitive>(
-        std::make_shared<Sphere>(Point3f(), 1.0f),
-        std::make_shared<Metal>(Color(0.8f, 0.8f, 0.8f), 0.2f)));
-    const Scene unsupported("unsupported", makeCamera(), settings, Color(),
-                            std::move(unsupported_world));
-    bool rejected = false;
-    try { PathIntegrator::validateScene(unsupported); }
-    catch (const std::invalid_argument&) { rejected = true; }
-    context.expectTrue(
-        rejected,
-        "fuzzy metal should be rejected before new path integration");
-}
-
 }  // namespace
 
 int main() {
     nearlighter::test::Context context;
     testFilmAccumulation(context);
     testLightSampling(context);
-    testPathSceneCompatibility(context);
     return context.finish("render core tests");
 }

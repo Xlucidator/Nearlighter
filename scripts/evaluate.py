@@ -51,7 +51,7 @@ TIMING_SCHEMA_PATTERN = re.compile(r"Timing schema:\s+(\d+)")
 # Configuration
 # ==================================================
 
-def normalize_render(render: Dict[str, Any]) -> Dict[str, int]:
+def normalize_render(render: Dict[str, Any]) -> Dict[str, Any]:
     '''Flat validated render settings.'''
     try:
         resolution = render["resolution"]
@@ -61,6 +61,7 @@ def normalize_render(render: Dict[str, Any]) -> Dict[str, int]:
             "samples_per_pixel": int(render["samples_per_pixel"]),
             "max_depth": int(render["max_depth"]),
             "seed": int(render["seed"]),
+            "sampling": str(render.get("sampling", "mixture")),
         }
     except (KeyError, TypeError, ValueError) as error:
         raise EvaluationError(f"Invalid render configuration: {error}") from error
@@ -88,7 +89,7 @@ def create_run_id(suite: str, git_commit: str) -> str:
 # Reference and Metrics
 # ==================================================
 
-def parse_render_stats(output: str, settings: Dict[str, int]) -> Dict[str, Any]:
+def parse_render_stats(output: str, settings: Dict[str, Any]) -> Dict[str, Any]:
     '''Render timing and primary-sample statistics.'''
     matches = STATS_PATTERN.findall(output)
     scene_load_matches = SCENE_LOAD_PATTERN.findall(output)
@@ -123,7 +124,9 @@ def load_reference(reference_path: Path) -> PFMImage:
     '''Fixed reference image from the configured path.'''
     if not reference_path.is_file():
         raise EvaluationError(
-            f"Reference image is missing: '{display_project_path(reference_path)}'"
+            f"Reference image is missing: '{display_project_path(reference_path)}'. "
+            "Prepare the references for the selected suite first; "
+            "see scripts/README.md. prepare_benchmark.py only prepares the benchmark suite."
         )
     return read_pfm(reference_path)
 

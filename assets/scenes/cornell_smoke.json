@@ -18,6 +18,8 @@
     "focus_distance": 10.0
   },
   "materials": {
+    "white_smoke_medium": { "type": "homogeneous", "extinction": 0.01, "albedo": [1.0, 1.0, 1.0] },
+    "black_smoke_medium": { "type": "homogeneous", "extinction": 0.01, "albedo": [0.0, 0.0, 0.0] },
     "red": { "type": "lambertian", "albedo": [0.65, 0.05, 0.05] },
     "white": { "type": "lambertian", "albedo": [0.73, 0.73, 0.73] },
     "green": { "type": "lambertian", "albedo": [0.12, 0.45, 0.15] },
@@ -91,12 +93,11 @@
         "min": [0.0, 0.0, 0.0],
         "max": [165.0, 330.0, 165.0]
       },
-      "material": "white",
+      "material": "black_smoke_medium",
       "transform": [
         { "type": "rotate_y", "degrees": 15.0 },
         { "type": "translate", "offset": [265.0, 0.0, 295.0] }
-      ],
-      "medium": { "density": 0.01, "albedo": [0.0, 0.0, 0.0] }
+      ]
     },
     {
       "id": "white_smoke",
@@ -105,12 +106,11 @@
         "min": [0.0, 0.0, 0.0],
         "max": [165.0, 165.0, 165.0]
       },
-      "material": "white",
+      "material": "white_smoke_medium",
       "transform": [
         { "type": "rotate_y", "degrees": -18.0 },
         { "type": "translate", "offset": [130.0, 0.0, 65.0] }
-      ],
-      "medium": { "density": 0.01, "albedo": [1.0, 1.0, 1.0] }
+      ]
     }
   ]
 }

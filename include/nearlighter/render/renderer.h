@@ -2,13 +2,13 @@
 #define NEARLIGHTER_RENDER_RENDERER_H
 
 #include <nearlighter/render/integrator.h>
+#include <nearlighter/render/render_settings.h>
 
 #include <chrono>
-#include <cstdint>
 
 class Scene;
 
-/** Preparation, integration, and aggregate ray-work metrics. */
+/** Render Timings and Path Counters */
 struct RenderStats {
     std::chrono::duration<double> camera_preparation_time{};
     std::chrono::duration<double> light_sampler_preparation_time{};
@@ -18,31 +18,21 @@ struct RenderStats {
     std::chrono::duration<double> preparation_time{};
     std::chrono::duration<double> integration_time{};
 
-    std::uint64_t sample_count = 0;
-    std::uint64_t camera_rays = 0;
-    std::uint64_t continuation_rays = 0;
-    std::uint64_t shadow_rays = 0;
-    std::uint64_t surface_interactions = 0;
-    std::uint64_t medium_interactions = 0;
-    std::uint64_t path_length_sum = 0;
-    std::uint64_t max_depth_terminations = 0;
-    std::uint64_t russian_roulette_terminations = 0;
-    std::uint64_t invalid_pdf_terminations = 0;
-    std::uint64_t invalid_contributions = 0;
+    IntegratorCounters counters;
 
     double samplesPerSecond() const {
         if (integration_time.count() <= 0.0) return 0.0;
-        return static_cast<double>(sample_count) / integration_time.count();
+        return static_cast<double>(counters.sample_count) / integration_time.count();
     }
 
     double meanPathLength() const {
-        if (sample_count == 0) return 0.0;
-        return static_cast<double>(path_length_sum) /
-               static_cast<double>(sample_count);
+        if (counters.sample_count == 0) return 0.0;
+        return static_cast<double>(counters.path_length_sum) /
+               static_cast<double>(counters.sample_count);
     }
 };
 
-/** Completed in-memory Film and render metrics. */
+/** Completed Film and Render Metrics */
 struct RenderResult {
     Film film;
     RenderStats stats;
@@ -52,27 +42,31 @@ struct RenderResult {
 };
 
 /**
- * Prepares one render job, allocates Film, and dispatches an Integrator.
+ * Render Job Preparation and Dispatch
  *
- * Renderer owns job configuration but contains no light-transport estimator.
- * Reuses the assembled Scene world and lights across render jobs.
+ * Responsibilities:
+ * - Owns job configuration and prepares camera, light selector, and Film.
+ * - Reuses the assembled Scene world and lights across render jobs.
+ * - Delegates light transport to the Integrator.
  */
 class Renderer {
 public:
-    explicit Renderer(RenderSettings settings = {},
-                      RenderOptions options = {});
+    explicit Renderer(RenderSettings settings = {});
 
     const RenderSettings& settings() const { return settings_; }
-    const RenderOptions& options() const { return options_; }
 
-    /** Renders deterministic primary samples into a typed Film. */
+    /**
+     * Deterministic Integration into a Typed Film
+     *
+     * Uses this Renderer's settings; Scene defaults are not applied implicitly.
+     * Pass scene.defaultRenderSettings() at construction to adopt those defaults.
+     */
     RenderResult render(
         const Scene& scene,
         RenderProgressCallback progress_callback = {}) const;
 
 private:
     RenderSettings settings_;
-    RenderOptions options_;
 };
 
 #endif  // NEARLIGHTER_RENDER_RENDERER_H

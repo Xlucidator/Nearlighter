@@ -2,10 +2,9 @@
 #define NEARLIGHTER_CORE_H
 
 /**
- * Complete public interface for in-memory scene construction and rendering.
+ * In-Memory Scene and Rendering Interface
  *
- * Internal Nearlighter headers use precise dependencies instead of this
- * convenience umbrella.
+ * Internal headers include precise dependencies rather than this convenience umbrella.
  */
 
 // Base
@@ -31,31 +30,35 @@
 #include <nearlighter/geometry/transform.h>
 #include <nearlighter/shape/all.h>
 
-// Materials, Textures, and Media
+// Materials and Textures
 #include <nearlighter/material/all.h>
-#include <nearlighter/medium/constant_medium.h>
 #include <nearlighter/texture/all.h>
 
 // Sampling
-#include <nearlighter/sampling/pdf.h>
 #include <nearlighter/sampling/sampler.h>
+#include <nearlighter/sampling/pdf.h>
+#include <nearlighter/sampling/sampleable_function.h>
 
-// Scene and Rendering
+// Scene
+#include <nearlighter/scene/object/intersectable.h>
+#include <nearlighter/scene/object/primitive.h>
+#include <nearlighter/scene/object/instance.h>
+#include <nearlighter/scene/object/linear_aggregate.h>
+#include <nearlighter/scene/light/light.h>
+#include <nearlighter/scene/light/area_light.h>
+#include <nearlighter/scene/light/environment_light.h>
+#include <nearlighter/scene/scene.h>
+
+// Rendering
+#include <nearlighter/render/hit/hit_record.h>
+#include <nearlighter/render/hit/surface_intersection.h>
+#include <nearlighter/render/hit/exponential_free_flight.h>
 #include <nearlighter/render/camera.h>
 #include <nearlighter/render/film.h>
 #include <nearlighter/render/integrator.h>
-#include <nearlighter/light/light.h>
-#include <nearlighter/light/area_light.h>
-#include <nearlighter/light/environment_light.h>
-#include <nearlighter/light/light_sampler.h>
+#include <nearlighter/render/light_sampler.h>
 #include <nearlighter/render/render_context.h>
 #include <nearlighter/render/render_settings.h>
 #include <nearlighter/render/renderer.h>
-#include <nearlighter/scene/instance.h>
-#include <nearlighter/scene/intersectable.h>
-#include <nearlighter/scene/linear_aggregate.h>
-#include <nearlighter/scene/primitive.h>
-#include <nearlighter/scene/scene.h>
-#include <nearlighter/scene/surface_interaction.h>
 
 #endif  // NEARLIGHTER_CORE_H

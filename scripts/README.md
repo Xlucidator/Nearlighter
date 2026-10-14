@@ -2,6 +2,54 @@
 
 本目录提供 Nearlighter 的集成评估、benchmark 数据准备和固定 reference 生成脚本。所有命令均从项目根目录执行。
 
+## 首次完整验证
+
+三个 suite 使用不同的 reference，首次运行前分别准备：
+
+| suite | reference | 准备入口 |
+|---|---|---|
+| quick | RTIOW Cornell，64×64 | generate_reference.py |
+| full | RTIOW Cornell，256×256 | generate_reference.py |
+| benchmark | 官方 Cornell GT、Bunny 高 SPP 回归图 | prepare_benchmark.py |
+
+`prepare_benchmark.py` 完成后可以运行 benchmark；quick 和 full 还需要生成各自的 reference。
+下面的生成命令仅在首次缺少对应 reference 时运行，不替换已经保存的基线。
+
+```bash
+# 构建并验证两个约定配置
+cmake --preset debug
+cmake --build --preset debug --parallel
+ctest --preset debug
+cmake --preset release
+cmake --build --preset release --parallel
+ctest --preset release
+
+# 首次准备 quick reference
+python3 scripts/generate_reference.py \
+    --scene assets/scenes/cornell_box_rtow.json \
+    --output benchmark/references/cornell_box_rtow_quick_v1/reference.pfm \
+    --preview benchmark/references/cornell_box_rtow_quick_v1/preview.ppm \
+    --width 64 --height 64 --spp 512 --max-depth 25 --seed 1 --skip-build
+
+# 首次准备 full reference
+python3 scripts/generate_reference.py \
+    --scene assets/scenes/cornell_box_rtow.json \
+    --output benchmark/references/cornell_box_rtow_full_v1/reference.pfm \
+    --preview benchmark/references/cornell_box_rtow_full_v1/preview.ppm \
+    --width 256 --height 256 --spp 1024 --max-depth 25 --seed 1 --skip-build
+
+# 首次准备外部 benchmark 数据和 reference
+python3 scripts/prepare_benchmark.py --skip-build
+
+# 运行三套评估；复用上面已经构建并通过 CTest 的 Release
+python3 scripts/evaluate.py --suite quick --skip-build --skip-tests
+python3 scripts/evaluate.py --suite full --skip-build --skip-tests
+python3 scripts/evaluate.py --suite benchmark --skip-build --skip-tests
+```
+
+构建和 CTest 是自动检查；evaluation 的指标和差异图还需要与可信历史结果一起判断。
+新生成的自有 reference 是后续回归的起点，不能单独证明本次重构保持了旧实现的结果。
+
 ## 集成评估（`evaluate.py`）
 
 ### 涉及文件
@@ -225,7 +273,9 @@ python3 scripts/prepare_benchmark.py --help
 
 脚本只在被显式调用时访问网络。Cornell RGBE 和 Stanford archive 首先下载到临时文件，SHA-256 正确后才替换缓存；Bunny 只提取指定 PLY member，并验证 PLY 的顶点数与三角形数。
 
-Cornell RGBE 被解码为线性 PFM。Bunny 使用官方 Mesh 与固定 Nearlighter fixture 生成高 SPP 回归 reference。每个 reference 目录写入独立 manifest，记录来源、哈希、设置和 reference 类型。具体适配和限制见 [benchmark/README.md](../benchmark/README.md)。
+Cornell RGBE 被解码为线性 PFM，同时生成 gamma 2.2 的显示用 `preview.ppm`。
+已有 PFM 缺少预览时，只补生成预览。
+Bunny 使用官方 Mesh 与固定 Nearlighter fixture 生成高 SPP 回归 reference。每个 reference 目录写入独立 manifest，记录来源、哈希、设置和 reference 类型。具体适配和限制见 [benchmark/README.md](../benchmark/README.md)。
 
 ## Reference 生成（`generate_reference.py`）
 
@@ -237,32 +287,8 @@ Cornell RGBE 被解码为线性 PFM。Bunny 使用官方 Mesh 与固定 Nearligh
 
 ### 使用方式
 
-```bash
-# quick case reference
-python3 scripts/generate_reference.py \
-    --scene assets/scenes/cornell_box_rtow.json \
-    --output benchmark/references/cornell_box_rtow_quick_v1/reference.pfm \
-    --preview benchmark/references/cornell_box_rtow_quick_v1/preview.ppm \
-    --width 64 \
-    --height 64 \
-    --spp 512 \
-    --max-depth 25 \
-    --seed 1
-
-# full case reference
-python3 scripts/generate_reference.py \
-    --scene assets/scenes/cornell_box_rtow.json \
-    --output benchmark/references/cornell_box_rtow_full_v1/reference.pfm \
-    --preview benchmark/references/cornell_box_rtow_full_v1/preview.ppm \
-    --width 256 \
-    --height 256 \
-    --spp 1024 \
-    --max-depth 25 \
-    --seed 1
-
-# 查看完整参数
-python3 scripts/generate_reference.py --help
-```
+quick/full 的生成命令见上面的[首次完整验证](#首次完整验证)。
+自定义 reference 可按以下参数指定场景、路径和采样设置。
 
 主要参数：
 
@@ -287,3 +313,10 @@ reference 和 preview 写入各自指定路径，构建与渲染日志写入 out
 - 使用独立 seed，避免 result 与 reference 复用同一采样序列。
 - 替换 reference 属于显式基线变更，应同步检查场景、参数和评价指标，不要用 `--force` 掩盖未知回归。
 - 自生成 reference 只能验证相对历史行为，不能独立证明渲染结果在物理意义上正确；正式 benchmark 应优先使用可信外部 Ground Truth。
+
+## 路径采样策略
+
+评估配置的 `render.sampling` 可选 `scattering`、`mixture`、`light`、`mis`，省略时为 `mixture`。
+该选择会写入运行元数据，并通过 CLI `--sampling` 传给统一积分器。
+参考图脚本也接受 `--sampling`；含介质场景只能选择 scattering 或 mixture。
+历史 reference 不会自动更新，粗糙金属模型升级造成的差异需要单独解释。

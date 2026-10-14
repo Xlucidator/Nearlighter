@@ -73,17 +73,17 @@ void ConsoleOutput::finishRender(const RenderStats& stats) {
             << stats.film_allocation_time.count() << " s\n"
             << "Render: " << stats.integration_time.count() << " s, "
             << stats.samplesPerSecond() << " samples/s\n"
-            << "Rays: camera=" << stats.camera_rays
-            << ", continuation=" << stats.continuation_rays
-            << ", shadow=" << stats.shadow_rays << '\n'
-            << "Interactions: surface=" << stats.surface_interactions
-            << ", medium=" << stats.medium_interactions
+            << "Rays: camera=" << stats.counters.camera_rays
+            << ", continuation=" << stats.counters.continuation_rays
+            << ", shadow=" << stats.counters.shadow_rays << '\n'
+            << "Interactions: surface=" << stats.counters.surface_interactions
+            << ", medium=" << stats.counters.medium_interactions
             << ", mean path length=" << stats.meanPathLength() << '\n'
             << "Terminations: max-depth="
-            << stats.max_depth_terminations
-            << ", roulette=" << stats.russian_roulette_terminations
-            << ", invalid-pdf=" << stats.invalid_pdf_terminations
-            << ", invalid-contribution=" << stats.invalid_contributions
+            << stats.counters.max_depth_terminations
+            << ", roulette=" << stats.counters.russian_roulette_terminations
+            << ", invalid-pdf=" << stats.counters.invalid_pdf_terminations
+            << ", invalid-contribution=" << stats.counters.invalid_contributions
             << '\n'
             << std::flush;
 }

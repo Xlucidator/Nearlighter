@@ -1,24 +1,21 @@
 #include <nearlighter/scene/scene.h>
 
 #include <nearlighter/accel/bvh.h>
-#include <nearlighter/light/area_light.h>
-#include <nearlighter/light/environment_light.h>
+#include <nearlighter/scene/light/area_light.h>
+#include <nearlighter/scene/light/environment_light.h>
 #include <nearlighter/material/material.h>
-#include <nearlighter/medium/constant_medium.h>
-#include <nearlighter/scene/instance.h>
+#include <nearlighter/scene/object/instance.h>
 
 #include <stdexcept>
-#include <unordered_set>
 #include <utility>
 
-/** Temporary caches for shared sources and legacy targets. */
+/** Temporary caches for shared sources and sampling targets. */
 struct Scene::BuildCache {
     struct Source {
         std::shared_ptr<const Intersectable> remainder;
         bool complete = false;
     };
     std::unordered_map<const Intersectable*, Source> source_to_states;
-    std::unordered_set<const Material*> materials;
     std::unordered_map<const Primitive*,
                        std::vector<std::shared_ptr<const Primitive>>> primitive_to_placements;
 };
@@ -32,7 +29,7 @@ struct Scene::BuildCache {
 /**
  * @par Implementation
  * Construction order:
- * 1. Collect materials and placed emitters while visiting input objects.
+ * 1. Inspect content and collect placed emitters.
  * 2. Build the final world from non-emissive remainders and placed emitters.
  * 3. Create lights and index them by hit Primitive address.
  */
@@ -46,7 +43,7 @@ Scene::Scene(std::string name, Camera camera,
     const auto assembly_start = Clock::now();
     BuildCache cache;
 
-    /* ----- Legacy Target Validation ----- */
+    /* ----- Sampling Target Validation ----- */
     for (const auto& target : sampling_targets) {
         if (!target || !target->hasPDF()) {
             throw std::invalid_argument(
@@ -68,7 +65,7 @@ Scene::Scene(std::string name, Camera camera,
         }
     }
 
-    /* ----- Legacy Target Remapping ----- */
+    /* ----- Sampling Target Remapping ----- */
     for (const auto& target : sampling_targets) {
         const auto& placements = cache.primitive_to_placements.at(target.get());
         if (placements.empty()) {
@@ -122,10 +119,9 @@ std::shared_ptr<const Intersectable> Scene::extractEmissivePrimitives(
 
     /* ----- Surface or Instance ----- */
     if (const auto primitive = std::dynamic_pointer_cast<const Primitive>(object)) {
-        if (inserted && cache.materials.insert(&primitive->material()).second) {
-            materials_.push_back(&primitive->material());
-        }
-        if (primitive->material().isEmissive()) {
+        if (primitive->material().kind() == MaterialKind::Medium) {
+            contains_media_ = true;
+        } else if (primitive->material().isEmissive()) {
             // Distinct placements need distinct hit addresses for the light lookup.
             const std::shared_ptr<const Primitive> placed =
                 inserted && parent_to_world.isIdentity()
@@ -178,9 +174,6 @@ std::shared_ptr<const Intersectable> Scene::extractEmissivePrimitives(
                     remainder = std::make_shared<LinearAggregate>(std::move(remaining));
                 }
             }
-        } else if (std::dynamic_pointer_cast<const ConstantMedium>(object)) {
-            // Medium boundaries define volume extent, not visible light surfaces.
-            contains_media_ = true;
         } else {
             inspection_complete_ = false;
         }

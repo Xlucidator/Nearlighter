@@ -20,6 +20,8 @@ python3 scripts/evaluate.py --help
 ```
 
 网络访问只发生在 `prepare_benchmark.py` 的显式调用中。下载文件与解包文件均按 [`datasets.json`](datasets.json) 中的 SHA-256 或元素数量校验。
+该脚本准备 benchmark suite，不生成 quick/full 使用的 RTIOW reference。
+三套 suite 的首次完整执行顺序见 [scripts/README.md](../scripts/README.md#首次完整验证)。
 
 ## 目录语义
 
@@ -36,6 +38,7 @@ python3 scripts/evaluate.py --help
 - 场景尺寸与物体顶点来自 [Cornell Program of Computer Graphics 发布的测量数据](https://web.archive.org/web/20230512133419/https://www.graphics.cornell.edu/online/box/data.html)。
 - GT 为 Cornell 发布的 `512 × 512` synthetic RGBE 图像，经逐像素 RGBE 解码后保存为线性 RGB PFM，不做曝光、gamma 或色调映射。
 - 源 URL、下载 SHA-256 与生成后 reference SHA-256 分别记录在 [`datasets.json`](datasets.json) 和生成的 `references/cornell_box_official_v1/manifest.json` 中。
+- 同目录的 `preview.ppm` 使用 gamma 2.2 显示转换；质量指标仍读取原始线性 `reference.pfm`。
 
 ### Nearlighter 适配
 
@@ -69,7 +72,7 @@ k = dot(result, reference) / dot(result, result)
 
 - PLY 不含顶点法线，加载后用相邻三角形的面积加权法线生成平滑法线。
 - 场景中的地面、相机、材质和面光源是 Nearlighter 的固定 benchmark fixture，不属于 Stanford 数据集。
-- 场景形成两级加速结构：Renderer 的顶层 BVH 管理 Scene 对象，Mesh 内部 BVH 管理三角形。
+- 场景形成两级加速结构：Scene 构造的顶层 BVH 管理对象，Mesh 内部 BVH 管理三角形。
 - reference 由 Nearlighter 以固定场景、`256 × 256`、`256 SPP`、深度 `12`、seed `1` 显式生成。它只用于检测历史回归，不是 Stanford 提供的 GT，也不能独立证明渲染正确。
 - evaluation 使用独立 seed、`16 SPP`，并重复三次。三次线性结果哈希必须一致；加载、准备、积分和吞吐量报告最小值、中位数与最大值。
 

@@ -3,50 +3,15 @@
 
 #include <nearlighter/render/film.h>
 #include <nearlighter/render/render_settings.h>
-#include <nearlighter/render/render_context.h>
 
 #include <chrono>
 #include <cstdint>
 #include <functional>
-#include <memory>
-#include <vector>
 
-class Intersectable;
-class EnvironmentLight;
-class Primitive;
+class RenderContext;
 class Ray;
 class Sampler;
 class Scene;
-
-/** Selects the estimator used for non-delta direct illumination. */
-enum class DirectLightingMode {
-    BSDFOnly,
-    LightOnly,
-    MIS,
-};
-
-/** Selects a complete render algorithm without changing Scene state. */
-enum class IntegratorKind {
-    Legacy,
-    Path,
-};
-
-/** Algorithm parameters owned by the iterative surface path integrator. */
-struct PathIntegratorOptions {
-    // Zero inherits the transitional max_depth value from RenderSettings.
-    int max_depth = 0;
-
-    // Zero disables Russian roulette; positive values count scattering events.
-    int russian_roulette_start_depth = 0;
-    DirectLightingMode direct_lighting = DirectLightingMode::MIS;
-};
-
-/** Selects the integrator and in-memory outputs for one Renderer. */
-struct RenderOptions {
-    IntegratorKind integrator = IntegratorKind::Legacy;
-    PathIntegratorOptions path;
-    FilmAOV aovs = FilmAOV::Beauty;
-};
 
 /** Row-level integration state. */
 struct RenderProgress {
@@ -58,8 +23,8 @@ struct RenderProgress {
 /**
  * Receives row-level progress and a read-only view of the partial Film.
  *
- * Rows before completed_rows contain their final sample counts. The Film
- * reference is valid only for the duration of the callback invocation.
+ * Rows before completed_rows contain their final sample counts.
+ * The Film reference is valid only during this callback.
  */
 using RenderProgressCallback =
     std::function<void(const RenderProgress&, const Film&)>;
@@ -96,33 +61,13 @@ public:
         RenderProgressCallback progress_callback) const = 0;
 };
 
-/** Read-only compatibility implementation of the former recursive renderer. */
-class LegacyPathIntegrator final : public Integrator {
-public:
-    explicit LegacyPathIntegrator(int max_depth) : max_depth_(max_depth) {}
-
-    IntegrationResult render(
-        const RenderContext& context, Film& film,
-        RenderProgressCallback progress_callback) const override;
-
-private:
-    Color trace(
-        const Ray& ray, int depth, const Intersectable& world,
-        const std::vector<std::shared_ptr<const Primitive>>& sampling_targets,
-        const EnvironmentLight* environment, Sampler& sampler,
-        IntegratorCounters& counters, std::uint64_t& path_length) const;
-
-    int max_depth_ = 0;
-};
-
-/** Iterative surface path tracer with explicit NEE and configurable MIS. */
+/** Iterative Surface and Volume Path Tracer */
 class PathIntegrator final : public Integrator {
 public:
-    explicit PathIntegrator(PathIntegratorOptions options)
-        : options_(options) {}
+    explicit PathIntegrator(PathIntegratorOptions options);
 
-    /** Checks surface/material capabilities before any camera sample is taken. */
-    static void validateScene(const Scene& scene);
+    /** Checks Scene Content against the Requested Sampling Mode before Tracing */
+    static void validateScene(const Scene& scene, const PathIntegratorOptions& options);
 
     IntegrationResult render(
         const RenderContext& context, Film& film,
@@ -135,9 +80,5 @@ private:
 
     PathIntegratorOptions options_;
 };
-
-/** Creates the selected concrete Integrator after resolving path defaults. */
-std::unique_ptr<Integrator> createIntegrator(
-    const RenderSettings& settings, const RenderOptions& options);
 
 #endif  // NEARLIGHTER_RENDER_INTEGRATOR_H

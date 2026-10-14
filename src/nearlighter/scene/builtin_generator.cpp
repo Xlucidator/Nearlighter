@@ -1,15 +1,15 @@
 #include "builtin_generator.h"
 
 #include <nearlighter/accel/bvh.h>
-#include <nearlighter/material/dielectric.h>
-#include <nearlighter/material/emissive.h>
-#include <nearlighter/material/lambertian.h>
-#include <nearlighter/material/metal.h>
+#include <nearlighter/material/surface/dielectric.h>
+#include <nearlighter/material/surface/emissive.h>
+#include <nearlighter/material/surface/lambertian.h>
+#include <nearlighter/material/surface/metal.h>
 #include <nearlighter/math/math.h>
-#include <nearlighter/medium/constant_medium.h>
+#include <nearlighter/material/medium/homogeneous.h>
 #include <nearlighter/sampling/sampler.h>
-#include <nearlighter/scene/instance.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/instance.h>
+#include <nearlighter/scene/object/primitive.h>
 #include <nearlighter/shape/box.h>
 #include <nearlighter/shape/quad.h>
 #include <nearlighter/shape/sphere.h>
@@ -76,10 +76,10 @@ LinearAggregate generateBouncingSpheres(
                     std::make_shared<Lambertian>(albedo)));
             } else if (material_choice < 0.95f) {
                 const Color albedo = sampler.nextVec3(0.5f, 1.0f);
-                const float fuzz = sampler.next1D(0.0f, 0.5f);
+                const float roughness = sampler.next1D(0.0f, 0.5f);
                 world.add(makePrimitive(
                     std::make_shared<Sphere>(center, config.radius),
-                    std::make_shared<Metal>(albedo, fuzz)));
+                    std::make_shared<Metal>(albedo, roughness)));
             } else {
                 world.add(makePrimitive(
                     std::make_shared<Sphere>(center, config.radius),
@@ -161,21 +161,16 @@ LinearAggregate generateFinalScene(
         std::make_shared<Metal>(Color(0.8f, 0.8f, 0.9f), 1.0f)));
 
     /* ----- Bounded Media ----- */
-    // Dielectric sphere in the lower-left forground with dark blue medium inside.
-    auto glass = std::make_shared<Dielectric>(1.5f);
-    auto medium_boundary = makePrimitive(
-        std::make_shared<Sphere>(Point3f(360.0f, 160.0f, 45.0f), 70.0f),
-        glass);
-    world.add(medium_boundary);
-    world.add(std::make_shared<ConstantMedium>(
-        medium_boundary, 0.2f, Color(0.2f, 0.4f, 0.9f)));
+    // Dielectric sphere in the lower-left foreground with dark blue medium inside.
+    const auto fog_shape = std::make_shared<Sphere>(Point3f(360.0f, 160.0f, 45.0f), 70.0f);
+    world.add(makePrimitive(fog_shape, std::make_shared<Dielectric>(1.5f)));
+    world.add(makePrimitive(fog_shape,
+        std::make_shared<Homogeneous>(0.2f, Color(0.2f, 0.4f, 0.9f))));
 
     // Sparse white haze surrounds the camera and the entire visible scene.
-    medium_boundary = makePrimitive(
+    world.add(makePrimitive(
         std::make_shared<Sphere>(Point3f(0.0f, 0.0f, 0.0f), 5000.0f),
-        glass);
-    world.add(std::make_shared<ConstantMedium>(
-        medium_boundary, 0.0001f, Color(1.0f, 1.0f, 1.0f)));
+        std::make_shared<Homogeneous>(0.0001f, Color(1.0f, 1.0f, 1.0f))));
 
     /* ----- Textured Spheres ----- */
     // Earth sphere at the left: opaque diffuse surface with an image texture.

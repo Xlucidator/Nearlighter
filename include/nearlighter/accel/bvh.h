@@ -1,7 +1,7 @@
 #ifndef NEARLIGHTER_ACCEL_BVH_H
 #define NEARLIGHTER_ACCEL_BVH_H
 
-#include <nearlighter/scene/intersectable.h>
+#include <nearlighter/scene/object/intersectable.h>
 
 #include <memory>
 #include <vector>

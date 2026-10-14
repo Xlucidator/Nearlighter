@@ -1,14 +1,15 @@
 #include "test_support.h"
 
+
 #include <nearlighter/accel/bvh.h>
 #include <nearlighter/base/interval.h>
 #include <nearlighter/base/ray.h>
-#include <nearlighter/material/lambertian.h>
+#include <nearlighter/material/surface/lambertian.h>
 #include <nearlighter/math/constants.h>
 #include <nearlighter/sampling/sampler.h>
-#include <nearlighter/scene/instance.h>
-#include <nearlighter/scene/linear_aggregate.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/instance.h>
+#include <nearlighter/scene/object/linear_aggregate.h>
+#include <nearlighter/scene/object/primitive.h>
 #include <nearlighter/shape/sphere.h>
 #include <nearlighter/geometry/transform.h>
 
@@ -57,15 +58,15 @@ void compareHit(nearlighter::test::Context& context,
                        std::string(ray_name) + " hit state");
     if (!list_hit || !bvh_hit) return;
 
-    context.expectNear(bvh_record.t, list_record.t, kTolerance,
+    context.expectNear(bvh_record.surface().t, list_record.surface().t, kTolerance,
                        std::string(ray_name) + " hit distance");
-    context.expectVecNear(bvh_record.point, list_record.point, kTolerance,
+    context.expectVecNear(bvh_record.surface().point, list_record.surface().point, kTolerance,
                           std::string(ray_name) + " hit point");
-    context.expectVecNear(bvh_record.normal, list_record.normal, kTolerance,
+    context.expectVecNear(bvh_record.surface().normal, list_record.surface().normal, kTolerance,
                           std::string(ray_name) + " shading normal");
-    context.expectTrue(bvh_record.front_face == list_record.front_face,
+    context.expectTrue(bvh_record.surface().front_face == list_record.surface().front_face,
                        std::string(ray_name) + " face orientation");
-    context.expectTrue(bvh_record.material == list_record.material,
+    context.expectTrue(bvh_record.surface().material == list_record.surface().material,
                        std::string(ray_name) + " material binding");
 }
 
@@ -101,6 +102,58 @@ void testInstances(nearlighter::test::Context& context) {
 
 }  // namespace
 
+
+namespace {
+/** Deterministic Events Isolate Record Selection from Random-Stream Ordering. */
+class FixedEvent final : public Intersectable {
+public:
+    FixedEvent(float t, bool medium) : t_(t), medium_(medium), bounds_(Point3f(-1, -1, -10), Point3f(1, 1, 1)) {}
+    bool hit(const Ray& ray, Interval ray_t, HitRecord& record, Sampler&) const override {
+        if (!ray_t.contains(t_)) return false;
+        if (medium_) {
+            MediumRecord event;
+            event.t = t_;
+            event.point = ray.at(t_);
+            record = event;
+        } else {
+            SurfaceRecord event;
+            event.t = t_;
+            event.point = ray.at(t_);
+            record = event;
+        }
+        return true;
+    }
+    const AABB& getBoundingBox() const override { return bounds_; }
+private:
+    float t_;
+    bool medium_;
+    AABB bounds_;
+};
+
+void testMixedRecords(nearlighter::test::Context& context) {
+    const Ray ray(Point3f(), Vec3f(0, 0, -1));
+    for (bool nearest_medium : {false, true}) {
+        LinearAggregate objects;
+        objects.add(std::make_shared<FixedEvent>(5.0f, !nearest_medium));
+        objects.add(std::make_shared<FixedEvent>(2.0f, nearest_medium));
+        const BVH bvh(objects);
+        for (const Intersectable* world : {static_cast<const Intersectable*>(&objects),
+                                           static_cast<const Intersectable*>(&bvh)}) {
+            Sampler sampler(0);
+            HitRecord record;
+            context.expectTrue(world->hit(ray, Interval(0, 10), record, sampler), "mixed leaf query hits");
+            context.expectNear(record.t(), 2, 0, "aggregate chooses the nearest event independent of kind");
+            context.expectTrue(!record.isSurface() == nearest_medium,
+                               "aggregate copies the selected variant alternative");
+            context.expectFalse(world->hit(ray, Interval(0, 1), record, sampler), "clipped query misses");
+            context.expectNear(record.t(), 2, 0, "aggregate miss leaves output unchanged");
+            context.expectTrue(world->hit(ray, Interval(3, 10), record, sampler), "lower bound selects farther event");
+            context.expectNear(record.t(), 5, 0, "lower clipping respects both event types");
+        }
+    }
+}
+}  // namespace
+
 int main() {
     nearlighter::test::Context context;
     const LinearAggregate world = makeWorld();
@@ -119,5 +172,6 @@ int main() {
                    "ray " + std::to_string(index));
     }
     testInstances(context);
+    testMixedRecords(context);
     return context.finish("BVH tests");
 }

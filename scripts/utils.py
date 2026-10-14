@@ -100,13 +100,15 @@ def display_project_path(path: Path) -> str:
         return str(path.resolve())
 
 
-def validate_render_settings(settings: Dict[str, int]) -> Dict[str, int]:
+def validate_render_settings(settings: Dict[str, Any]) -> Dict[str, Any]:
     '''Validated deterministic render settings.'''
     positive_fields = ("width", "height", "samples_per_pixel", "max_depth")
     if any(settings[field] <= 0 for field in positive_fields):
         raise EvaluationError("Render dimensions, SPP, and depth must be positive")
     if settings["seed"] < 0 or settings["seed"] > 0xFFFFFFFFFFFFFFFF:
         raise EvaluationError("Render seed must fit in uint64")
+    if settings.get("sampling", "mixture") not in {"scattering", "mixture", "light", "mis"}:
+        raise EvaluationError("Sampling must be scattering, mixture, light, or mis")
     return settings
 
 
@@ -353,7 +355,7 @@ def write_ppm_preview(path: Path, image: PFMImage) -> None:
 def render_command(
     executable: Path,
     scene_path: Path,
-    settings: Dict[str, int],
+    settings: Dict[str, Any],
     preview_path: Path,
     linear_path: Path,
     show_progress: bool = False,
@@ -377,6 +379,8 @@ def render_command(
         str(settings["max_depth"]),
         "--seed",
         str(settings["seed"]),
+        "--sampling",
+        str(settings.get("sampling", "mixture")),
     ]
     if not show_progress:
         command.append("--no-progress")

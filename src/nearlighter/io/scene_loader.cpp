@@ -4,14 +4,14 @@
 
 #include <nearlighter/io/image_io.h>
 #include <nearlighter/io/mesh_io.h>
-#include <nearlighter/material/dielectric.h>
-#include <nearlighter/material/emissive.h>
-#include <nearlighter/material/lambertian.h>
-#include <nearlighter/material/metal.h>
+#include <nearlighter/material/surface/dielectric.h>
+#include <nearlighter/material/surface/emissive.h>
+#include <nearlighter/material/surface/lambertian.h>
+#include <nearlighter/material/surface/metal.h>
 #include <nearlighter/math/math.h>
-#include <nearlighter/medium/constant_medium.h>
+#include <nearlighter/material/medium/homogeneous.h>
 #include <nearlighter/geometry/transform.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/primitive.h>
 #include <nearlighter/shape/box.h>
 #include <nearlighter/shape/mesh.h>
 #include <nearlighter/shape/quad.h>
@@ -32,8 +32,8 @@
 /**
  * Scene Loading Context
  *
- * Owns the parsed document and the named resources resolved from it. The
- * separate sampling table contains only bare surface Primitives.
+ * Owns the parsed document and its named resources.
+ * The sampling table contains only surface Primitives.
  */
 struct SceneLoader::LoadContext {
     LoadContext(std::filesystem::path path, nlohmann::json source)
@@ -77,7 +77,7 @@ RenderSettings SceneLoader::loadRenderSettings(
     settings.image_width = resolution.at("width").get<int>();
     settings.image_height = resolution.at("height").get<int>();
     settings.samples_per_pixel = render.at("samples_per_pixel").get<int>();
-    settings.max_depth = render.at("max_depth").get<int>();
+    settings.path.max_depth = render.at("max_depth").get<int>();
     settings.seed = render.at("seed").get<std::uint64_t>();
     return settings;
 }
@@ -193,10 +193,30 @@ void SceneLoader::loadMaterials(LoadContext& context) const {
                 material = std::make_shared<Lambertian>(readVector(
                     data.at("albedo").get<std::array<float, 3>>()));
             }
+        } else if (type == "homogeneous") {
+            if (data.contains("phase")) {
+                const auto& phase = data.at("phase");
+                if (!phase.is_object() || phase.size() != 1 ||
+                    phase.value("type", std::string()) != "isotropic") {
+                    fail(context, "homogeneous phase supports only {type: isotropic}");
+                }
+            }
+            if (data.contains("albedo") == data.contains("texture")) {
+                fail(context, "homogeneous requires exactly one of albedo or texture");
+            }
+            const float extinction = data.at("extinction").get<float>();
+            if (data.contains("texture")) {
+                material = std::make_shared<Homogeneous>(extinction,
+                    findTexture(context, data.at("texture").get<std::string>()));
+            } else {
+                material = std::make_shared<Homogeneous>(extinction,
+                    readVector(data.at("albedo").get<std::array<float, 3>>()));
+            }
         } else if (type == "metal") {
+            if (data.contains("fuzz")) fail(context, "metal fuzz was replaced by roughness; migrate the material explicitly");
             material = std::make_shared<Metal>(
                 readVector(data.at("albedo").get<std::array<float, 3>>()),
-                data.value("fuzz", 0.0f));
+                data.value("roughness", 0.0f));
         } else if (type == "dielectric") {
             material = std::make_shared<Dielectric>(
                 data.at("refractive_index").get<float>());
@@ -333,24 +353,6 @@ Transform SceneLoader::loadTransform(
     return result;
 }
 
-std::shared_ptr<const Intersectable> SceneLoader::loadMedium(
-    const LoadContext& context, std::size_t object_index,
-    std::shared_ptr<const Primitive> boundary) const {
-    const nlohmann::json& object =
-        context.document.at("objects").at(object_index);
-    if (!object.contains("medium")) return boundary;
-
-    const nlohmann::json& medium = object.at("medium");
-    const float density = medium.at("density").get<float>();
-    if (density <= 0.0f) {
-        fail(context, "constant medium density must be positive");
-    }
-
-    return std::make_shared<ConstantMedium>(
-        std::move(boundary), density,
-        readVector(medium.at("albedo").get<std::array<float, 3>>()));
-}
-
 LinearAggregate SceneLoader::loadObjects(LoadContext& context) const {
     LinearAggregate world;
     if (!context.document.contains("objects")) return world;
@@ -363,25 +365,36 @@ LinearAggregate SceneLoader::loadObjects(LoadContext& context) const {
             fail(context, "duplicate object ID '" + id + "'");
         }
 
-        const std::string material_id =
-            data.at("material").get<std::string>();
-        const auto material = context.materials.find(material_id);
-        if (material == context.materials.end()) {
-            fail(context, "unknown material reference '" + material_id + "'");
+        std::shared_ptr<const Material> material;
+        if (data.contains("material")) {
+            const auto id = data.at("material").get<std::string>();
+            const auto found = context.materials.find(id);
+            if (found == context.materials.end()) fail(context, "unknown material reference '" + id + "'");
+            material = found->second;
         }
-
+        if (data.contains("medium")) {
+            if (material && material->kind() == MaterialKind::Medium) {
+                fail(context, "medium material and object medium cannot both be specified");
+            }
+            // The old object field maps directly to volume properties, without a dummy surface.
+            const auto& medium = data.at("medium");
+            material = std::make_shared<Homogeneous>(medium.at("density").get<float>(),
+                readVector(medium.at("albedo").get<std::array<float, 3>>()));
+        }
+        if (!material) fail(context, "object requires a material or medium");
+        if (material->kind() == MaterialKind::Medium) {
+            const auto type = data.at("geometry").at("type").get<std::string>();
+            if (type != "sphere" && type != "box") {
+                fail(context, "exponential free flight requires a closed convex sphere or box");
+            }
+        }
         auto primitive = std::make_shared<Primitive>(
-            loadGeometry(context, index), material->second,
-            loadTransform(context, index));
-        std::shared_ptr<const Intersectable> object =
-            loadMedium(context, index, primitive);
-        context.objects.emplace(id, object);
-
-        // A medium wrapper has no surface-direction sampling interface.
-        if (object.get() == primitive.get()) {
+            loadGeometry(context, index), material, loadTransform(context, index));
+        context.objects.emplace(id, primitive);
+        if (material->kind() == MaterialKind::Surface) {
             context.sampling_primitives.emplace(id, primitive);
         }
-        world.add(std::move(object));
+        world.add(std::move(primitive));
     }
     return world;
 }
@@ -501,6 +514,9 @@ Scene SceneLoader::load(const std::filesystem::path& scene_path) const {
         return Scene(context.document.at("name").get<std::string>(),
                      std::move(camera), render_settings, background,
                      std::move(world), std::move(sampling_targets));
+    } catch (const std::invalid_argument& error) {
+        throw std::runtime_error("Failed to load scene '" + scene_path.string() +
+                                 "': " + error.what());
     } catch (const nlohmann::json::exception& error) {
         throw std::runtime_error(
             "Failed to load scene '" + scene_path.string() +

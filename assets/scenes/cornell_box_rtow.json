@@ -36,7 +36,7 @@
     "aluminum": {
       "type": "metal",
       "albedo": [0.8, 0.85, 0.88],
-      "fuzz": 0.0
+      "roughness": 0.0
     },
     "ceiling_emitter": {
       "type": "diffuse_light",

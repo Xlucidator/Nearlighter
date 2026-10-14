@@ -1,9 +1,13 @@
 #include "test_support.h"
+#include <nearlighter/material/medium/homogeneous.h>
+#include <nearlighter/material/medium/isotropic.h>
+#include <nearlighter/material/surface/metal.h>
+#include <nearlighter/shape/quad.h>
 
-#include <nearlighter/material/emissive.h>
-#include <nearlighter/material/lambertian.h>
+#include <nearlighter/material/surface/emissive.h>
+#include <nearlighter/material/surface/lambertian.h>
 #include <nearlighter/render/renderer.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/primitive.h>
 #include <nearlighter/scene/scene.h>
 #include <nearlighter/shape/sphere.h>
 
@@ -24,7 +28,7 @@ Scene makeScene() {
     settings.image_width = 13;
     settings.image_height = 11;
     settings.samples_per_pixel = 3;
-    settings.max_depth = 4;
+    settings.path.max_depth = 4;
     settings.seed = 123;
 
     LinearAggregate world;
@@ -46,7 +50,7 @@ Scene makePathScene() {
     settings.image_width = 13;
     settings.image_height = 11;
     settings.samples_per_pixel = 4;
-    settings.max_depth = 4;
+    settings.path.max_depth = 4;
     settings.seed = 321;
 
     LinearAggregate world;
@@ -73,7 +77,7 @@ bool imagesEqual(const Image& lhs, const Image& rhs) {
 
 void testRenderer(nearlighter::test::Context& context) {
     const Scene scene = makeScene();
-    const RenderSettings settings = scene.defaultRenderSettings();
+    RenderSettings settings = scene.defaultRenderSettings();
     const Renderer renderer(settings);
     int progress_updates = 0;
     bool progress_contract_valid = true;
@@ -122,7 +126,7 @@ void testRenderer(nearlighter::test::Context& context) {
         static_cast<std::uint64_t>(settings.image_width) *
         static_cast<std::uint64_t>(settings.image_height) *
         static_cast<std::uint64_t>(settings.samples_per_pixel);
-    context.expectTrue(first.stats.sample_count == expected_samples,
+    context.expectTrue(first.stats.counters.sample_count == expected_samples,
                        "render statistics should report every primary sample");
     context.expectTrue(first.stats.integration_time.count() >= 0.0,
                        "render integration time should not be negative");
@@ -136,25 +140,32 @@ void testRenderer(nearlighter::test::Context& context) {
 
 void testPathIntegrator(nearlighter::test::Context& context) {
     const Scene scene = makePathScene();
-    const RenderSettings settings = scene.defaultRenderSettings();
-    RenderOptions options;
-    options.integrator = IntegratorKind::Path;
-    options.path.direct_lighting = DirectLightingMode::MIS;
-    options.aovs = FilmAOV::All;
+    RenderSettings settings = scene.defaultRenderSettings();
 
-    const RenderResult first = Renderer(settings, options).render(scene);
-    const RenderResult second = Renderer(settings, options).render(scene);
+    settings.path.sampling = PathSamplingMode::MIS;
+    settings.aovs = FilmAOV::All;
+
+    const RenderResult first = Renderer(settings).render(scene);
+    const RenderResult second = Renderer(settings).render(scene);
     context.expectTrue(imagesEqual(first.image(), second.image()),
                        "path integrator should preserve deterministic sampling");
-    context.expectTrue(first.stats.shadow_rays > 0,
+    context.expectTrue(first.stats.counters.shadow_rays > 0,
                        "MIS path render should cast explicit shadow rays");
-    context.expectTrue(first.stats.continuation_rays > 0,
+    context.expectTrue(first.stats.counters.continuation_rays > 0,
                        "path render should sample BSDF continuation rays");
-    context.expectTrue(first.stats.russian_roulette_terminations == 0,
+    context.expectTrue(first.stats.counters.russian_roulette_terminations == 0,
                        "Russian roulette should be disabled by default");
-    context.expectTrue(first.stats.invalid_pdf_terminations == 0 &&
-                           first.stats.invalid_contributions == 0,
+    context.expectTrue(first.stats.counters.invalid_pdf_terminations == 0 &&
+                           first.stats.counters.invalid_contributions == 0,
                        "supported diffuse path scene should avoid invalid events");
+
+    RenderSettings beauty_settings = settings;
+    beauty_settings.aovs = FilmAOV::Beauty;
+    const RenderResult beauty = Renderer(beauty_settings).render(scene);
+    context.expectTrue(beauty.film.enabledAOVs() == FilmAOV::Beauty,
+                       "RenderSettings selects the allocated output layers");
+    context.expectTrue(imagesEqual(first.image(), beauty.image()),
+                       "output layers do not change deterministic path sampling");
 
     bool direct_contribution_found = false;
     bool decomposition_valid = true;
@@ -179,33 +190,175 @@ void testPathIntegrator(nearlighter::test::Context& context) {
     context.expectTrue(direct_contribution_found,
                        "environment NEE should populate the direct AOV");
 
-    RenderOptions bsdf_only_options = options;
-    bsdf_only_options.path.direct_lighting = DirectLightingMode::BSDFOnly;
+    RenderSettings bsdf_only_settings = settings;
+    bsdf_only_settings.path.sampling = PathSamplingMode::ScatteringOnly;
     const RenderResult bsdf_only =
-        Renderer(settings, bsdf_only_options).render(scene);
-    context.expectTrue(bsdf_only.stats.shadow_rays == 0,
+        Renderer(bsdf_only_settings).render(scene);
+    context.expectTrue(bsdf_only.stats.counters.shadow_rays == 0,
                        "BSDF-only mode should disable next-event estimation");
 
-    RenderOptions light_only_options = options;
-    light_only_options.path.direct_lighting = DirectLightingMode::LightOnly;
+    RenderSettings light_only_settings = settings;
+    light_only_settings.path.sampling = PathSamplingMode::LightOnly;
     const RenderResult light_only =
-        Renderer(settings, light_only_options).render(scene);
-    context.expectTrue(light_only.stats.shadow_rays > 0,
+        Renderer(light_only_settings).render(scene);
+    context.expectTrue(light_only.stats.counters.shadow_rays > 0,
                        "light-only mode should retain next-event estimation");
 
-    RenderOptions roulette_options = options;
-    roulette_options.path.russian_roulette_start_depth = 1;
+    RenderSettings roulette_settings = settings;
+    roulette_settings.path.russian_roulette_start_depth = 1;
     const RenderResult roulette =
-        Renderer(settings, roulette_options).render(scene);
-    context.expectTrue(roulette.stats.russian_roulette_terminations > 0,
+        Renderer(roulette_settings).render(scene);
+    context.expectTrue(roulette.stats.counters.russian_roulette_terminations > 0,
                        "enabled Russian roulette should terminate some paths");
 }
 
+}  // namespace
+
+
+namespace {
+/** Analytic Sum of a Diffuse Lobe and a Discrete Mirror Lobe */
+class MixedSurface final : public Material {
+public:
+    MaterialKind kind() const override { return MaterialKind::Surface; }
+    ScatteringResponse scattering(
+        const HitRecord& record, [[maybe_unused]] TransportMode mode) const override {
+        BSDF bsdf(ShadingFrame(record.surface().normal));
+        bsdf.add(std::make_unique<LambertianBxDF>(Color(0.2f, 0.2f, 0.2f)));
+        bsdf.add(std::make_unique<SpecularReflectionBxDF>(Color(0.3f, 0.3f, 0.3f)));
+        return bsdf;
+    }
+};
+
+/** Exposes a Volume Source without Pretending It Is Surface Radiance */
+class TestEmissiveMedium final : public Material {
+public:
+    MaterialKind kind() const override { return MaterialKind::Medium; }
+    bool isEmissive() const override { return true; }
+    Color emission([[maybe_unused]] const HitRecord& record,
+                   [[maybe_unused]] const Vec3f& outgoing) const override { return Color(1, 1, 1); }
+    ScatteringResponse scattering(
+        [[maybe_unused]] const HitRecord& record,
+        [[maybe_unused]] TransportMode mode) const override {
+        return PhaseResponse(Color(1, 1, 1), phase_);
+    }
+private:
+    Isotropic phase_;
+};
+
+/** Deterministic Event Fixture; Isolates Emission Handling from Free-Flight Sampling */
+class TestVolumeEvent final : public Intersectable {
+public:
+    bool hit(const Ray& ray, Interval ray_t, HitRecord& record,
+             [[maybe_unused]] Sampler& sampler) const override {
+        if (!ray_t.contains(0.5f)) return false;
+        MediumRecord event;
+        event.t = 0.5f;
+        event.point = ray.at(event.t);
+        event.outgoing = -unit_vector(ray.direction());
+        event.material = &material_;
+        record = event;
+        return true;
+    }
+    const AABB& getBoundingBox() const override { return bounds_; }
+private:
+    TestEmissiveMedium material_;
+    AABB bounds_{Point3f(-100, -100, -100), Point3f(100, 100, 100)};
+};
+
+void testUnsupportedVolumeEmission(nearlighter::test::Context& context) {
+    Camera camera;
+    camera.position = Point3f();
+    camera.look_at = Point3f(0, 0, -1);
+    RenderSettings settings;
+    settings.image_width = settings.image_height = settings.samples_per_pixel = 1;
+    settings.path.sampling = PathSamplingMode::ScatteringOnly;
+    const Scene scene("volume source", camera, settings, Color(),
+                      LinearAggregate(std::make_shared<TestVolumeEvent>()));
+    bool rejected = false;
+    try { (void)Renderer(settings).render(scene); }
+    catch (const std::invalid_argument& error) {
+        rejected = std::string(error.what()).find("Volume emission") != std::string::npos;
+    }
+    context.expectTrue(rejected, "volume source needs a distance estimator, not surface emission addition");
+}
+
+void testEstimatorMeans(nearlighter::test::Context& context) {
+    Camera camera;
+    camera.position = Point3f();
+    camera.look_at = Point3f(0, 0, -1);
+    camera.vertical_fov = 10;
+    RenderSettings settings;
+    settings.image_width = settings.image_height = 1;
+    settings.samples_per_pixel = 32768;
+    settings.path.max_depth = 4;
+    settings.seed = 137;
+    settings.aovs = FilmAOV::All;
+    const auto target = std::make_shared<Primitive>(
+        std::make_shared<Sphere>(Point3f(), 100),
+        std::make_shared<Lambertian>(Color(1, 1, 1)));
+
+    for (const auto& material : std::vector<std::shared_ptr<const Material>>{
+            std::make_shared<Lambertian>(Color(0.5f, 0.5f, 0.5f)),
+            std::make_shared<MixedSurface>()}) {
+        const auto plane = std::make_shared<Primitive>(
+            std::make_shared<Quad>(Point3f(-100, -100, -1), Vec3f(200, 0, 0), Vec3f(0, 200, 0)), material);
+        const Scene scene("analytic surface", camera, settings, Color(1, 1, 1),
+                          LinearAggregate(plane), {target});
+        for (auto mode : {PathSamplingMode::ScatteringOnly, PathSamplingMode::Mixture,
+                          PathSamplingMode::LightOnly, PathSamplingMode::MIS}) {
+            settings.path.sampling = mode;
+            const auto result = Renderer(settings).render(scene);
+            // Constant illumination integrates the diffuse and delta coefficients directly.
+            context.expectVecNear(result.image().at(0, 0), Color(0.5f, 0.5f, 0.5f), 0.015f,
+                                  "all estimators retain analytic surface energy including mixed delta PMFs");
+            context.expectVecNear(result.film.direct().at(0, 0), result.image().at(0, 0), 1e-6f,
+                                  "single surface scattering belongs to the direct AOV");
+        }
+    }
+
+    for (float albedo : {0.0f, 0.6f, 1.0f}) {
+        const auto medium = std::make_shared<Primitive>(
+            std::make_shared<Sphere>(Point3f(), 1),
+            std::make_shared<Homogeneous>(0.7f, Color(albedo, albedo, albedo)));
+        const Scene scene("analytic medium", camera, settings, Color(1, 1, 1),
+                          LinearAggregate(medium), {target});
+        settings.path.max_depth = 32;
+        Color scattering_mean;
+        for (auto mode : {PathSamplingMode::ScatteringOnly, PathSamplingMode::Mixture}) {
+            settings.path.sampling = mode;
+            const auto result = Renderer(settings).render(scene);
+            const Color beauty = result.image().at(0, 0);
+            context.expectTrue(result.stats.counters.medium_interactions > 1000 && result.stats.counters.surface_interactions == 0,
+                               "unified path actually queries volume events");
+            context.expectTrue(result.stats.counters.shadow_rays == 0 && result.stats.counters.invalid_contributions == 0,
+                               "volume continuation needs no unimplemented shadow estimator");
+            context.expectVecNear(beauty, result.film.emission().at(0, 0) +
+                result.film.direct().at(0, 0) + result.film.indirect().at(0, 0), 0.0002f,
+                "volume paths preserve the AOV identity");
+            if (albedo == 0) context.expectNear(beauty.x(), std::exp(-0.7f), 0.012f,
+                                               "absorbing sphere matches analytic Beer transmittance");
+            if (albedo == 1) context.expectNear(beauty.x(), 1, 0.002f,
+                                               "conservative medium in uniform illumination conserves energy");
+            if (mode == PathSamplingMode::ScatteringOnly) scattering_mean = beauty;
+            else context.expectVecNear(beauty, scattering_mean, 0.015f,
+                                       "volume mixture and phase-only estimates have matching means");
+        }
+        for (auto mode : {PathSamplingMode::LightOnly, PathSamplingMode::MIS}) {
+            settings.path.sampling = mode;
+            bool rejected = false;
+            try { (void)Renderer(settings).render(scene); }
+            catch (const std::invalid_argument&) { rejected = true; }
+            context.expectTrue(rejected, "volume NEE fails before camera sampling");
+        }
+    }
+}
 }  // namespace
 
 int main() {
     nearlighter::test::Context context;
     testRenderer(context);
     testPathIntegrator(context);
+    testEstimatorMeans(context);
+    testUnsupportedVolumeEmission(context);
     return context.finish("renderer smoke tests");
 }

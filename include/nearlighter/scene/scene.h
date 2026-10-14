@@ -1,11 +1,11 @@
 #ifndef NEARLIGHTER_SCENE_SCENE_H
 #define NEARLIGHTER_SCENE_SCENE_H
 
-#include <nearlighter/light/light.h>
+#include <nearlighter/scene/light/light.h>
 #include <nearlighter/render/camera.h>
 #include <nearlighter/render/render_settings.h>
-#include <nearlighter/scene/linear_aggregate.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/linear_aggregate.h>
+#include <nearlighter/scene/object/primitive.h>
 
 #include <chrono>
 #include <cstddef>
@@ -39,10 +39,6 @@ struct SceneBuildStats {
 class Scene {
 public:
     /**
-     * @name Construction
-     * @{
-     */
-    /**
      * Scene Assembly
      *
      * Construction guarantees:
@@ -52,7 +48,7 @@ public:
      *
      * @param background Constant environment radiance; black omits the environment.
      * @param world Acyclic hierarchy with stable shared content and bounds.
-     * @param sampling_targets Non-null, sampleable legacy proposals.
+     * @param sampling_targets Non-null, sampleable direction proposals.
      * @throws std::invalid_argument For invalid targets or detected cycles.
      */
     Scene(std::string name, Camera camera,
@@ -64,7 +60,7 @@ public:
     Scene& operator=(const Scene&) = delete;
     Scene(Scene&&) noexcept = default;
     Scene& operator=(Scene&&) noexcept = default;
-    /** @} */
+
 
     /**
      * @name Scene Configuration
@@ -78,6 +74,7 @@ public:
     }
     /** @} */
 
+
     /**
      * @name World and Light Queries
      * Light pointers borrow from this Scene.
@@ -85,8 +82,6 @@ public:
      */
     const Intersectable& world() const { return *world_; }
     const std::vector<std::unique_ptr<Light>>& lights() const { return lights_; }
-
-    /** Null for a black background. */
     const EnvironmentLight* environment() const { return environment_; }
 
     /**
@@ -98,15 +93,13 @@ public:
     const AreaLight* findAreaLights(const Primitive& primitive) const;
     /** @} */
 
+
     /**
      * @name Integrator Compatibility Queries
      * Reports inspected content for integrator validation.
-     * ConstantMedium boundaries are excluded from surface inspection.
+     * Medium extent Shapes do not produce surface lights.
      * @{
      */
-    /** Deduplicated material references. */
-    const std::vector<const Material*>& materials() const { return materials_; }
-
     /** Number of emissive placements without a sampling distribution. */
     std::size_t unsampleableEmitterCount() const {
         return unsampleable_emitter_count_;
@@ -117,11 +110,12 @@ public:
     bool inspectionComplete() const { return inspection_complete_; }
     /** @} */
 
+
     /** Construction costs, excluding per-render preparation. */
     const SceneBuildStats& buildStats() const { return build_stats_; }
 
     /**
-     * Legacy Direction Proposals
+     * Mixture Direction Proposals
      *
      * Independent of light discovery:
      * - Emissive targets expand to their scene placements.
@@ -140,12 +134,12 @@ private:
      *
      * Extraction contract:
      * - Preserves input objects and shares their Shape and Material.
-     * - Records surface materials and scene compatibility facts.
+     * - Records scene compatibility facts.
      *
      * @param object Root of the input subtree.
      * @param parent_to_world Maps the object's parent space into world space.
      * @param emissive_primitives Appends one world-space Primitive per emissive placement.
-     * @param cache Reuses source remainders and remaps legacy targets.
+     * @param cache Reuses source remainders and remaps sampling targets.
      * @return The non-emissive remainder, or null when all content was extracted.
      */
     std::shared_ptr<const Intersectable> extractEmissivePrimitives(
@@ -175,7 +169,6 @@ private:
 
     /* World ownership and compatibility facts. */
     std::shared_ptr<const Intersectable> world_;
-    std::vector<const Material*> materials_;
     std::size_t unsampleable_emitter_count_ = 0;
     bool contains_media_ = false;
     bool inspection_complete_ = true;
@@ -186,7 +179,7 @@ private:
     std::unordered_map<const Primitive*, const AreaLight*> primitive_to_arealights_;
     const EnvironmentLight* environment_ = nullptr;
 
-    /* Legacy proposals and construction timings. */
+    /* Direction proposals and construction timings. */
     std::vector<std::shared_ptr<const Primitive>> sampling_targets_;
     SceneBuildStats build_stats_;
 };

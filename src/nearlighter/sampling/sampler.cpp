@@ -1,7 +1,5 @@
 #include <nearlighter/sampling/sampler.h>
 
-#include <nearlighter/math/constants.h>
-
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -14,8 +12,7 @@ constexpr float kFloatScale = 1.0f / 16777216.0f;  // 2^-24
 /**
  * 64-Bit Avalanche Mixing
  *
- * Spreads nearby input values across the output bits before identifiers are
- * combined into a path seed.
+ * Spreads nearby input values across the output bits before combining identifiers.
  */
 std::uint64_t mixBits(std::uint64_t value) {
     value += 0x9e3779b97f4a7c15ULL;
@@ -28,8 +25,8 @@ std::uint64_t mixBits(std::uint64_t value) {
 
 /**
  * @par Implementation
- * PCG initialization advances once with the selected odd stream increment,
- * adds the seed to the state, then advances again before exposing output.
+ * PCG initialization first advances with the selected odd stream increment.
+ * It adds the seed, then advances again before exposing output.
  */
 Sampler::Sampler(std::uint64_t seed, std::uint64_t sequence)
     : increment_((sequence << 1U) | 1U) {
@@ -40,8 +37,8 @@ Sampler::Sampler(std::uint64_t seed, std::uint64_t sequence)
 
 /**
  * @par Implementation
- * Advances the linear-congruential state, then applies PCG's xorshift and
- * state-dependent rotation to the previous state.
+ * Advances the linear-congruential state.
+ * PCG's xorshift and state-dependent rotation transform the previous state into output.
  */
 std::uint32_t Sampler::nextUInt32() {
     const std::uint64_t old_state = state_;
@@ -79,8 +76,8 @@ Vec2f Sampler::next2D() {
 
 /**
  * @par Implementation
- * Rejection removes the incomplete leading remainder of the uint32_t range
- * before modulo reduction, preventing bias when the span is not a power of two.
+ * Rejection removes the incomplete leading remainder before modulo reduction.
+ * This prevents bias when the requested span is not a power of two.
  */
 int Sampler::nextInt(int min, int max) {
     if (max < min) {
@@ -138,24 +135,8 @@ Vec3f Sampler::nextInUnitDisk() {
 
 /**
  * @par Implementation
- * Uniform azimuth uses phi = 2*pi*u. Setting sin(theta)=sqrt(v)
- * produces the projected-area density cos(theta)/pi over the hemisphere.
- */
-Vec3f Sampler::nextCosineHemisphere() {
-    const float r1 = next1D();
-    const float r2 = next1D();
-    const float phi = 2.0f * pi * r1;
-    const float sin_theta = std::sqrt(r2);
-
-    return Vec3f(sin_theta * std::cos(phi),
-                 sin_theta * std::sin(phi),
-                 std::sqrt(1.0f - r2));
-}
-
-/**
- * @par Implementation
- * Repeated avalanche mixing separates each logical path identifier. Packing
- * both pixel coordinates before the second mix preserves all 32 bits of each.
+ * Repeated avalanche mixing separates each logical path identifier.
+ * Packing both pixel coordinates before the second mix preserves all 32 bits of each.
  */
 std::uint64_t derivePathSeed(std::uint64_t render_seed,
                              std::uint32_t pixel_x,

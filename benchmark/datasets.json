@@ -7,6 +7,7 @@
       "download_sha256": "d94ef786f6bbc70af81ce700765a598f8aff73157234b2f50ee5a42c3f9c9f22",
       "download_path": "benchmark/data/downloads/cornell_box.rgbe",
       "reference_path": "benchmark/references/cornell_box_official_v1/reference.pfm",
+      "preview_path": "benchmark/references/cornell_box_official_v1/preview.ppm",
       "expected_width": 512,
       "expected_height": 512,
       "attribution": "Cornell University Program of Computer Graphics",

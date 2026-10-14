@@ -1,7 +1,7 @@
 #ifndef NEARLIGHTER_SCENE_BUILTIN_GENERATOR_H
 #define NEARLIGHTER_SCENE_BUILTIN_GENERATOR_H
 
-#include <nearlighter/scene/linear_aggregate.h>
+#include <nearlighter/scene/object/linear_aggregate.h>
 
 #include <cstdint>
 #include <memory>

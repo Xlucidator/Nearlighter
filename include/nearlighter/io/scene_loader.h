@@ -63,9 +63,6 @@ private:
         const LoadContext& context, std::size_t object_index) const;
     Transform loadTransform(const LoadContext& context,
                             std::size_t object_index) const;
-    std::shared_ptr<const Intersectable> loadMedium(
-        const LoadContext& context, std::size_t object_index,
-        std::shared_ptr<const Primitive> boundary) const;
     LinearAggregate loadObjects(LoadContext& context) const;
     LinearAggregate loadGeneratedObjects(const LoadContext& context) const;
     std::vector<std::shared_ptr<const Primitive>> loadSamplingTargets(

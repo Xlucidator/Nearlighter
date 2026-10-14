@@ -27,6 +27,7 @@ from utils import (
     validate_render_settings,
     write_json,
     write_pfm,
+    write_ppm_preview,
 )
 
 
@@ -72,9 +73,10 @@ def download(dataset: Dict[str, Any], force: bool) -> Path:
 
 
 def prepare_cornell(dataset: Dict[str, Any], force: bool) -> None:
-    '''Official RGBE conversion to the project linear PFM format.'''
+    '''Official linear reference and its display-only preview.'''
     source = download(dataset, force)
     reference_path = resolve_project_path(dataset["reference_path"])
+    preview_path = resolve_project_path(dataset["preview_path"])
     if reference_path.is_file() and not force:
         reference = read_pfm(reference_path)
     else:
@@ -83,6 +85,8 @@ def prepare_cornell(dataset: Dict[str, Any], force: bool) -> None:
     if (reference.width != dataset["expected_width"] or
             reference.height != dataset["expected_height"]):
         raise EvaluationError("Cornell reference dimensions are incorrect")
+    if not preview_path.is_file() or force:
+        write_ppm_preview(preview_path, reference)
 
     write_json(
         reference_path.parent / "manifest.json",
@@ -107,6 +111,7 @@ def prepare_cornell(dataset: Dict[str, Any], force: bool) -> None:
         },
     )
     print(f"Cornell GT: {display_project_path(reference_path)}")
+    print(f"Preview:    {display_project_path(preview_path)}")
 
 
 def read_ply_counts(path: Path) -> Dict[str, int]:

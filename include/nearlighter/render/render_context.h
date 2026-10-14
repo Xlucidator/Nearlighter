@@ -1,7 +1,7 @@
 #ifndef NEARLIGHTER_RENDER_RENDER_CONTEXT_H
 #define NEARLIGHTER_RENDER_RENDER_CONTEXT_H
 
-#include <nearlighter/light/light_sampler.h>
+#include <nearlighter/render/light_sampler.h>
 #include <nearlighter/render/camera.h>
 #include <nearlighter/render/render_settings.h>
 
@@ -10,9 +10,10 @@ class Scene;
 /**
  * Borrowed Render Job Inputs
  *
- * The caller keeps Scene alive; Renderer keeps per-job state alive until
- * integration returns. Scene owns visibility and lights; camera pixel geometry
- * and selection state belong to the render job. The context never copies Scene.
+ * Lifetime and ownership:
+ * - The caller keeps Scene alive until integration returns.
+ * - Renderer owns the prepared camera and light selector for this job.
+ * - Context borrows all inputs; it copies neither Scene nor settings.
  */
 class RenderContext {
 public:

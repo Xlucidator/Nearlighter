@@ -9,6 +9,7 @@
 #include <fstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -84,18 +85,27 @@ void writeBinaryPLY(const std::filesystem::path& path) {
 
 void expectQuad(nearlighter::test::Context& context, const MeshData& data,
                 std::string_view label) {
+    const std::array<Point3f, 4> positions{
+        Point3f(-1, -1, -1), Point3f(1, -1, -1),
+        Point3f(1, 1, -1), Point3f(-1, 1, -1)};
+    const std::vector<std::array<std::uint32_t, 3>> triangles{{0, 1, 2}, {0, 2, 3}};
     context.expectTrue(data.positions.size() == 4,
                        std::string(label) + " vertex count");
-    context.expectTrue(data.triangles.size() == 2,
-                       std::string(label) + " triangulated face count");
+    context.expectTrue(data.triangles == triangles,
+                       std::string(label) + " fan triangulation and index mapping");
+    if (data.positions.size() != positions.size()) return;
+    for (std::size_t i = 0; i < positions.size(); ++i) {
+        context.expectVecNear(data.positions[i], positions[i], 0,
+                              std::string(label) + " vertex coordinates");
+    }
 }
 
 }  // namespace
 
-int main() {
+int main([[maybe_unused]] int argc, char* argv[]) {
     nearlighter::test::Context context;
     const std::filesystem::path directory =
-        std::filesystem::temp_directory_path() / "nearlighter_mesh_io_tests";
+        std::filesystem::absolute(argv[0]).parent_path() / "mesh_io_fixture";
     std::filesystem::create_directories(directory);
 
     const std::filesystem::path obj_path = directory / "quad.obj";
@@ -111,6 +121,13 @@ int main() {
                        "OBJ aligned normal count");
     context.expectTrue(obj.texture_coordinates.size() == obj.positions.size(),
                        "OBJ aligned texture-coordinate count");
+    const std::vector<std::array<float, 2>> expected_uv{{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+    context.expectTrue(obj.texture_coordinates == expected_uv,
+                       "OBJ texture values remain aligned after negative-index remapping");
+    for (const auto& normal : obj.normals) {
+        context.expectVecNear(normal, Vec3f(0, 0, 1), 0,
+                              "OBJ normal values survive import");
+    }
 
     expectQuad(context, loadPLY(ascii_ply_path), "ASCII PLY");
     const MeshData binary_ply = loadPLY(binary_ply_path);
@@ -118,6 +135,14 @@ int main() {
                        "binary PLY vertex count");
     context.expectTrue(binary_ply.triangles.size() == 1,
                        "binary PLY face count");
+    const std::array<Point3f, 3> binary_positions{
+        Point3f(0, 0, -1), Point3f(1, 0, -1), Point3f(0, 1, -1)};
+    if (binary_ply.positions.size() == binary_positions.size()) {
+        for (std::size_t i = 0; i < binary_positions.size(); ++i) {
+            context.expectVecNear(binary_ply.positions[i], binary_positions[i], 0,
+                                  "binary PLY preserves little-endian float coordinates");
+        }
+    }
 
     std::filesystem::remove_all(directory);
     return context.finish("mesh I/O tests");

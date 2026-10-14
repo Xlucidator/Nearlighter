@@ -107,20 +107,27 @@ set(CORE_SOURCES
 
     # ----- Rendering -----
     src/nearlighter/render/camera.cpp
+    src/nearlighter/render/hit/surface_record.cpp
+    src/nearlighter/render/hit/medium_record.cpp
+    src/nearlighter/render/hit/hit_record.cpp
+    src/nearlighter/render/hit/surface_intersection.cpp
+    src/nearlighter/render/hit/exponential_free_flight.cpp
     src/nearlighter/render/film.cpp
-    src/nearlighter/render/integrator.cpp
-    src/nearlighter/render/legacy_path_integrator.cpp
-    src/nearlighter/light/area_light.cpp
-    src/nearlighter/light/environment_light.cpp
-    src/nearlighter/light/light_sampler.cpp
+    src/nearlighter/render/light_sampler.cpp
     src/nearlighter/render/path_integrator.cpp
     src/nearlighter/render/renderer.cpp
+
+    # ----- Sampling -----
     src/nearlighter/sampling/sampler.cpp
-    src/nearlighter/scene/instance.cpp
-    src/nearlighter/scene/linear_aggregate.cpp
-    src/nearlighter/scene/primitive.cpp
+    src/nearlighter/sampling/pdf.cpp
+
+    # ----- Scene -----
+    src/nearlighter/scene/light/area_light.cpp
+    src/nearlighter/scene/light/environment_light.cpp
+    src/nearlighter/scene/object/instance.cpp
+    src/nearlighter/scene/object/linear_aggregate.cpp
+    src/nearlighter/scene/object/primitive.cpp
     src/nearlighter/scene/scene.cpp
-    src/nearlighter/scene/surface_interaction.cpp
 
     # ----- Geometry -----
     src/nearlighter/geometry/aabb.cpp
@@ -133,13 +140,14 @@ set(CORE_SOURCES
     src/nearlighter/shape/triangle.cpp
 
     # ----- Material -----
-    src/nearlighter/material/material.cpp
-    src/nearlighter/material/dielectric.cpp
-    src/nearlighter/material/emissive.cpp
-    src/nearlighter/material/isotropic.cpp
-    src/nearlighter/material/lambertian.cpp
-    src/nearlighter/material/metal.cpp
-    src/nearlighter/medium/constant_medium.cpp
+    src/nearlighter/material/surface/dielectric.cpp
+    src/nearlighter/material/surface/emissive.cpp
+    src/nearlighter/material/surface/lambertian.cpp
+    src/nearlighter/material/surface/metal.cpp
+    src/nearlighter/material/surface/bsdf.cpp
+    src/nearlighter/material/medium/homogeneous.cpp
+    src/nearlighter/material/medium/isotropic.cpp
+    src/nearlighter/material/medium/phase_response.cpp
 
     # ----- Texture -----
     src/nearlighter/texture/checker_texture.cpp
@@ -256,23 +264,23 @@ if(BUILD_TESTING)
         COMMAND nearlighter_geometry_tests
     )
 
-    # --- Surface Interaction Tests ---
-    add_executable(nearlighter_interaction_tests
-        tests/interaction_tests.cpp
+    # --- Hit Record Tests ---
+    add_executable(nearlighter_hit_tests
+        tests/hit_tests.cpp
     )
-    target_link_libraries(nearlighter_interaction_tests PRIVATE
+    target_link_libraries(nearlighter_hit_tests PRIVATE
         nearlighter_core
     )
     target_apply_build_options(
-        nearlighter_interaction_tests ${NEARLIGHTER_BUILD_OPTIONS}
+        nearlighter_hit_tests ${NEARLIGHTER_BUILD_OPTIONS}
     )
     target_set_output_directory(
-        nearlighter_interaction_tests RUNTIME
+        nearlighter_hit_tests RUNTIME
         "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}"
     )
     add_test(
-        NAME nearlighter.interaction
-        COMMAND nearlighter_interaction_tests
+        NAME nearlighter.hit
+        COMMAND nearlighter_hit_tests
     )
 
     # --- BSDF Tests ---
@@ -378,6 +386,14 @@ if(BUILD_TESTING)
         COMMAND nearlighter_renderer_smoke_tests
     )
 
+    # --- Scene I/O Contracts ---
+    add_executable(nearlighter_scene_loader_tests tests/scene_loader_tests.cpp)
+    target_link_libraries(nearlighter_scene_loader_tests PRIVATE nearlighter_io)
+    target_apply_build_options(nearlighter_scene_loader_tests ${NEARLIGHTER_BUILD_OPTIONS})
+    target_set_output_directory(nearlighter_scene_loader_tests RUNTIME
+        "${NEARLIGHTER_TEST_RUNTIME_DIRECTORY}")
+    add_test(NAME nearlighter.scene_loader COMMAND nearlighter_scene_loader_tests)
+
     # --- Mesh I/O Tests ---
     add_executable(nearlighter_mesh_io_tests
         tests/mesh_io_tests.cpp
@@ -397,7 +413,7 @@ if(BUILD_TESTING)
         COMMAND nearlighter_mesh_io_tests
     )
 
-    # --- Constant Medium Tests ---
+    # --- Medium Tests ---
     add_executable(nearlighter_medium_tests
         tests/medium_tests.cpp
     )

@@ -1,6 +1,6 @@
 #include <nearlighter/accel/bvh.h>
 
-#include <nearlighter/scene/linear_aggregate.h>
+#include <nearlighter/scene/object/linear_aggregate.h>
 
 #include <algorithm>
 #include <stdexcept>
@@ -60,17 +60,10 @@ struct BVH::Node {
         if (object) return object->hit(ray, ray_t, record, sampler);
 
         /* ----- Recursive: Closest-child selection ----- */
-        HitRecord left_record;
-        const bool hit_left = left->hit(ray, ray_t, left_record, sampler);
-        HitRecord right_record;
-        const bool hit_right = right->hit(
-            ray, Interval(ray_t.min, hit_left ? left_record.t : ray_t.max),
-            right_record, sampler);  // only search on a closer bound
-        if (hit_right) {
-            record = right_record;
-        } else if (hit_left) {
-            record = left_record;
-        }
+        // A child miss preserves record, so both branches can reuse the caller's storage.
+        const bool hit_left = left->hit(ray, ray_t, record, sampler);
+        if (hit_left) ray_t.max = record.t();
+        const bool hit_right = right->hit(ray, ray_t, record, sampler);
         return hit_left || hit_right;
     }
 };

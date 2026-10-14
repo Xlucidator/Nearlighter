@@ -10,23 +10,23 @@
  * Deterministic Pseudo-Random Stream
  *
  * Owns one PCG32 state and advances it whenever a sample is requested.
- * Explicit ownership isolates rendering paths from thread scheduling and
- * random-number consumption by other paths.
+ * Explicit ownership isolates paths from scheduling and other paths' random draws.
  */
 class Sampler {
 public:
     /**
      * Stream Initialization
      *
-     * Starts the stream selected by `sequence` at the state derived from
-     * `seed`. Equal argument pairs reproduce the same sample sequence.
+     * `sequence` selects the stream; `seed` determines its initial state.
+     * Equal argument pairs reproduce the same sample sequence.
      */
     explicit Sampler(std::uint64_t seed, std::uint64_t sequence = 1);
 
     /**
      * @name Raw Random Bits
-     * Advances the stream once per 32-bit result; the 64-bit result consumes
-     * two consecutive 32-bit results.
+     *
+     * Advances once per 32-bit result.
+     * A 64-bit result consumes two consecutive 32-bit results.
      * @{
      */
     std::uint32_t nextUInt32();
@@ -35,11 +35,12 @@ public:
 
     /**
      * @name Uniform Scalar Samples
-     * Floating-point ranges are half-open. Integer ranges include both bounds.
      *
-     * Range overloads throw `std::invalid_argument` if a maximum is below its
-     * minimum. `nextInt()` also rejects ranges containing more than `uint32_t`
-     * distinct values.
+     * Floating-point ranges are half-open.
+     * Integer ranges include both bounds.
+     *
+     * Reversed ranges throw `std::invalid_argument`.
+     * `nextInt()` also rejects ranges beyond the number of distinct uint32_t values.
      * @{
      */
     float next1D();
@@ -51,8 +52,8 @@ public:
 
     /**
      * @name Vector and Direction Samples
-     * Vector components use independent uniform samples. Sphere and hemisphere
-     * methods return unit directions in their documented local distributions.
+     * Vector components use independent uniform samples.
+     * The sphere method returns a unit direction; the disk method returns a point.
      * @{
      */
     Vec3f nextVec3();
@@ -61,8 +62,6 @@ public:
     Vec3f nextUnitVector();
     /** Uniform point in the open unit disk on the xy plane. */
     Vec3f nextInUnitDisk();
-    /** Cosine-weighted unit-hemisphere direction around positive z. */
-    Vec3f nextCosineHemisphere();
     /** @} */
 
 private:
@@ -73,8 +72,8 @@ private:
 /**
  * Path Seed Derivation
  *
- * Hashes the render seed, pixel coordinates, and sample index into one stream
- * seed. The result is independent of traversal order and thread assignment.
+ * Hashes the render seed, pixel coordinates, and sample index into one stream seed.
+ * The result is independent of traversal order and thread assignment.
  */
 std::uint64_t derivePathSeed(std::uint64_t render_seed,
                              std::uint32_t pixel_x,

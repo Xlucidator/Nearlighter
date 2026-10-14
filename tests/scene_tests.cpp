@@ -2,15 +2,15 @@
 
 #include <nearlighter/accel/bvh.h>
 #include <nearlighter/base/interval.h>
-#include <nearlighter/light/area_light.h>
-#include <nearlighter/material/emissive.h>
-#include <nearlighter/material/lambertian.h>
-#include <nearlighter/medium/constant_medium.h>
+#include <nearlighter/scene/light/area_light.h>
+#include <nearlighter/material/surface/emissive.h>
+#include <nearlighter/material/surface/lambertian.h>
+#include <nearlighter/material/medium/homogeneous.h>
 #include <nearlighter/render/renderer.h>
 #include <nearlighter/sampling/sampler.h>
-#include <nearlighter/scene/instance.h>
+#include <nearlighter/scene/object/instance.h>
 #include <nearlighter/scene/scene.h>
-#include <nearlighter/scene/surface_interaction.h>
+#include <nearlighter/render/hit/hit_record.h>
 #include <nearlighter/shape/quad.h>
 #include <nearlighter/shape/sphere.h>
 #include <nearlighter/shape/mesh.h>
@@ -97,17 +97,17 @@ void testInstancedEmitters(nearlighter::test::Context& test) {
                         "assembled emitter should remain visible");
         expected.hit(ray, Interval(0, infinity), expected_hit, sampler);
         input.hit(ray, Interval(0, infinity), input_hit, sampler);
-        test.expectVecNear(actual_hit.point, expected_hit.point, kTolerance,
+        test.expectVecNear(actual_hit.surface().point, expected_hit.surface().point, kTolerance,
                            "placement must include every transform");
-        test.expectVecNear(actual_hit.normal, expected_hit.normal, kTolerance,
+        test.expectVecNear(actual_hit.surface().normal, expected_hit.surface().normal, kTolerance,
                            "composed emitter normal must match explicit placement");
-        test.expectTrue(input_hit.primitive == source.get(),
+        test.expectTrue(input_hit.surface().primitive == source.get(),
                         "assembly must not mutate the shared input subtree");
-        test.expectTrue(actual_hit.primitive != previous,
+        test.expectTrue(actual_hit.surface().primitive != previous,
                         "different placements need different hit identities");
-        previous = actual_hit.primitive;
-        const AreaLight* light = scene.findAreaLights(*actual_hit.primitive);
-        test.expectTrue(light && &light->primitive() == actual_hit.primitive,
+        previous = actual_hit.surface().primitive;
+        const AreaLight* light = scene.findAreaLights(*actual_hit.surface().primitive);
+        test.expectTrue(light && &light->primitive() == actual_hit.surface().primitive,
                         "world hit and light must identify the same primitive");
         if (!light) continue;
         test.expectTrue(&light->primitive().shape() == shape.get() &&
@@ -120,20 +120,20 @@ void testInstancedEmitters(nearlighter::test::Context& test) {
         const Ray receiver_ray(center + Vec3f(0, 0, 2), Vec3f(0, 0, 1));
         HitRecord receiver_hit;
         receiver->hit(receiver_ray, Interval(0, infinity), receiver_hit, sampler);
-        const SurfaceInteraction reference(receiver_ray, receiver_hit);
+        const auto& reference = receiver_hit.surface();
         for (int sample_index = 0; sample_index < 32; ++sample_index) {
             const auto sample = light->sampleLi(reference, 0, sampler);
             test.expectTrue(sample.has_value(), "placed sphere must be sampleable");
             if (!sample) continue;
             test.expectNear(sample->pdf,
-                            expected.getPDFValue(reference.point(), sample->incoming),
+                            expected.getPDFValue(reference.point, sample->incoming),
                             kTolerance, "light PDF must match the independent placement");
             HitRecord sampled_hit;
             const Ray probe = reference.spawnRay(sample->incoming, 0);
             test.expectTrue(scene.world().hit(probe, Interval(0, infinity),
                                               sampled_hit, sampler),
                             "sampled direction must hit the placed light");
-            test.expectTrue(sampled_hit.primitive == actual_hit.primitive,
+            test.expectTrue(sampled_hit.surface().primitive == actual_hit.surface().primitive,
                             "sampling must not target the untransformed source");
         }
     }
@@ -179,20 +179,19 @@ void testOneEmissiveFace(nearlighter::test::Context& test) {
         const Ray ray(Point3f(0, 0, -3 + side * 4), Vec3f(0, 0, -side));
         test.expectTrue(scene.world().hit(ray, Interval(0, infinity), hit, sampler),
                         "both emissive and non-emissive faces must remain visible");
-        test.expectTrue((scene.findAreaLights(*hit.primitive) != nullptr) == (side == 1),
+        test.expectTrue((scene.findAreaLights(*hit.surface().primitive) != nullptr) == (side == 1),
                         "light association must follow the face material");
     }
 }
 
-void testMediumBoundary(nearlighter::test::Context& test) {
-    const auto boundary = std::make_shared<Primitive>(
-        std::make_shared<Sphere>(Point3f(), 1),
-        std::make_shared<Emissive>(Color(2, 2, 2)));
+void testMediumExtent(nearlighter::test::Context& test) {
     LinearAggregate world;
-    world.add(std::make_shared<ConstantMedium>(boundary, 1, Color(1, 1, 1)));
+    world.add(std::make_shared<Primitive>(
+        std::make_shared<Sphere>(Point3f(), 1),
+        std::make_shared<Homogeneous>(1, Color(1, 1, 1))));
     const Scene scene("medium", Camera(), RenderSettings(), Color(), world);
     test.expectTrue(scene.containsMedia(), "medium content must remain visible to validation");
-    test.expectTrue(scene.lights().empty(), "a hidden medium boundary is not a surface light");
+    test.expectTrue(scene.lights().empty(), "a medium extent is not an emissive surface");
 }
 
 /** Equivalent explicit and instanced scenes must feed the same MIS estimator. */
@@ -221,18 +220,17 @@ void testNestedRender(nearlighter::test::Context& test) {
     settings.image_width = 12;
     settings.image_height = 12;
     settings.samples_per_pixel = 16;
-    settings.max_depth = 4;
+    settings.path.max_depth = 4;
     const Scene instanced("nested", camera, settings, Color(), nested);
     const Scene expanded("expanded", camera, settings, Color(), explicit_world);
     const auto* world = &instanced.world();
     const auto* light = instanced.lights().front().get();
-    for (auto mode : {DirectLightingMode::BSDFOnly, DirectLightingMode::LightOnly,
-                      DirectLightingMode::MIS}) {
-        RenderOptions options;
-        options.integrator = IntegratorKind::Path;
-        options.path.direct_lighting = mode;
-        const auto actual = Renderer(settings, options).render(instanced);
-        const auto expected = Renderer(settings, options).render(expanded);
+    for (auto mode : {PathSamplingMode::ScatteringOnly, PathSamplingMode::LightOnly,
+                      PathSamplingMode::MIS}) {
+
+        settings.path.sampling = mode;
+        const auto actual = Renderer(settings).render(instanced);
+        const auto expected = Renderer(settings).render(expanded);
         bool nonzero = false;
         for (int y = 0; y < settings.image_height; ++y) {
             for (int x = 0; x < settings.image_width; ++x) {
@@ -242,15 +240,14 @@ void testNestedRender(nearlighter::test::Context& test) {
             }
         }
         test.expectTrue(nonzero, "equivalence must exercise nonzero transport");
-        test.expectTrue(actual.stats.invalid_contributions == 0 &&
-                            actual.stats.invalid_pdf_terminations == 0,
+        test.expectTrue(actual.stats.counters.invalid_contributions == 0 &&
+                            actual.stats.counters.invalid_pdf_terminations == 0,
                         "nested emitters must not generate invalid transport events");
     }
     settings.image_width = 6;
     settings.image_height = 4;
-    RenderOptions options;
-    options.integrator = IntegratorKind::Path;
-    const auto resized = Renderer(settings, options).render(instanced);
+
+    const auto resized = Renderer(settings).render(instanced);
     test.expectTrue(resized.image().width() == 6 && resized.image().height() == 4,
                     "one assembled Scene must support a different render size");
     test.expectTrue(&instanced.world() == world && instanced.lights().front().get() == light,
@@ -268,7 +265,7 @@ void testDirectAndInstancedEmitter(nearlighter::test::Context& test) {
     const Scene scene("direct and instanced", Camera(), RenderSettings(),
                       Color(), world, {source});
     test.expectTrue(scene.lights().size() == 2 && scene.samplingTargets().size() == 2,
-                    "both placements must enter lights and legacy proposals");
+                    "both placements must enter lights and target proposals");
     const Primitive* previous = nullptr;
     Sampler sampler(0);
     for (float x : {3.0f, 0.0f}) {
@@ -277,11 +274,11 @@ void testDirectAndInstancedEmitter(nearlighter::test::Context& test) {
             Ray(Point3f(x, 0, 0), Vec3f(0, 0, -1)), Interval(0, infinity), hit, sampler);
         test.expectTrue(found, "both the instance and the direct emitter must remain visible");
         if (!found) continue;
-        const auto* light = scene.findAreaLights(*hit.primitive);
-        test.expectTrue(hit.primitive != previous && light &&
-                            &light->primitive() == hit.primitive,
+        const auto* light = scene.findAreaLights(*hit.surface().primitive);
+        test.expectTrue(hit.surface().primitive != previous && light &&
+                            &light->primitive() == hit.surface().primitive,
                         "each placement must retain its own light association");
-        previous = hit.primitive;
+        previous = hit.surface().primitive;
     }
 }
 
@@ -316,7 +313,7 @@ void testUnsampleableEmitter(nearlighter::test::Context& test) {
     test.expectTrue(surfaceCount(scene.world()) == 2,
                     "unsampleable emitters must remain owned by the visibility world");
     bool rejected = false;
-    try { PathIntegrator::validateScene(scene); }
+    try { PathIntegrator::validateScene(scene, PathIntegratorOptions{8, 0, PathSamplingMode::MIS}); }
     catch (const std::invalid_argument&) { rejected = true; }
     test.expectTrue(rejected, "path validation must reject an unsampleable nested emitter");
 }
@@ -344,14 +341,14 @@ void testOpaqueContent(nearlighter::test::Context& test) {
     test.expectFalse(scene.inspectionComplete(),
                      "opaque content must not be certified as having no hidden lights");
     bool rejected = false;
-    try { PathIntegrator::validateScene(scene); }
+    try { PathIntegrator::validateScene(scene, PathIntegratorOptions{8, 0, PathSamplingMode::MIS}); }
     catch (const std::invalid_argument&) { rejected = true; }
     test.expectTrue(rejected, "path validation must reject unknown content");
     Sampler sampler(0);
     HitRecord record;
     test.expectTrue(scene.world().hit(Ray(Point3f(0,0,3), Vec3f(0,0,-1)),
                                       Interval(0, infinity), record, sampler),
-                    "unknown content must remain available to legacy intersection");
+                    "unknown content must remain available to ordinary intersection");
 }
 
 }  // namespace
@@ -361,7 +358,7 @@ int main() {
     testInstancedEmitters(test);
     testDirectAndInstancedEmitter(test);
     testOneEmissiveFace(test);
-    testMediumBoundary(test);
+    testMediumExtent(test);
     testNestedRender(test);
     testSharedNonEmissiveSubtree(test);
     testUnsampleableEmitter(test);

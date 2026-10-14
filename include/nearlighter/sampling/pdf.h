@@ -1,24 +1,21 @@
-#ifndef PDF_H
-#define PDF_H 
+#ifndef NEARLIGHTER_SAMPLING_PDF_H
+#define NEARLIGHTER_SAMPLING_PDF_H
 
-#include <nearlighter/geometry/onb.h>
-#include <nearlighter/math/constants.h>
-#include <nearlighter/sampling/sampler.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/geometry/shading_frame.h>
+#include <nearlighter/math/vec3.h>
 
-#include <cmath>
 #include <memory>
 #include <vector>
 
+class Sampler;
+class Primitive;
+
 /**
- * Solid-Angle Direction Distribution
+ * Continuous Solid-Angle Direction Proposal
  *
- * Represents one distribution over directions on the unit sphere.
- * - `value()`: evaluates density with respect to solid angle.
- * - `generate()`: samples a direction from the same distribution.
- *
- * Direction length has no probabilistic meaning. Implementations must keep
- * both operations consistent to preserve unbiased Monte Carlo estimates.
+ * - value() and generate() describe the same distribution and coordinates.
+ * - Density is measured per unit solid angle.
+ * - Direction magnitude has no probabilistic meaning.
  */
 class PDF {
 public:
@@ -27,131 +24,89 @@ public:
     /**
      * Direction Density
      *
-     * @param direction Non-zero direction in the distribution's coordinate
-     * system.
-     * @return Density with respect to solid angle, in inverse steradians.
+     * Non-finite and zero directions have zero density.
      */
     virtual float value(const Vec3f& direction) const = 0;
 
     /**
-     * Direction Generation
+     * Direction Proposal
      *
-     * @param sampler Random stream consumed by the distribution.
-     * @return A non-zero direction distributed according to `value()`.
+     * Borrows and advances the caller-owned sample stream.
+     * An empty distribution returns a zero direction.
      */
     virtual Vec3f generate(Sampler& sampler) const = 0;
 };
 
-/**
- * Uniform Sphere Distribution
- *
- * Assigns constant density `1 / (4*pi)` to every direction.
- */
-class SpherePDF : public PDF {
+/** Uniform Sphere Distribution with Density 1 / (4 * pi) */
+class SpherePDF final : public PDF {
 public:
-    SpherePDF() {}
-
-    float value([[maybe_unused]] const Vec3f& direction) const override {
-        return 1 / (4 * pi);    
-    }
-    Vec3f generate(Sampler& sampler) const override {
-        return sampler.nextUnitVector();
-    }
+    float value(const Vec3f& direction) const override;
+    Vec3f generate(Sampler& sampler) const override;
 };
 
-/**
- * Cosine-Weighted Hemisphere Distribution
- *
- * Uses the constructor direction as the positive local z axis. The direction
- * must be non-zero; generated and evaluated directions use the parent space.
- */
-class CosineHemispherePDF : public PDF {
+/** Cosine-Weighted Hemisphere Distribution */
+class CosineHemispherePDF final : public PDF {
 public:
-    CosineHemispherePDF(const Vec3f& w) : uvw_(w) {}
+    /** Builds the Hemisphere around a Nonzero Normal */
+    explicit CosineHemispherePDF(const Vec3f& normal) : frame_(normal) {}
 
-    float value(const Vec3f& direction) const override {
-        float cosine_theta = dot(unit_vector(direction), uvw_.w());
-        return std::fmax(0, cosine_theta / pi);
-    }
-    Vec3f generate(Sampler& sampler) const override {
-        return uvw_.toParent(sampler.nextCosineHemisphere());
-    }
+    float value(const Vec3f& direction) const override;
+    Vec3f generate(Sampler& sampler) const override;
+
 private:
-    ONB uvw_;
+    ShadingFrame frame_;
 };
 
 /**
  * Surface-Target Direction Distribution
  *
- * Forms an equal-weight mixture over world-space Primitive targets as viewed
- * from one fixed origin. Shape supplies surface sampling; Primitive supplies
- * placement and the affine solid-angle Jacobian. Material does not contribute.
+ * - Samples an equal-weight mixture of placed surfaces from a fixed origin.
+ * - Shape supplies geometry; Primitive applies the solid-angle Jacobian.
+ * - Material does not contribute to this proposal.
  */
-class SurfacePDF : public PDF {
+class SurfacePDF final : public PDF {
 public:
     /**
      * Surface-Target Mixture
      *
-     * Retains `targets` by reference, so the array must outlive this object.
-     * A valid distribution requires at least one non-null target with a valid
-     * Shape sampling pair. An empty array remains safe but has zero density.
+     * - Borrows targets; the array must outlive this distribution.
+     * - Each target must be non-null and provide a surface sampling pair.
+     * - An empty array has zero density and generates a zero direction.
      */
-    SurfacePDF(
-        const std::vector<std::shared_ptr<const Primitive>>& targets,
-        const Point3f& origin)
-        : targets_(targets), origin_(origin) {}
+    SurfacePDF(const std::vector<std::shared_ptr<const Primitive>>& targets,
+               const Point3f& origin);
 
-    float value(const Vec3f& direction) const override {
-        if (targets_.empty()) return 0.0f;
-        const float weight = 1.0f / static_cast<float>(targets_.size());
-        float density = 0.0f;
-        for (const auto& target : targets_) {
-            density += weight * target->getPDFValue(origin_, direction);
-        }
-        return density;
-    }
+    float value(const Vec3f& direction) const override;
+    Vec3f generate(Sampler& sampler) const override;
 
-    Vec3f generate(Sampler& sampler) const override {
-        if (targets_.empty()) return Vec3f(1.0f, 0.0f, 0.0f);
-        const int index = sampler.nextInt(
-            0, static_cast<int>(targets_.size()) - 1);
-        return targets_[static_cast<std::size_t>(index)]->random(origin_, sampler);
-    }
 private:
     const std::vector<std::shared_ptr<const Primitive>>& targets_;
     Point3f origin_;
 };
 
 /**
- * Equal-Weight Direction Mixture
+ * Weighted Mixture of Two Borrowed Distributions
  *
- * Samples either component with probability one half and evaluates the same
- * weighted sum of their densities.
+ * - Both components must outlive the mixture.
+ * - Sampling and density evaluation use the same component weights.
  */
-class MixturePDF : public PDF {
+class MixturePDF final : public PDF {
 public:
     /**
      * Mixture Construction
      *
-     * Retains both non-null component distributions by shared ownership.
+     * first_probability must be finite and in [0, 1].
+     * Invalid probabilities throw std::invalid_argument.
      */
-    MixturePDF(std::shared_ptr<PDF> p0, std::shared_ptr<PDF> p1) {
-        p[0] = p0;
-        p[1] = p1;
-    }
+    MixturePDF(const PDF& first, const PDF& second, float first_probability = 0.5f);
 
-    float value(const Vec3f& direction) const override {
-        return 0.5 * p[0]->value(direction) + 0.5 * p[1]->value(direction);
-    }
-    Vec3f generate(Sampler& sampler) const override {
-        if (sampler.next1D() < 0.5f)
-            return p[0]->generate(sampler);
-        else 
-            return p[1]->generate(sampler);
-    }
+    float value(const Vec3f& direction) const override;
+    Vec3f generate(Sampler& sampler) const override;
 
 private:
-    std::shared_ptr<PDF> p[2];
+    const PDF& first_;
+    const PDF& second_;
+    float first_probability_;
 };
 
-#endif // PDF_H
+#endif  // NEARLIGHTER_SAMPLING_PDF_H

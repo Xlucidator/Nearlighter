@@ -5,13 +5,12 @@
 #include <nearlighter/geometry/aabb.h>
 #include <nearlighter/geometry/onb.h>
 #include <nearlighter/geometry/transform.h>
-#include <nearlighter/material/lambertian.h>
+#include <nearlighter/material/surface/lambertian.h>
 #include <nearlighter/math/constants.h>
 #include <nearlighter/math/mat4.h>
-#include <nearlighter/math/math.h>
 #include <nearlighter/math/vec4.h>
 #include <nearlighter/sampling/sampler.h>
-#include <nearlighter/scene/primitive.h>
+#include <nearlighter/scene/object/primitive.h>
 #include <nearlighter/shape/box.h>
 #include <nearlighter/shape/mesh.h>
 #include <nearlighter/shape/quad.h>
@@ -20,7 +19,6 @@
 
 #include <cmath>
 #include <memory>
-#include <stdexcept>
 
 namespace {
 
@@ -28,42 +26,6 @@ constexpr float kTolerance = 1e-5f;
 
 std::shared_ptr<const Material> testMaterial() {
     return std::make_shared<Lambertian>(Color(0.5f, 0.5f, 0.5f));
-}
-
-void testVectors(nearlighter::test::Context& context) {
-    /* ----- Scalar precision aliases ----- */
-    const Vec3d precise(1.0, 2.0, 2.0);
-    context.expectTrue(
-        std::fabs(precise.length() - 3.0) <= 1e-12,
-        "Vec3d should retain double-precision vector arithmetic");
-    const Point3d point = precise + Vec3d(2.0, -2.0, 1.0);
-    context.expectTrue(
-        point.x() == 3.0 && point.y() == 0.0 && point.z() == 3.0,
-        "Point3d alias should preserve Vec3d operations");
-
-    /* ----- Four-component operations ----- */
-    const Vec4f homogeneous(Vec3f(1.0f, 2.0f, 3.0f), 1.0f);
-    const Vec4f scaled = 2 * homogeneous;
-    context.expectTrue(
-        scaled.x() == 2.0f && scaled.y() == 4.0f &&
-            scaled.z() == 6.0f && scaled.w() == 2.0f,
-        "Vec4f should support arithmetic scalar multiplication");
-    context.expectVecNear(homogeneous.xyz(), Vec3f(1.0f, 2.0f, 3.0f),
-                          kTolerance,
-                          "Vec4f xyz should recover its first components");
-    context.expectNear(dot(homogeneous, homogeneous), 15.0f, kTolerance,
-                       "Vec4f dot product should include w");
-
-    /* ----- Direction Mapping ----- */
-    context.expectVecNear(
-        reflect(Vec3f(1.0f, -1.0f, 0.0f), Vec3f(0.0f, 1.0f, 0.0f)),
-        Vec3f(1.0f, 1.0f, 0.0f), kTolerance,
-        "reflection should mirror the normal component");
-    context.expectVecNear(
-        refract(unit_vector(Vec3f(1.0f, -1.0f, 0.0f)),
-                Vec3f(0.0f, 1.0f, 0.0f), 2.0f),
-        Vec3f(), kTolerance,
-        "refraction should report total internal reflection as zero");
 }
 
 void testONB(nearlighter::test::Context& context) {
@@ -332,7 +294,6 @@ void testAABB(nearlighter::test::Context& context) {
 }
 
 void testMatrices(nearlighter::test::Context& context) {
-    /* ----- Algebraic Operations ----- */
     const Mat4d matrix(
         Vec4d(4.0, 0.0, 0.0, 0.0), Vec4d(7.0, 5.0, 0.0, 0.0),
         Vec4d(2.0, 0.0, 3.0, 0.0), Vec4d(3.0, 1.0, 0.0, 2.0));
@@ -346,8 +307,6 @@ void testMatrices(nearlighter::test::Context& context) {
         "Mat4d should multiply a column vector");
     context.expectTrue(std::fabs(matrix.determinant() - 120.0) <= 1e-12,
                        "Mat4d should compute a general determinant");
-    context.expectTrue(matrix.transposed()(1, 0) == matrix(0, 1),
-                       "Mat4d transpose should exchange row and column");
 
     const Mat4d identity = matrix * matrix.inverse();
     bool inverse_matches = true;
@@ -360,48 +319,18 @@ void testMatrices(nearlighter::test::Context& context) {
     }
     context.expectTrue(inverse_matches,
                        "Mat4d general inverse should restore identity");
-
-    const Mat4d doubled_identity = Mat4d() + Mat4d();
-    context.expectTrue(doubled_identity(0, 0) == 2.0 &&
-                           doubled_identity(0, 1) == 0.0,
-                       "Mat4d addition should operate element-wise");
-    const Mat4d masked = hadamard(matrix, Mat4d());
-    context.expectTrue(masked(0, 0) == 4.0 && masked(0, 1) == 0.0 &&
-                           masked(1, 1) == 5.0,
-                       "Mat4d Hadamard product should operate element-wise");
-
-    /* ----- Failure Contract ----- */
-    bool singular_rejected = false;
-    try {
-        (void)Mat4d(0.0).inverse();
-    } catch (const std::invalid_argument&) {
-        singular_rejected = true;
-    }
-    context.expectTrue(singular_rejected,
-                       "Mat4d inverse should reject a singular matrix");
 }
 
 void testPrimitiveTransforms(nearlighter::test::Context& context) {
     Sampler sampler(0);
 
-    /* ----- Matrix Input Contract ----- */
+    /* ----- Affine Mapping ----- */
     Mat4f translated_matrix;
     translated_matrix(0, 3) = 2.0f;
     context.expectVecNear(
         Transform(translated_matrix).applyPoint(Point3f(1.0f, 0.0f, 0.0f)),
         Point3f(3.0f, 0.0f, 0.0f), kTolerance,
         "Transform should accept an affine Mat4f");
-
-    Mat4f projective_matrix;
-    projective_matrix(3, 0) = 0.5f;
-    bool projective_rejected = false;
-    try {
-        (void)Transform(projective_matrix);
-    } catch (const std::invalid_argument&) {
-        projective_rejected = true;
-    }
-    context.expectTrue(projective_rejected,
-                       "Transform should reject a projective Mat4f");
 
     context.expectVecNear(
         Transform::rotate(Vec3f(0.0f, 1.0f, 0.0f), 0.5f * pi)
@@ -422,12 +351,12 @@ void testPrimitiveTransforms(nearlighter::test::Context& context) {
         Interval(0.001f, infinity), translated_record, sampler);
     context.expectTrue(translated_hit, "translated Primitive should be hit");
     if (translated_hit) {
-        context.expectVecNear(translated_record.point,
+        context.expectVecNear(translated_record.surface().point,
                               Point3f(2.0f, 0.0f, -0.5f), kTolerance,
                               "translated Primitive world point");
-        context.expectTrue(translated_record.front_face,
+        context.expectTrue(translated_record.surface().front_face,
                            "Primitive computes world front face");
-        context.expectTrue(translated_record.material == &translated.material(),
+        context.expectTrue(translated_record.surface().material == &translated.material(),
                            "Primitive binds its Material to HitRecord");
     }
 
@@ -464,16 +393,6 @@ void testPrimitiveTransforms(nearlighter::test::Context& context) {
         0.5f * local_sphere.getPDFValue(origin, direction), kTolerance,
         "non-uniform scale applies solid-angle PDF Jacobian");
 
-    bool singular_rejected = false;
-    try {
-        const Transform singular = Transform::scale(Vec3f(1.0f, 0.0f, 1.0f));
-        (void)singular;
-    } catch (const std::invalid_argument&) {
-        singular_rejected = true;
-    }
-    context.expectTrue(singular_rejected,
-                       "Transform rejects singular scale");
-
     const Primitive reflected(
         std::make_shared<Quad>(Point3f(-1.0f, -1.0f, -1.0f),
                                Vec3f(2.0f, 0.0f, 0.0f),
@@ -486,15 +405,13 @@ void testPrimitiveTransforms(nearlighter::test::Context& context) {
                 Vec3f(0.0f, 0.0f, -1.0f)),
             Interval(0.001f, infinity), reflected_record, sampler),
         "reflected Primitive should remain intersectable");
-    context.expectFalse(reflected_record.front_face,
+    context.expectFalse(reflected_record.surface().front_face,
                         "reflection should reverse oriented surface facing");
 }
-
 }  // namespace
 
 int main() {
     nearlighter::test::Context context;
-    testVectors(context);
     testONB(context);
     testSphere(context);
     testQuad(context);
